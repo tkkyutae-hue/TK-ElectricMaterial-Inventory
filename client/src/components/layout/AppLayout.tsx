@@ -32,8 +32,6 @@ import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
-import { FieldBrandLockup } from "@/components/layout/FieldBrandLockup";
-import { F_LIGHT } from "@/lib/fieldTokens";
 
 const SIDEBAR_HIDDEN_KEY = "admin.sidebarHidden.v1";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -222,15 +220,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <SidebarContent />
               </SheetContent>
             </Sheet>
-            <div className="inventory-header-brand">
-              <FieldBrandLockup F={F_LIGHT} compact />
+            <div className="inventory-header-brand flex items-center gap-2.5 min-w-0">
+              <img
+                src={tkLogo}
+                alt="TK Electric"
+                className="h-9 w-auto object-contain flex-shrink-0"
+                style={{ imageRendering: "crisp-edges" }}
+              />
+              <div className="hidden sm:block min-w-0 leading-none">
+                <span className="font-display font-bold text-base tracking-tight text-slate-900 whitespace-nowrap block">
+                  TK Electric
+                </span>
+                <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider mt-1 flex items-center gap-1 whitespace-nowrap">
+                  <Shield className="w-2.5 h-2.5 flex-shrink-0" /> {t.adminModeChip}
+                </span>
+              </div>
             </div>
           </div>
 
           <div className="hidden lg:flex items-center gap-2 min-w-0">
-            <span className="text-xs font-semibold uppercase tracking-wider text-brand-700 bg-brand-100 px-2.5 py-1 rounded-full flex items-center gap-1 whitespace-nowrap flex-shrink-0 border border-brand-200">
-              <Shield className="w-3 h-3 flex-shrink-0" /> {t.adminModeChip}
-            </span>
             <span className="text-sm text-muted-foreground truncate min-w-0 flex-1">
               {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
             </span>

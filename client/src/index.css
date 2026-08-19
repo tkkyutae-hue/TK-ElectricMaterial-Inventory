@@ -168,10 +168,6 @@ input[type="number"] {
   .field-brand-subtitle { display: none !important; }
 }
 
-@media (max-width: 420px) {
-  .inventory-header-brand .field-brand-title { display: none !important; }
-  .inventory-header-brand .field-brand-lockup { gap: 0 !important; }
-}
 
 /* Field filter pill-bar entry animation */
 @keyframes filterFadeDown {

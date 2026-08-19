@@ -2164,37 +2164,83 @@ export function NewReportTab({
           {manpower.length > 0 && (
             <div data-testid="manpower-summary-bar" style={{
               borderTop: `1px solid ${FT.RULE}`, background: FT.PAPER_MUTED,
-               padding: "9px 14px", display: "flex", flexDirection: isMobile ? "column" : "row",
-               alignItems: isMobile ? "stretch" : "center", gap: isMobile ? 8 : 0,
+              padding: "9px 14px", display: "flex", flexDirection: isMobile ? "column" : "row",
+              alignItems: isMobile ? "stretch" : "center", gap: isMobile ? 10 : 0,
                width: "100%", minWidth: 0, boxSizing: "border-box", overflow: "hidden",
             }}>
               {/* Left: label, Present, Exceptions */}
-              <div style={{ flex: 1, minWidth: 0, width: isMobile ? "100%" : undefined, display: "flex", alignItems: "center", gap: isMobile ? 8 : 14, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: FT.INK, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: FT.FONT }}>
+              <div style={{
+                flex: 1, minWidth: isMobile ? 0 : undefined, width: isMobile ? "100%" : undefined,
+                display: isMobile ? "grid" : "flex",
+                gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : undefined,
+                alignItems: isMobile ? "start" : "center",
+                gap: isMobile ? 6 : 14, flexWrap: "wrap",
+              }}>
+                <span style={{
+                  minWidth: 0, fontSize: 13, fontWeight: 800, color: FT.INK,
+                  textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: FT.FONT,
+                  overflowWrap: isMobile ? "anywhere" : undefined,
+                }}>
                   {t.newReportMpSummary}
                 </span>
-                <div style={{ display: "flex", alignItems: "center", gap: 4, paddingRight: isMobile ? 0 : 12, marginRight: 0, borderRight: isMobile ? "none" : `1px solid ${FT.RULE}`, minWidth: 0 }}>
-                  <span style={{ fontSize: 13, color: FT.TEXT_MUTED }}>{t.newReportMpPresent}</span>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: FT.SUCCESS, fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT }}>{presentCount}</span>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 4, minWidth: isMobile ? 0 : undefined,
+                  paddingRight: isMobile ? 0 : 12, marginRight: 0,
+                  borderRight: isMobile ? "none" : `1px solid ${FT.RULE}`,
+                }}>
+                  <span style={{
+                    minWidth: 0, fontSize: 13, color: FT.TEXT_MUTED,
+                    overflowWrap: isMobile ? "anywhere" : undefined,
+                  }}>{t.newReportMpPresent}</span>
+                  <span style={{ flexShrink: isMobile ? 0 : undefined, fontSize: 13, fontWeight: 800, color: FT.SUCCESS, fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT }}>{presentCount}</span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
-                  <span style={{ fontSize: 13, color: FT.TEXT_MUTED }}>{t.newReportMpExceptions}</span>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: exceptionsCount > 0 ? FT.ACCENT : FT.TEXT_MUTED, fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT }}>{exceptionsCount}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: isMobile ? 0 : undefined }}>
+                  <span style={{
+                    minWidth: 0, fontSize: 13, color: FT.TEXT_MUTED,
+                    overflowWrap: isMobile ? "anywhere" : undefined,
+                  }}>{t.newReportMpExceptions}</span>
+                  <span style={{ flexShrink: isMobile ? 0 : undefined, fontSize: 13, fontWeight: 800, color: exceptionsCount > 0 ? FT.ACCENT : FT.TEXT_MUTED, fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT }}>{exceptionsCount}</span>
                 </div>
               </div>
               {/* Right: Total Work Hrs, Issues */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: isMobile ? "space-between" : undefined, gap: isMobile ? 8 : 14, flexShrink: isMobile ? 1 : 0, minWidth: 0, width: isMobile ? "100%" : undefined, flexWrap: "wrap" }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 5, minWidth: 0 }}>
-                  <span style={{ fontSize: 13, color: FT.TEXT_MUTED, whiteSpace: isMobile ? "normal" : "nowrap" }}>{t.newReportMpTotalHrs}</span>
-                  <span style={{ fontSize: 22, fontWeight: 800, color: exceptionsCount > 0 ? FT.ACCENT : FT.SUCCESS, fontVariantNumeric: "tabular-nums", lineHeight: 1, fontFamily: FT.FONT }}>
+              <div style={{
+                display: isMobile ? "grid" : "flex",
+                gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : undefined,
+                alignItems: isMobile ? "start" : "center",
+                gap: isMobile ? 6 : 14,
+                flexShrink: isMobile ? 1 : 0, minWidth: isMobile ? 0 : undefined,
+                width: isMobile ? "100%" : undefined, flexWrap: isMobile ? "wrap" : undefined,
+              }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 5, minWidth: isMobile ? 0 : undefined }}>
+                  <span style={{
+                    minWidth: 0, fontSize: 13, color: FT.TEXT_MUTED,
+                    whiteSpace: isMobile ? "normal" : "nowrap",
+                    overflowWrap: isMobile ? "anywhere" : undefined,
+                  }}>{t.newReportMpTotalHrs}</span>
+                  <span style={{ flexShrink: isMobile ? 0 : undefined, fontSize: 22, fontWeight: 800, color: exceptionsCount > 0 ? FT.ACCENT : FT.SUCCESS, fontVariantNumeric: "tabular-nums", lineHeight: 1, fontFamily: FT.FONT }}>
                     {totalManhours.toFixed(1)}
                   </span>
                 </div>
                 {exceptionsCount === 0 ? (
-                  <span style={{ fontSize: 13, color: FT.TEXT_MUTED, whiteSpace: isMobile ? "normal" : "nowrap", minWidth: 0, textAlign: "right" }}>{t.newReportMpIssuesNone}</span>
+                  <span style={{
+                    minWidth: 0, fontSize: 13, color: FT.TEXT_MUTED,
+                    whiteSpace: isMobile ? "normal" : "nowrap",
+                    overflowWrap: isMobile ? "anywhere" : undefined,
+                    textAlign: isMobile ? "left" : undefined,
+                  }}>{t.newReportMpIssuesNone}</span>
                 ) : (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: 4, background: FT.ACCENT, fontSize: 11, fontWeight: 700, color: "#fff", whiteSpace: isMobile ? "normal" : "nowrap", minWidth: 0, maxWidth: "100%", textAlign: "center", fontFamily: FT.FONT, letterSpacing: "0.03em" }}>
-                    ⚠ {exceptionsCount} {t.newReportMpFlagged}
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    padding: "3px 10px", borderRadius: 4, background: FT.ACCENT,
+                    fontSize: 11, fontWeight: 700, color: "#fff",
+                    whiteSpace: isMobile ? "normal" : "nowrap", minWidth: isMobile ? 0 : undefined,
+                    maxWidth: isMobile ? "100%" : undefined, textAlign: isMobile ? "center" : undefined, fontFamily: FT.FONT,
+                    letterSpacing: "0.03em", overflowWrap: isMobile ? "anywhere" : undefined,
+                  }}>
+                    <span style={{ flexShrink: 0 }}>⚠</span>
+                    <span style={{ minWidth: 0, overflowWrap: isMobile ? "anywhere" : undefined }}>
+                      {exceptionsCount} {t.newReportMpFlagged}
+                    </span>
                   </span>
                 )}
               </div>

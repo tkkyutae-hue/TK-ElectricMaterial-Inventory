@@ -1,5 +1,4 @@
 import type { Express } from "express";
-import type * as ExcelJSNS from "exceljs";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { derivedFamily, derivedType, extractSubcategory } from "./storage";
@@ -25,6 +24,7 @@ import express from "express";
 import sharp from "sharp";
 import crypto from "crypto";
 import { uploadBuffer, downloadBuffer } from "./services/objectStorageUpload";
+import { extractBoqRowsFromXlsx, extractXlsxTextPreview } from "./services/boqXlsx";
 // ─── Upload magic-bytes validator ─────────────────────────────────────────────
 // Verifies that file content matches the declared MIME type's signature.
 function isImageMagicBytes(buf: Buffer, mimetype: string): boolean {
@@ -4797,73 +4797,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
         // ── Excel with B.O.Q sheet → AI-free direct parse ────────────────────
         if (mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
-          const ExcelJS = (await import("exceljs")).default;
-          const wb = new ExcelJS.Workbook();
-          await wb.xlsx.load(req.file.buffer);
-          const ws = wb.getWorksheet("B.O.Q");
-
-          if (ws) {
-            // Helper: extract plain text from any cell value type
-            function boqCellText(cell: ExcelJSNS.Cell): string {
-              const v = cell.value;
-              if (v === null || v === undefined) return "";
-              if (typeof v === "object") {
-                if ("richText" in v) return (v as ExcelJSNS.CellRichTextValue).richText.map((t: any) => t.text).join("");
-                if ("result" in v) return (v as ExcelJSNS.CellFormulaValue).result != null ? String((v as ExcelJSNS.CellFormulaValue).result) : "";
-                if ("formula" in v) return "";
-                if ("text" in v) return String((v as any).text);
-              }
-              return String(v);
-            }
-
-            // Column layout (1-based): C=3 name, E=5 spec, F=6 unit, G=7 qty
-            const SKIP_PATTERNS = [
-              /^\[?\s*sub\s*total\s*\]?$/i, /^\[?\s*total\s*\]?$/i,
-              /grand\s*total/i, /direct\s*construction/i, /indirect\s*construction/i,
-              /description\s*of\s*work/i, /construction\s*period/i, /subcontractor/i,
-              /safety\s*\/\s*management/i, /conditions\s*and\s*terms/i,
-              /approved\s*by/i, /^date\s*:/i, /quotation/i, /b\.o\.q/i,
-            ];
-
-            const directItems: any[] = [];
-            let currentSection: string | null = null;
-            let sortOrder = 0;
-
-            for (let r = 1; r <= ws.rowCount; r++) {
-              const row = ws.getRow(r);
-              const name = boqCellText(row.getCell(3)).trim();
-              const spec = boqCellText(row.getCell(5)).trim();
-              const unit = boqCellText(row.getCell(6)).trim();
-              const qtyStr = boqCellText(row.getCell(7)).trim();
-
-              if (!name) continue;
-              if (SKIP_PATTERNS.some((re) => re.test(name))) continue;
-              // Top-level headers (■) and numbered sub-headers (1.XXX) — skip
-              if (name.startsWith("■") || /^\d+\./.test(name)) continue;
-
-              const isSection = name.startsWith("□") || name.startsWith(" □");
-              if (isSection) {
-                // Summary-section □ rows have unit=L/S and qty=1 — skip them
-                if (unit === "L/S" && qtyStr === "1") continue;
-                currentSection = name.replace(/^[\s□]+/, "").trim();
-                continue;
-              }
-
-              const qty = parseFloat(qtyStr);
-              if (!qtyStr || isNaN(qty)) continue;
-
-              sortOrder++;
-              directItems.push({
-                itemName: name,
-                spec: spec || null,
-                qty,
-                unit: unit || null,
-                section: currentSection,
-                sortOrder,
-                category: null,
-              });
-            }
-
+          const directItems = extractBoqRowsFromXlsx(req.file.buffer);
+          if (directItems) {
             console.log(`[extract] Excel direct parse: ${directItems.length} items from B.O.Q sheet`);
 
             // Fetch inventory for fuzzy matching
@@ -4919,19 +4854,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
         // ── Excel → row text ─────────────────────────────────────────────────
         else if (mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
-          const ExcelJS = (await import("exceljs")).default;
-          const wb = new ExcelJS.Workbook();
-          await wb.xlsx.load(req.file.buffer);
-          const lines: string[] = [];
-          wb.eachSheet((sheet) => {
-            sheet.eachRow((row) => {
-              const vals = (row.values as any[]).slice(1)
-                .map((v: any) => (v == null ? "" : String(v).trim()))
-                .join("\t");
-              if (vals.trim()) lines.push(vals);
-            });
-          });
-          textContent = lines.slice(0, 300).join("\n");
+          textContent = extractXlsxTextPreview(req.file.buffer);
         }
         // ── Image → direct base64 ────────────────────────────────────────────
         else {

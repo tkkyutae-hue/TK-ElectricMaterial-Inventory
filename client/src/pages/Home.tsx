@@ -5,7 +5,7 @@ import { LogOut, Lock } from "lucide-react";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import { useFieldTheme, FieldThemeSwitcher } from "@/hooks/use-field-theme";
 import type { FieldToken } from "@/lib/fieldTokens";
-import { FieldBrandLockup } from "@/components/layout/FieldBrandLockup";
+import { TkElectricBrand } from "@/components/layout/TkElectricBrand";
 
 function getTimeKey(): "morning" | "afternoon" | "evening" {
   const h = new Date().getHours();
@@ -308,7 +308,7 @@ export default function Home() {
         boxShadow: `0 1px 0 ${F.accentBorder}`,
         transition: "background 0.2s, border-color 0.2s",
       }}>
-        <FieldBrandLockup F={F} />
+        <TkElectricBrand textColor={F.text} />
 
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "flex-end",

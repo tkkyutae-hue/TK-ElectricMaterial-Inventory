@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useFieldTheme, FieldThemeSwitcher } from "@/hooks/use-field-theme";
+import { TkElectricBrand } from "@/components/layout/TkElectricBrand";
 
 function useClock() {
   const [now, setNow] = useState(new Date());
@@ -45,15 +46,12 @@ export function FieldHeader() {
       {/* Left side */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
 
-        {/* TK lettermark */}
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36,
-          lineHeight: 1, letterSpacing: 1, display: "flex", gap: 0 }}>
-          <span style={{ color: "transparent",
-            WebkitTextStroke: `1.4px ${F.text}` }}>T</span>
-          <span className="fl-k" style={{ color: "transparent",
-            WebkitTextStroke: `1.4px ${F.accent}`,
-            filter: `drop-shadow(0 0 8px ${F.accentBg}) drop-shadow(0 0 3px ${F.accentBorder})` }}>K</span>
-        </div>
+        <TkElectricBrand
+          compact
+          textColor={F.text}
+          className="field-header-brand"
+          textClassName="hidden sm:block"
+        />
 
         {/* Field Mode chip */}
         <div style={{

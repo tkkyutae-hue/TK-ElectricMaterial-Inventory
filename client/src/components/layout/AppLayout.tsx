@@ -32,10 +32,10 @@ import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
+import { TkElectricBrand } from "@/components/layout/TkElectricBrand";
 
 const SIDEBAR_HIDDEN_KEY = "admin.sidebarHidden.v1";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import tkLogo from "@assets/tk_logo_1772726610288.png";
 
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -208,24 +208,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <SidebarContent />
               </SheetContent>
             </Sheet>
-            <div className="inventory-header-brand flex items-center gap-2.5 min-w-0">
-              <img
-                src={tkLogo}
-                alt="TK Electric"
-                className="h-9 w-auto object-contain flex-shrink-0"
-                style={{ imageRendering: "crisp-edges" }}
-              />
-              <div className="hidden sm:block min-w-0 leading-none">
-                <span className="font-display font-bold text-base tracking-tight text-slate-900 whitespace-nowrap block">
-                  TK Electric
-                </span>
-                <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider mt-1 flex items-center gap-1 whitespace-nowrap">
+            <TkElectricBrand
+              compact
+              className="inventory-header-brand"
+              textClassName="hidden sm:block"
+              detail={
+                <span className="hidden sm:flex text-[10px] font-semibold text-amber-600 uppercase tracking-wider mt-1 items-center gap-1 whitespace-nowrap">
                   <Shield className="w-2.5 h-2.5 flex-shrink-0" /> {t.adminModeChip}
                   <span className="text-slate-400 font-normal">·</span>
                   <span className="text-slate-500 font-medium normal-case tracking-normal">{headerDate}</span>
                 </span>
-              </div>
-            </div>
+              }
+            />
           </div>
 
           <div className="flex items-center gap-1.5 ml-3 pl-1.5 pr-1.5 py-1 rounded-[14px] border border-brand-200 bg-white/80 shadow-sm">

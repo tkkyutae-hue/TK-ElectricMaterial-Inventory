@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { FieldLayout } from "@/components/layout/FieldLayout";
+import { TkElectricBrand } from "@/components/layout/TkElectricBrand";
 import { useAuth } from "@/hooks/use-auth";
 import { LanguageProvider, useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import { FieldThemeProvider } from "@/hooks/use-field-theme";
@@ -86,6 +87,7 @@ function DailyReportLayout({
         background: "#ffffff",
         borderBottom: "1px solid #e2e8f0",
       }}>
+        <TkElectricBrand compact textClassName="hidden sm:block" />
         <button
           data-testid="btn-daily-report-back"
           onClick={() => navigate(backTo)}

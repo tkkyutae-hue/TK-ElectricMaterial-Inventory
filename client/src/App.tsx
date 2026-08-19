@@ -175,7 +175,7 @@ function CrewDispatchRouter() {
   const { t } = useLanguage();
   return (
     <ProjectOperationsGuard>
-      <DailyReportLayout backTo="/home" backLabel={t.backToHome}>
+      <DailyReportLayout backTo="/home" backLabel={t.modeSelect}>
         <CrewDispatch />
       </DailyReportLayout>
     </ProjectOperationsGuard>

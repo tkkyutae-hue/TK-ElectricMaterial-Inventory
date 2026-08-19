@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { LogOut, Lock } from "lucide-react";
@@ -240,8 +240,14 @@ function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
 export default function Home() {
   const [, navigate] = useLocation();
   const { user, logout, isAdminRole, canAccessAdminMode, canAccessProjectOperations } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { F, theme: fieldTheme } = useFieldTheme();
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const gridLineColor = fieldTheme === "light" ? "rgba(22,163,74,0.022)" : F.accentBg;
   const hoverShadow   = fieldTheme === "light" ? "0 8px 28px rgba(15,23,42,0.10)" : "0 8px 28px rgba(0,0,0,0.45)";
@@ -252,6 +258,12 @@ export default function Home() {
   const timeKey = getTimeKey();
   const emoji = EMOJI_MAP[timeKey];
   const label = t[timeKey];
+  const locale = lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US";
+  const headerTime = now.toLocaleTimeString(locale, {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
   const greeting = (
     timeKey === "morning" ? t.goodMorning
     : timeKey === "afternoon" ? t.goodAfternoon
@@ -309,7 +321,29 @@ export default function Home() {
         boxShadow: `0 1px 0 ${F.accentBorder}`,
         transition: "background 0.2s, border-color 0.2s",
       }}>
-        <TkElectricBrand textColor={F.text} />
+        <TkElectricBrand
+          textColor={F.text}
+          detail={
+            <span
+              className="flex items-center gap-1.5 mt-1 whitespace-nowrap"
+              style={{
+                color: F.textMuted,
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: 0.8,
+                textTransform: "uppercase",
+              }}
+            >
+              <span style={{ color: F.accent }}>●</span>
+              <span>{t.modeSelect}</span>
+              <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
+              <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>
+                {headerTime}
+              </span>
+            </span>
+          }
+        />
 
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "flex-end",

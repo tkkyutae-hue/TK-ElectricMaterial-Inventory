@@ -41,7 +41,11 @@ import tkLogo from "@assets/tk_logo_1772726610288.png";
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout, isAdminRole } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const headerDate = new Date().toLocaleDateString(
+    lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US",
+    { weekday: "short", month: "short", day: "numeric", year: "numeric" },
+  );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -217,15 +221,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </span>
                 <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider mt-1 flex items-center gap-1 whitespace-nowrap">
                   <Shield className="w-2.5 h-2.5 flex-shrink-0" /> {t.adminModeChip}
+                  <span className="text-slate-400 font-normal">·</span>
+                  <span className="text-slate-500 font-medium normal-case tracking-normal">{headerDate}</span>
                 </span>
               </div>
             </div>
-          </div>
-
-          <div className="hidden lg:flex items-center gap-2 min-w-0">
-            <span className="text-sm text-muted-foreground truncate min-w-0 flex-1">
-              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-            </span>
           </div>
 
           <div className="flex items-center gap-1.5 ml-3 pl-1.5 pr-1.5 py-1 rounded-[14px] border border-brand-200 bg-white/80 shadow-sm">

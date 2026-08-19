@@ -1396,7 +1396,35 @@ export function NewReportTab({
   const [materials,  setMaterials]  = useState<MaterialRow[]>(
     (fd?.materials ?? []).map((m: any) => ({ inventoryItemId: null, scopeItemId: null, spec: "", ...m }))
   );
+  const [collapsedMaterialSections, setCollapsedMaterialSections] = useState<Record<string, boolean>>({});
   const [equipment, setEquipment]  = useState<EquipmentRow[]>(fd?.equipment  ?? []);
+  const materialSectionCounts = useMemo(() => materials.reduce<Record<string, number>>((counts, row) => {
+    if (row.section) counts[row.section] = (counts[row.section] ?? 0) + 1;
+    return counts;
+  }, {}), [materials]);
+
+  function createEmptyMaterial(section: string | null = null): MaterialRow {
+    return {
+      id: uid(), description: "", spec: "", unit: "EA", qty: 1, notes: "",
+      inventoryItemId: null, scopeItemId: null, section,
+    };
+  }
+
+  function toggleMaterialSection(section: string) {
+    setCollapsedMaterialSections(prev => ({ ...prev, [section]: !prev[section] }));
+  }
+
+  function addMaterialToSection(section: string) {
+    setCollapsedMaterialSections(prev => ({ ...prev, [section]: false }));
+    setMaterials(prev => {
+      const newMaterial = createEmptyMaterial(section);
+      const lastSectionIndex = prev.reduce((lastIndex, row, index) =>
+        row.section === section ? index : lastIndex, -1);
+      return lastSectionIndex < 0
+        ? [...prev, newMaterial]
+        : [...prev.slice(0, lastSectionIndex + 1), newMaterial, ...prev.slice(lastSectionIndex + 1)];
+    });
+  }
 
   // ── Notes ──
   const [generalNotes,       setGeneralNotes]       = useState<string>(fd?.generalNotes       ?? "");
@@ -2677,17 +2705,41 @@ export function NewReportTab({
               let lastMobileSection: string | null | undefined = undefined;
               materials.forEach((row, i) => {
                 const sec = row.section ?? null;
+                const sectionCollapsed = sec ? Boolean(collapsedMaterialSections[sec]) : false;
                 if (sec !== lastMobileSection) {
                   lastMobileSection = sec;
                   if (sec) {
                     mobileNodes.push(
                       <div key={`sec-${sec}`}
-                        style={{ padding: "7px 12px", background: materialSectionColor(sec), borderRadius: 6, fontSize: 12, fontWeight: 800, color: "#fff", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 4 }}>
-                        {sec}
+                        style={{ display: "flex", alignItems: "stretch", background: materialSectionColor(sec), borderRadius: 6, color: "#fff", marginTop: 4, overflow: "hidden" }}>
+                        <button type="button"
+                          data-testid={`toggle-material-section-${sec}`}
+                          aria-expanded={!sectionCollapsed}
+                          onClick={() => toggleMaterialSection(sec)}
+                          style={{ flex: 1, minWidth: 0, padding: "7px 10px 7px 12px", border: "none", background: "transparent", color: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}>
+                          <ChevronDown style={{ width: 14, height: 14, flexShrink: 0, transform: sectionCollapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
+                          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                            {sec}
+                          </span>
+                          <span style={{ flexShrink: 0, padding: "1px 6px", borderRadius: 10, background: "rgba(255,255,255,0.18)", fontSize: 10, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                            {materialSectionCounts[sec] ?? 0}
+                          </span>
+                        </button>
+                        {!isSubmitted && (
+                          <button type="button"
+                            data-testid={`add-material-section-${sec}`}
+                            aria-label={`${t.newReportAddMaterial}: ${sec}`}
+                            title={`${t.newReportAddMaterial}: ${sec}`}
+                            onClick={() => addMaterialToSection(sec)}
+                            style={{ width: 40, border: "none", borderLeft: "1px solid rgba(255,255,255,0.24)", background: "rgba(255,255,255,0.08)", color: "inherit", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <Plus style={{ width: 15, height: 15 }} />
+                          </button>
+                        )}
                       </div>
                     );
                   }
                 }
+                if (sectionCollapsed) return;
                 const isExtra = row.scopeItemId === null && row.description.trim() !== "";
                 mobileNodes.push(
                 /* ── 2-row compact card: name full-width top, spec+qty+unit bottom ── */
@@ -2793,19 +2845,45 @@ export function NewReportTab({
                 let lastDeskSection: string | null | undefined = undefined;
                 materials.forEach((row, i) => {
                   const sec = row.section ?? null;
+                  const sectionCollapsed = sec ? Boolean(collapsedMaterialSections[sec]) : false;
                   if (sec !== lastDeskSection) {
                     lastDeskSection = sec;
                     if (sec) {
                       const sectionColor = materialSectionColor(sec);
                       deskRows.push(
                         <tr key={`sec-${sec}`} style={{ background: sectionColor }}>
-                          <td colSpan={6} style={{ padding: "5px 8px 3px", fontSize: 10, fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.08em", borderBottom: `1px solid ${sectionColor}` }}>
-                            {sec}
+                          <td colSpan={6} style={{ padding: 0, color: "#fff", borderBottom: `1px solid ${sectionColor}` }}>
+                            <div style={{ display: "flex", alignItems: "stretch", minHeight: 30 }}>
+                              <button type="button"
+                                data-testid={`toggle-material-section-${sec}`}
+                                aria-expanded={!sectionCollapsed}
+                                onClick={() => toggleMaterialSection(sec)}
+                                style={{ flex: 1, minWidth: 0, padding: "5px 8px", border: "none", background: "transparent", color: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: 7, textAlign: "left" }}>
+                                <ChevronDown style={{ width: 13, height: 13, flexShrink: 0, transform: sectionCollapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
+                                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                                  {sec}
+                                </span>
+                                <span style={{ flexShrink: 0, padding: "1px 6px", borderRadius: 10, background: "rgba(255,255,255,0.18)", fontSize: 9, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                                  {materialSectionCounts[sec] ?? 0}
+                                </span>
+                              </button>
+                              {!isSubmitted && (
+                                <button type="button"
+                                  data-testid={`add-material-section-${sec}`}
+                                  aria-label={`${t.newReportAddMaterial}: ${sec}`}
+                                  title={`${t.newReportAddMaterial}: ${sec}`}
+                                  onClick={() => addMaterialToSection(sec)}
+                                  style={{ width: 36, border: "none", borderLeft: "1px solid rgba(255,255,255,0.24)", background: "rgba(255,255,255,0.08)", color: "inherit", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                  <Plus style={{ width: 14, height: 14 }} />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
                     }
                   }
+                  if (sectionCollapsed) return;
                   const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
                   const imgUrl: string = linkedItem?.imageUrl ?? "";
                   const isExtra = row.scopeItemId === null && row.description.trim() !== "";
@@ -2896,7 +2974,7 @@ export function NewReportTab({
           </div>
         )}
         <AddRow testId="btn-add-material" label={t.newReportAddMaterial}
-          onClick={() => setMaterials([...materials, { id: uid(), description: "", spec: "", unit: "EA", qty: 1, notes: "", inventoryItemId: null, scopeItemId: null }])} />
+          onClick={() => setMaterials([...materials, createEmptyMaterial()])} />
 
         {inventoryItems.length > 0 && (
           <p className="mt-2 text-[10px] text-slate-400">

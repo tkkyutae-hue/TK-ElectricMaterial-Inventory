@@ -88,7 +88,7 @@ function DailyReportLayout({
   const locale = lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US";
   const headerDate = now.toLocaleDateString(
     locale,
-    { weekday: "short", month: "short", day: "numeric", year: "numeric" },
+    { weekday: "short", month: "long", day: "numeric", year: "numeric" },
   );
   const headerTime = now.toLocaleTimeString(locale, {
     hour: "numeric", minute: "2-digit", hour12: true,
@@ -96,7 +96,7 @@ function DailyReportLayout({
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", flexDirection: "column" }}>
       <header style={{
-        height: 76,
+        height: 68,
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
         padding: "10px clamp(12px, 3vw, 28px)",
         background: "linear-gradient(90deg, #f0faf3 0%, #ffffff 50%, #f0faf3 100%)",
@@ -109,12 +109,12 @@ function DailyReportLayout({
             compact
             textClassName="hidden sm:block"
             detail={
-              <span className="hidden sm:flex text-[10px] font-semibold text-amber-600 uppercase tracking-wider mt-1 items-center gap-1 whitespace-nowrap">
+              <span className="tk-header-detail hidden sm:flex text-amber-600 mt-1 items-center gap-1 whitespace-nowrap">
                 <span>●</span> {t.projectOpsMode}
                 <span className="text-slate-400 font-normal">·</span>
-                <span className="text-slate-500 font-medium normal-case tracking-normal">{headerDate}</span>
+                <span className="tk-header-detail-date text-slate-500">{headerDate}</span>
                 <span className="text-slate-400 font-normal">·</span>
-                <span className="text-slate-500 font-medium normal-case tracking-normal">{headerTime}</span>
+                <span className="tk-header-detail-date text-slate-500">{headerTime}</span>
               </span>
             }
           />
@@ -129,6 +129,7 @@ function DailyReportLayout({
           <button
             data-testid="btn-daily-report-back"
             onClick={() => navigate(backTo)}
+            className="tk-header-control"
             style={{
               display: "flex", alignItems: "center", gap: 6,
               height: 32, background: "#ffffff", border: "1px solid #b7dfc2",

@@ -22,7 +22,9 @@ export function FieldHeader() {
   const now = useClock();
 
   const locale = lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US";
-  const dateStr = now.toLocaleDateString(locale, { weekday: "short", month: "short", day: "numeric" });
+  const dateStr = now.toLocaleDateString(locale, {
+    weekday: "short", year: "numeric", month: "long", day: "numeric",
+  });
   const dateStrShort = now.toLocaleDateString(locale, { month: "short", day: "numeric" });
   const timeStr = now.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit", hour12: true });
 

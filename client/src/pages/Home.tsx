@@ -328,27 +328,23 @@ export default function Home() {
         transition: "background 0.2s, border-color 0.2s",
       }}>
         <TkElectricBrand
+          compact
           textColor={F.text}
           detail={
             <span
-              className="flex items-center gap-1.5 mt-1 whitespace-nowrap"
+              className="tk-header-detail flex items-center gap-1.5 mt-1 whitespace-nowrap"
               style={{
                 color: F.textMuted,
-                fontFamily: "'Barlow Condensed', sans-serif",
-                fontSize: 10,
-                fontWeight: 600,
-                letterSpacing: 0.8,
-                textTransform: "uppercase",
               }}
             >
               <span style={{ color: F.accent }}>●</span>
               <span>{t.modeSelect}</span>
               <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
-              <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>
+              <span className="tk-header-detail-date">
                 {headerDate}
               </span>
               <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
-              <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>
+              <span className="tk-header-detail-date">
                 {headerTime}
               </span>
             </span>

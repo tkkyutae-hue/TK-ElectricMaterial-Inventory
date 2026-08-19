@@ -239,7 +239,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <Button
                 variant="ghost"
                 size="sm"
-                 className="tk-header-control gap-1.5 text-slate-500 hover:text-slate-800 whitespace-nowrap"
+                className="tk-header-control h-8 gap-1.5 text-slate-500 hover:text-slate-800 whitespace-nowrap"
                 onClick={() => window.history.back()}
                 data-testid="btn-header-back"
               >
@@ -251,7 +251,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <Button
                 variant="ghost"
                 size="sm"
-                 className="tk-header-control gap-1.5 text-slate-600 whitespace-nowrap"
+                className="tk-header-control h-8 gap-1.5 text-slate-600 whitespace-nowrap"
                 data-testid="btn-header-back-home"
               >
                 <Home className="w-3.5 h-3.5 flex-shrink-0" />

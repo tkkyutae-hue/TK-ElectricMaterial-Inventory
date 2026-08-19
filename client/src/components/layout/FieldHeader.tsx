@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, HardHat, Home } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import { useFieldTheme, FieldThemeSwitcher } from "@/hooks/use-field-theme";
 import { TkElectricBrand } from "@/components/layout/TkElectricBrand";
@@ -16,16 +15,16 @@ function useClock() {
 }
 
 export function FieldHeader() {
-  const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { theme: fieldTheme, F } = useFieldTheme();
   const [location] = useLocation();
   const isFieldHome = location === "/field";
   const now = useClock();
 
-  const dateStr      = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-  const dateStrShort = now.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  const locale = lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US";
+  const dateStr = now.toLocaleDateString(locale, { weekday: "short", month: "short", day: "numeric" });
+  const dateStrShort = now.toLocaleDateString(locale, { month: "short", day: "numeric" });
+  const timeStr = now.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit", hour12: true });
 
   return (
     <header
@@ -65,7 +64,7 @@ export function FieldHeader() {
               >
                 <span className="fl-pulse-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: F.accent }} />
                 <HardHat style={{ width: 10, height: 10 }} />
-                <span>{t.fieldModeChip}</span>
+                <span>{t.inventoryMode}</span>
                 <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
                 <span style={{ color: F.textDim, fontWeight: 500, letterSpacing: 0, textTransform: "none" }}>
                   {dateStr} · {timeStr}
@@ -82,7 +81,7 @@ export function FieldHeader() {
                 }}
               >
                 <HardHat style={{ width: 9, height: 9 }} />
-                <span>{t.fieldModeChip}</span>
+                <span>{t.inventoryMode}</span>
                 <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
                 <span style={{ color: F.textDim, fontWeight: 500 }}>{dateStrShort}</span>
               </span>
@@ -172,19 +171,6 @@ export function FieldHeader() {
           </button>
         </Link>
 
-        {/* User avatar */}
-        <div style={{
-          width: 32, height: 32, borderRadius: "50%",
-          background: F.accentBg,
-          border: `1px solid ${F.borderStrong}`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0,
-        }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: F.accent,
-            fontFamily: "'Barlow Condensed', sans-serif" }}>
-            {(user?.firstName?.[0] ?? user?.email?.[0] ?? "?").toUpperCase()}
-          </span>
-        </div>
       </div>
     </header>
   );

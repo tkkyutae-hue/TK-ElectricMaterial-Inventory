@@ -123,11 +123,11 @@ function DailyReportRouter() {
 
 function CrewDispatchRouter() {
   return (
-    <CrewDispatchGuard>
+    <ProjectOperationsGuard>
       <DailyReportLayout backTo="/home" backLabel="Home">
         <CrewDispatch />
       </DailyReportLayout>
-    </CrewDispatchGuard>
+    </ProjectOperationsGuard>
   );
 }
 
@@ -168,7 +168,25 @@ function ManagerGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Allows admin + manager only into Crew Dispatch; staff/viewer/manager_viewer are redirected to /home
+// Allows admin + manager + staff into the Project Operations hub.
+// Worker assignment remains protected by CrewDispatchGuard below.
+function ProjectOperationsGuard({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, canAccessProjectOperations } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-700" />
+      </div>
+    );
+  }
+
+  if (!user) return <Redirect to="/login" />;
+  if (!canAccessProjectOperations) return <Redirect to="/home" />;
+  return <>{children}</>;
+}
+
+// Allows admin + manager only into worker assignment.
 function CrewDispatchGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading, isManagerOrAbove } = useAuth();
 

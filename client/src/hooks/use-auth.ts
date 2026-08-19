@@ -39,6 +39,8 @@ export function useAuth() {
     canAccessAdminMode: role === "admin" || role === "manager" || role === "manager_viewer",
     // Daily Report access — admin + manager + staff (manager_viewer excluded)
     canAccessDailyReport: role === "admin" || role === "manager" || role === "staff",
+    // Project Operations hub — staff can reach Daily Report, but not worker assignment
+    canAccessProjectOperations: role === "admin" || role === "manager" || role === "staff",
     // Read-only admin mode (no edit/add/delete buttons shown)
     isManagerViewer: role === "manager_viewer",
     // Can perform field movements — staff, manager, admin (not viewer or manager_viewer)

@@ -321,7 +321,7 @@ export default function DailyReport() {
 
   // Real-time Monday sync: refetch every 30 s so status changes propagate quickly
   const { data: allProjects = [], isLoading } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
+    queryKey: ["/api/daily-report-projects"],
     refetchInterval: 30_000,
   });
 

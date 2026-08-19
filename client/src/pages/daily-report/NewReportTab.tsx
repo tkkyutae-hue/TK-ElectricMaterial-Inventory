@@ -1340,8 +1340,11 @@ export function NewReportTab({
   const { data: workers = [] }        = useQuery<Worker[]>({ queryKey: ["/api/workers"] });
   const { data: inventoryItems = [] } = useQuery<any[]>({ queryKey: ["/api/items"] });
   const { data: project }             = useQuery<any>({
-    queryKey: ["/api/projects", projectId],
-    queryFn: () => fetch(`/api/projects/${projectId}`, { credentials: "include" }).then(r => r.json()),
+    queryKey: ["/api/daily-report-projects", projectId],
+    queryFn: () => fetch(`/api/daily-report-projects/${projectId}`, { credentials: "include" }).then(r => {
+      if (!r.ok) throw new Error(`Project access failed: ${r.status}`);
+      return r.json();
+    }),
     enabled: !!projectId,
   });
   const { data: scopeItems = [] }     = useQuery<any[]>({

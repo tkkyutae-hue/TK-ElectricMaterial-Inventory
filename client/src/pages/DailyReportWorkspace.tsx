@@ -808,7 +808,7 @@ export default function DailyReportWorkspace() {
     isLoading: projectLoading,
     isError: projectError,
   } = useQuery<Project>({
-    queryKey: ["/api/projects", numericProjectId],
+    queryKey: ["/api/daily-report-projects", numericProjectId],
     enabled: !isNaN(numericProjectId),
   });
 

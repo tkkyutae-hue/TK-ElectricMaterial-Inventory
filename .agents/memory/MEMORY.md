@@ -2,3 +2,4 @@
 - [Gemini model retirement](gemini-model-retirement.md) — verify model names via ListModels; prefer `-latest` aliases; use @google/genai SDK
 - [Browser layout checks](browser-layout-checks.md) — viewport tests need Chromium plus its Nix runtime libraries in Replit.
 - [TypeScript target cache](typescript-target-cache.md) — clear the incremental build info after changing compiler target before trusting cached diagnostics.
+- [Daily Report staff scope](daily-report-staff-scope.md) — enforce dispatch-based access on the server without narrowing Field Mode's general project visibility.

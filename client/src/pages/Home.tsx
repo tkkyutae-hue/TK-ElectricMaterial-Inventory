@@ -238,7 +238,7 @@ function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
 
 export default function Home() {
   const [, navigate] = useLocation();
-  const { user, logout, isAdminRole, canAccessAdminMode } = useAuth();
+  const { user, logout, isAdminRole, canAccessAdminMode, canAccessProjectOperations } = useAuth();
   const { t } = useLanguage();
   const { F, theme: fieldTheme } = useFieldTheme();
 
@@ -405,7 +405,7 @@ export default function Home() {
                   border: "1px solid rgba(245,158,11,0.18)",
                   color: "#d97706",
                 }}
-                locked={!canAccessAdminMode}
+                locked={!canAccessProjectOperations}
                 F={F}
                 hoverShadow={hoverShadow}
                 restShadow={restShadow}

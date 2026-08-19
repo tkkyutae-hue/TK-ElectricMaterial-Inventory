@@ -570,6 +570,37 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(data);
   });
 
+  // Daily Report project reads use a dedicated, server-scoped surface.
+  // The general /api/projects collection remains available to Field Mode,
+  // while staff only receive projects they have been dispatched to here.
+  app.get("/api/daily-report-projects", isAuthenticated, requireStaff, async (req: any, res) => {
+    try {
+      let data = await storage.getProjects();
+      if (req.currentUser?.role === "staff") {
+        const myIds = new Set(await getMyAssignedProjectIds(req.currentUser.id) ?? []);
+        data = data.filter((project) => myIds.has(project.id));
+      }
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/daily-report-projects/:id", isAuthenticated, requireStaff, async (req: any, res) => {
+    try {
+      const projectId = parseRouteInt(req.params.id);
+      if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
+      if (!(await canAccessDailyReportProject(req.currentUser, projectId))) {
+        return res.status(403).json({ message: "배치되지 않은 프로젝트입니다" });
+      }
+      const data = await storage.getProject(projectId);
+      if (!data) return res.status(404).json({ message: "Not found" });
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.post("/api/projects", isAuthenticated, requireManager, async (req, res) => {
     try {
       const data = await storage.createProject(req.body);
@@ -4516,10 +4547,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── Project Scope Items ─────────────────────────────────────────────────────
 
-  app.get("/api/projects/:id/progress", isAuthenticated, requireStaff, async (req, res) => {
+  app.get("/api/projects/:id/progress", isAuthenticated, requireStaff, async (req: any, res) => {
     try {
       const projectId = parseRouteInt(req.params.id);
       if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
+      if (!(await canAccessDailyReportProject(req.currentUser, projectId))) {
+        return res.status(403).json({ message: "배치되지 않은 프로젝트입니다" });
+      }
       const data = await storage.getProjectProgress(projectId);
       res.json(data);
     } catch (err: any) {
@@ -4528,10 +4562,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Project crew assignments (for daily report pre-population) ─────────────
-  app.get("/api/projects/:id/crew-assignments", isAuthenticated, requireStaffRead, async (req, res) => {
+  app.get("/api/projects/:id/crew-assignments", isAuthenticated, requireStaffRead, async (req: any, res) => {
     try {
       const projectId = parseIntParam(req.params.id, "id", res);
       if (projectId === null) return;
+      if (!(await canAccessDailyReportProject(req.currentUser, projectId))) {
+        return res.status(403).json({ message: "배치되지 않은 프로젝트입니다" });
+      }
       const date = req.query.date as string;
       if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return res.status(400).json({ message: "date query param required (YYYY-MM-DD)" });
@@ -4558,10 +4595,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.get("/api/projects/:id/scope-items", isAuthenticated, requireStaff, async (req, res) => {
+  app.get("/api/projects/:id/scope-items", isAuthenticated, requireStaff, async (req: any, res) => {
     try {
       const projectId = parseRouteInt(req.params.id);
       if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
+      if (!(await canAccessDailyReportProject(req.currentUser, projectId))) {
+        return res.status(403).json({ message: "배치되지 않은 프로젝트입니다" });
+      }
       const items = await storage.getScopeItems(projectId);
       res.json(items);
     } catch (err: any) {

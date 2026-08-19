@@ -11,6 +11,7 @@ import { LanguageProvider, useLanguage, LanguageSwitcher } from "@/hooks/use-lan
 import { FieldThemeProvider } from "@/hooks/use-field-theme";
 import { useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
+import { canAccessCrewDispatchAssignment } from "@/lib/role-access";
 
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -188,7 +189,7 @@ function ProjectOperationsGuard({ children }: { children: React.ReactNode }) {
 
 // Allows admin + manager only into worker assignment.
 function CrewDispatchGuard({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, isManagerOrAbove } = useAuth();
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -199,7 +200,7 @@ function CrewDispatchGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return <Redirect to="/login" />;
-  if (!isManagerOrAbove) return <Redirect to="/home" />;
+  if (!canAccessCrewDispatchAssignment(user.role)) return <Redirect to="/home" />;
   return <>{children}</>;
 }
 

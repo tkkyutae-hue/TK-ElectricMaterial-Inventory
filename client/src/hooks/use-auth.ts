@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { User } from "@shared/models/auth";
 import { apiRequest } from "@/lib/queryClient";
+import {
+  canAccessAdminMode,
+  canAccessDailyReport,
+  canAccessProjectOperations,
+  canDoMovements,
+  isAdminRole,
+  isManagerOrAbove,
+} from "@/lib/role-access";
 
 async function fetchUser(): Promise<User | null> {
   const response = await fetch("/api/auth/user", { credentials: "include" });
@@ -34,19 +42,19 @@ export function useAuth() {
     isLoading,
     isAuthenticated: !!user,
     // Admin Tools access (User Approvals, Export Backup) — admin only
-    isAdminRole: role === "admin",
+    isAdminRole: isAdminRole(role),
     // Admin Mode access — admin + manager + manager_viewer (read-only for manager_viewer)
-    canAccessAdminMode: role === "admin" || role === "manager" || role === "manager_viewer",
+    canAccessAdminMode: canAccessAdminMode(role),
     // Daily Report access — admin + manager + staff (manager_viewer excluded)
-    canAccessDailyReport: role === "admin" || role === "manager" || role === "staff",
+    canAccessDailyReport: canAccessDailyReport(role),
     // Project Operations hub — staff can reach Daily Report, but not worker assignment
-    canAccessProjectOperations: role === "admin" || role === "manager" || role === "staff",
+    canAccessProjectOperations: canAccessProjectOperations(role),
     // Read-only admin mode (no edit/add/delete buttons shown)
     isManagerViewer: role === "manager_viewer",
     // Can perform field movements — staff, manager, admin (not viewer or manager_viewer)
-    canDoMovements: role === "staff" || role === "manager" || role === "admin",
+    canDoMovements: canDoMovements(role),
     // Can edit/modify data in admin mode — manager + admin (excludes manager_viewer)
-    isManagerOrAbove: role === "manager" || role === "admin",
+    isManagerOrAbove: isManagerOrAbove(role),
     logout: logoutMutation.mutate,
     isLoggingOut: logoutMutation.isPending,
   };

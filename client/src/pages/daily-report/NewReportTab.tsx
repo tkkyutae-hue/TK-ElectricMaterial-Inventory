@@ -122,6 +122,12 @@ function normalizeEquipmentStatus(status: string | null | undefined): "operation
   return status === "operational" ? "operational" : "broken";
 }
 
+function formatScopeQuantity(value: unknown): string | null {
+  const quantity = Number(value);
+  if (!Number.isFinite(quantity) || quantity <= 0) return null;
+  return Number.isInteger(quantity) ? String(quantity) : String(Number(quantity.toFixed(2)));
+}
+
 const EQ_TAG_CFG: Record<string, { bg: string; border: string; color: string; label: string }> = {
   repair:  { bg: FT.DANGER,       border: "#8a2a17", color: "#fff",  label: "🔧 Repair Requested" },
   return:  { bg: FT.INK,          border: "#111",    color: "#fff",  label: "↩ Return Scheduled"  },
@@ -2915,6 +2921,10 @@ export function NewReportTab({
                 }
                 if (sectionCollapsed) return;
                 const isExtra = row.scopeItemId === null && row.description.trim() !== "";
+                const scopeItem = row.scopeItemId !== null
+                  ? scopeItems.find((s: any) => s.id === row.scopeItemId)
+                  : undefined;
+                const scopeQuantity = formatScopeQuantity(scopeItem?.estimatedQty);
                 mobileNodes.push(
                 /* ── 2-row compact card: name full-width top, spec+qty+unit bottom ── */
                 <div key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
@@ -2962,11 +2972,19 @@ export function NewReportTab({
                         <span style={{ fontSize: 10, fontWeight: 700, color: FT.ACCENT, background: "transparent", border: `1px solid ${FT.ACCENT}`, borderRadius: 3, padding: "0px 4px", fontFamily: FT.FONT, flexShrink: 0 }}>{t.newReportMaterialExtraLabel}</span>
                       )}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto", flexShrink: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, marginLeft: "auto", minWidth: 0, maxWidth: "100%", flexWrap: "wrap" }}>
                       <input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
                         onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
                         onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
                         style={{ width: 52, height: 32, fontSize: 14, fontWeight: 600, textAlign: "center", border: `1px solid ${FT.RULE}`, borderRadius: 6, background: "#fff", outline: "none", color: "#374151", flexShrink: 0 }} />
+                      {scopeQuantity && (
+                        <span
+                          data-testid={`text-mat-scope-qty-${i}`}
+                          aria-label={`Scope quantity ${scopeQuantity}`}
+                          style={{ fontSize: 11, fontWeight: 700, color: "#64748b", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", flexShrink: 0 }}>
+                          / {scopeQuantity}
+                        </span>
+                      )}
                       {row.inventoryItemId ? (
                         <span data-testid={`input-mat-unit-${i}`} style={{ fontSize: 12, fontWeight: 700, color: "#666", flexShrink: 0, minWidth: 22 }}>{row.unit || "EA"}</span>
                       ) : (

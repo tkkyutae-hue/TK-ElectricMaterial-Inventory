@@ -5,6 +5,7 @@ import { LogOut, Lock } from "lucide-react";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import { useFieldTheme, FieldThemeSwitcher } from "@/hooks/use-field-theme";
 import type { FieldToken } from "@/lib/fieldTokens";
+import { FieldBrandLockup } from "@/components/layout/FieldBrandLockup";
 
 function getTimeKey(): "morning" | "afternoon" | "evening" {
   const h = new Date().getHours();
@@ -298,32 +299,59 @@ export default function Home() {
       {/* Header */}
       <header style={{
         position: "relative", zIndex: 50,
-        display: "flex", alignItems: "center", justifyContent: "flex-end",
-        padding: "14px 20px",
-        gap: 10,
-        background: F.bg,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        minHeight: 68,
+        padding: "10px clamp(14px, 3vw, 28px)",
+        gap: 12,
+        background: `linear-gradient(90deg, ${F.bg} 0%, ${F.surface2} 50%, ${F.bg} 100%)`,
         borderBottom: `1px solid ${F.borderStrong}`,
+        boxShadow: `0 1px 0 ${F.accentBorder}`,
         transition: "background 0.2s, border-color 0.2s",
       }}>
-        <FieldThemeSwitcher compact={true} />
-        <LanguageSwitcher theme={fieldTheme === "light" ? "light" : "dark"} compact={true} />
+        <FieldBrandLockup F={F} />
 
-        <button
-          onClick={() => logout()}
-          data-testid="btn-home-logout"
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            background: "none", border: "none", cursor: "pointer",
-            color: F.textDim, fontSize: 13, fontFamily: "'Barlow', sans-serif",
-            transition: "color 0.15s",
-            padding: "6px 10px", borderRadius: 8,
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = F.textMuted)}
-          onMouseLeave={e => (e.currentTarget.style.color = F.textDim)}
-        >
-          <LogOut style={{ width: 14, height: 14 }} />
-          <span>{t.logout}</span>
-        </button>
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "flex-end",
+          gap: 6, flexWrap: "wrap", padding: 4,
+          background: F.surface,
+          border: `1px solid ${F.borderStrong}`,
+          borderRadius: 14,
+          boxShadow: fieldTheme === "light" ? "0 4px 14px rgba(15,31,23,0.06)" : "0 8px 18px rgba(0,0,0,0.18)",
+        }}>
+          <FieldThemeSwitcher compact={true} />
+          <LanguageSwitcher theme={fieldTheme === "light" ? "light" : "dark"} compact={true} />
+
+          <button
+            onClick={() => logout()}
+            data-testid="btn-home-logout"
+            aria-label={t.logout}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              minHeight: 32,
+              background: F.accentBg,
+              border: `1px solid ${F.accentBorder}`,
+              cursor: "pointer",
+              color: F.textMuted, fontSize: 12, fontWeight: 600,
+              fontFamily: "'Barlow Condensed', sans-serif",
+              letterSpacing: 0.4, textTransform: "uppercase",
+              transition: "color 0.15s, border-color 0.15s, background 0.15s",
+              padding: "0 10px", borderRadius: 9,
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = F.text;
+              e.currentTarget.style.borderColor = F.accent;
+              e.currentTarget.style.background = F.surface2;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = F.textMuted;
+              e.currentTarget.style.borderColor = F.accentBorder;
+              e.currentTarget.style.background = F.accentBg;
+            }}
+          >
+            <LogOut style={{ width: 14, height: 14 }} />
+            <span className="hidden sm:inline">{t.logout}</span>
+          </button>
+        </div>
       </header>
 
       {/* Main content */}

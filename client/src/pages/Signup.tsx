@@ -4,6 +4,7 @@ import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import { useFieldTheme, FieldThemeSwitcher } from "@/hooks/use-field-theme";
+import { FieldBrandLockup } from "@/components/layout/FieldBrandLockup";
 
 function getPasswordStrength(pw: string): number {
   if (!pw) return 0;
@@ -183,10 +184,26 @@ export default function Signup() {
   }
 
   const Switchers = (
-    <div style={{ position: "absolute", top: 18, right: 20, zIndex: 20, display: "flex", alignItems: "center", gap: 6 }}>
-      <FieldThemeSwitcher compact={true} />
-      <LanguageSwitcher theme={fieldTheme} compact={true} />
-    </div>
+    <header
+      style={{
+        position: "absolute", top: 0, left: 0, right: 0, zIndex: 20,
+        minHeight: 68, display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: 12, padding: "10px clamp(14px, 3vw, 28px)",
+        background: `linear-gradient(90deg, ${F.bg} 0%, ${F.surface2} 50%, ${F.bg} 100%)`,
+        borderBottom: `1px solid ${F.borderStrong}`,
+        boxShadow: `0 1px 0 ${F.accentBorder}`,
+      }}
+    >
+      <FieldBrandLockup F={F} />
+      <div style={{
+        display: "flex", alignItems: "center", gap: 6, padding: 4,
+        background: F.surface, border: `1px solid ${F.borderStrong}`,
+        borderRadius: 14, flexShrink: 0,
+      }}>
+        <FieldThemeSwitcher compact={true} />
+        <LanguageSwitcher theme={fieldTheme} compact={true} />
+      </div>
+    </header>
   );
 
   if (success) {

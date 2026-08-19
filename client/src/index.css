@@ -162,6 +162,12 @@ input[type="number"] {
   .hidden-mobile { display: none !important; }
 }
 
+/* Preserve space for header controls on narrow mobile screens. */
+@media (max-width: 380px) {
+  .field-brand-lockup { gap: 0.5rem !important; }
+  .field-brand-subtitle { display: none !important; }
+}
+
 /* Field filter pill-bar entry animation */
 @keyframes filterFadeDown {
   from { opacity: 0; transform: translateY(-5px); }

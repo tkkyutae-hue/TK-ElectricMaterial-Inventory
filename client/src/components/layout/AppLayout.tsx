@@ -208,7 +208,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </button>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-[76px] bg-white border-b border-border flex items-center justify-between px-4 sm:px-6 z-10 flex-shrink-0">
+        <header className="h-[76px] bg-gradient-to-r from-brand-50 via-white to-brand-50/50 border-b border-border border-t-[3px] border-t-brand-600 flex items-center justify-between px-4 sm:px-6 z-10 flex-shrink-0 shadow-[0_1px_0_rgba(22,163,74,0.12)]">
           <div className="flex items-center gap-3 md:hidden">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -227,7 +227,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="hidden md:flex items-center gap-2 min-w-0">
-            <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full flex items-center gap-1 whitespace-nowrap flex-shrink-0">
+            <span className="text-xs font-semibold uppercase tracking-wider text-brand-700 bg-brand-100 px-2.5 py-1 rounded-full flex items-center gap-1 whitespace-nowrap flex-shrink-0 border border-brand-200">
               <Shield className="w-3 h-3 flex-shrink-0" /> {t.adminModeChip}
             </span>
             <span className="text-sm text-muted-foreground truncate min-w-0 flex-1">

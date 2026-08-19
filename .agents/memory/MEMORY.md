@@ -3,3 +3,4 @@
 - [Browser layout checks](browser-layout-checks.md) — viewport tests need Chromium plus its Nix runtime libraries in Replit.
 - [TypeScript target cache](typescript-target-cache.md) — clear the incremental build info after changing compiler target before trusting cached diagnostics.
 - [Daily Report staff scope](daily-report-staff-scope.md) — enforce dispatch-based access on the server without narrowing Field Mode's general project visibility.
+- [Field UI brand direction](field-ui-brand-direction.md) — keep Field entry headers deep green with bright green accents and a compact, grouped control area.

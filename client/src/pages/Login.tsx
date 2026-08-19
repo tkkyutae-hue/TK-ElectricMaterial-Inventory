@@ -4,6 +4,7 @@ import { AlertCircle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import { useFieldTheme, FieldThemeSwitcher } from "@/hooks/use-field-theme";
+import { FieldBrandLockup } from "@/components/layout/FieldBrandLockup";
 
 export default function Login() {
   const [, navigate] = useLocation();
@@ -183,11 +184,26 @@ export default function Login() {
       <div style={GRID_STYLE} />
       <div style={DIAGONAL_STYLE} />
 
-      {/* Theme + Language switchers — top right */}
-      <div style={{ position: "absolute", top: 18, right: 20, zIndex: 20, display: "flex", alignItems: "center", gap: 6 }}>
-        <FieldThemeSwitcher compact={true} />
-        <LanguageSwitcher theme={fieldTheme === "light" ? "light" : "dark"} compact={true} />
-      </div>
+      <header
+        style={{
+          position: "absolute", top: 0, left: 0, right: 0, zIndex: 20,
+          minHeight: 68, display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 12, padding: "10px clamp(14px, 3vw, 28px)",
+          background: `linear-gradient(90deg, ${F.bg} 0%, ${F.surface2} 50%, ${F.bg} 100%)`,
+          borderBottom: `1px solid ${F.borderStrong}`,
+          boxShadow: `0 1px 0 ${F.accentBorder}`,
+        }}
+      >
+        <FieldBrandLockup F={F} />
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6, padding: 4,
+          background: F.surface, border: `1px solid ${F.borderStrong}`,
+          borderRadius: 14, flexShrink: 0,
+        }}>
+          <FieldThemeSwitcher compact={true} />
+          <LanguageSwitcher theme={fieldTheme === "light" ? "light" : "dark"} compact={true} />
+        </div>
+      </header>
 
       <div style={{ width: "100%", maxWidth: 380, padding: "0 24px", position: "relative", zIndex: 1 }}>
 

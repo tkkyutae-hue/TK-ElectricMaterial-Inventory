@@ -2334,7 +2334,7 @@ export function NewReportTab({
                   </span>
 
                   {/* Description — flex:1 */}
-                  <div style={{ flex: "1 1 auto", minWidth: 0 }} onClick={e => e.stopPropagation()}>
+                  <div style={{ flex: isMobile ? "1 1 0" : "1 1 auto", minWidth: isMobile ? 72 : 0 }} onClick={e => e.stopPropagation()}>
                     <Input data-testid={`input-task-desc-${i}`} value={row.description}
                       onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, description: e.target.value } : r))}
                       className="shadow-none h-auto focus-visible:ring-0 border-0 bg-transparent font-semibold placeholder:italic placeholder:text-[#999] truncate w-full p-0"
@@ -2346,7 +2346,7 @@ export function NewReportTab({
                   <span style={{ width: 1, height: 22, background: "#f0f0f0", margin: isMobile ? "0 6px" : "0 10px", flexShrink: 0 }} />
 
                   {/* Status Select — single dot badge style */}
-                  <div style={{ flex: "0 0 auto", width: isMobile ? 100 : undefined }} onClick={e => e.stopPropagation()}>
+                  <div style={{ flex: "0 0 auto", width: isMobile ? "max-content" : undefined, minWidth: isMobile ? 100 : undefined }} onClick={e => e.stopPropagation()}>
                     <Select value={row.status} onValueChange={v => setTasks(tasks.map(r => r.id === row.id ? { ...r, status: v } : r))}>
                       <SelectTrigger data-testid={`select-task-status-${i}`}
                         style={{
@@ -2355,14 +2355,14 @@ export function NewReportTab({
                           fontSize: isMobile ? 11 : 12, fontWeight: 600, whiteSpace: "nowrap",
                           border: `1px solid ${cfg.badgeBorder}`,
                           background: cfg.badgeBg, color: cfg.badgeText,
-                          height: "auto", minWidth: 0, boxShadow: "none",
+                          height: "auto", minWidth: isMobile ? "max-content" : 0, boxShadow: "none",
                         }}>
-                        <SelectValue />
+                        <SelectValue style={{ whiteSpace: "nowrap" }} />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent style={{ minWidth: isMobile ? "max-content" : undefined }}>
                         {Object.entries(TASK_STATUS_CFG).map(([val, c]) => (
                           <SelectItem key={val} value={val}>
-                            <span className="flex items-center gap-2">
+                            <span className="flex items-center gap-2" style={{ whiteSpace: "nowrap" }}>
                               <span style={{ width: 7, height: 7, borderRadius: "50%", background: c.dotColor, display: "inline-block", flexShrink: 0 }} />
                               {taskStatusLabel(val, t)}
                             </span>

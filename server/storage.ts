@@ -7,7 +7,7 @@ import {
   inventoryLocationBalances, projectMaterialTransactions, supplierItems, purchaseRecommendations,
   wireReels, movementDrafts, dailyReports, projectScopeItems, categorySubcategoryOrder, appSettings,
   type Category, type Location, type Supplier, type Project, type Item, type InventoryMovement,
-  type InventoryLocationBalance, type PurchaseRecommendation, type SupplierItem, type ItemGroup,
+  type InventoryLocationBalance, type PurchaseRecommendation, type SupplierItem, type ItemGroup, type ItemImage,
   type WireReel, type WireReelWithRelations, type CreateWireReelRequest, type UpdateWireReelRequest,
   type CreateCategoryRequest, type UpdateCategoryRequest,
   type CreateLocationRequest, type CreateSupplierRequest, type UpdateSupplierRequest,
@@ -652,7 +652,7 @@ export class DatabaseStorage implements IStorage {
       }])
     );
 
-    let mapped = results.map(row => {
+    let mapped: ItemWithRelations[] = results.map(row => {
       const firstImage = allImages.find(img => img.itemId === row.item.id);
       const u = usageMap.get(row.item.id);
       const c30 = u?.c30 ?? 0;
@@ -3263,14 +3263,51 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createScopeItem(data: CreateProjectScopeItemRequest): Promise<ProjectScopeItem> {
-    const [row] = await db.insert(projectScopeItems).values(data).returning();
+    const acceptedVariants = data.acceptedVariants == null
+      ? data.acceptedVariants
+      : Array.from(data.acceptedVariants).filter((value): value is number => typeof value === "number");
+    const values: typeof projectScopeItems.$inferInsert = {
+      projectId: data.projectId,
+      itemName: data.itemName,
+      unit: data.unit,
+      estimatedQty: data.estimatedQty,
+      category: data.category,
+      section: data.section,
+      remarks: data.remarks,
+      linkedInventoryItemId: data.linkedInventoryItemId,
+      isActive: data.isActive,
+      scopeType: data.scopeType,
+      acceptedVariants,
+      progressCountingMode: data.progressCountingMode,
+      sortOrder: data.sortOrder,
+    };
+    const [row] = await db.insert(projectScopeItems).values(values).returning();
     return row;
   }
 
   async updateScopeItem(id: number, data: UpdateProjectScopeItemRequest): Promise<ProjectScopeItem> {
+    const acceptedVariants = data.acceptedVariants == null
+      ? data.acceptedVariants
+      : Array.from(data.acceptedVariants).filter((value): value is number => typeof value === "number");
+    const values: Partial<typeof projectScopeItems.$inferInsert> = {
+      projectId: data.projectId,
+      itemName: data.itemName,
+      unit: data.unit,
+      estimatedQty: data.estimatedQty,
+      category: data.category,
+      section: data.section,
+      remarks: data.remarks,
+      linkedInventoryItemId: data.linkedInventoryItemId,
+      isActive: data.isActive,
+      scopeType: data.scopeType,
+      acceptedVariants,
+      progressCountingMode: data.progressCountingMode,
+      sortOrder: data.sortOrder,
+      updatedAt: new Date(),
+    };
     const [row] = await db
       .update(projectScopeItems)
-      .set({ ...data, updatedAt: new Date() })
+      .set(values)
       .where(eq(projectScopeItems.id, id))
       .returning();
     return row;

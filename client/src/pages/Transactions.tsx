@@ -210,7 +210,7 @@ export default function Transactions() {
       if (!tx) return;
       const datePart = tx.transactionDate
         ? new Date(tx.transactionDate).toISOString().split("T")[0]
-        : new Date(tx.createdAt).toISOString().split("T")[0];
+        : new Date(tx.createdAt ?? Date.now()).toISOString().split("T")[0];
       newDrafts[id] = {
         movementType: tx.movementType,
         quantity: String(tx.quantity),

@@ -37,7 +37,7 @@ export function PdfViewer({ url, filename, height = 280, onReplaceClick }: PdfVi
       const context = canvas.getContext("2d")!;
       canvas.height = viewport.height;
       canvas.width = viewport.width;
-      await page.render({ canvasContext: context, viewport }).promise;
+      await page.render({ canvas, canvasContext: context, viewport }).promise;
       if (!cancelled) setLoading(false);
     }
 

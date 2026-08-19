@@ -770,7 +770,7 @@ function PreparedByCombobox({
           {filtered.map(w => (
             <button key={w.id} type="button"
               onMouseDown={e => e.preventDefault()}
-              onClick={() => { setQuery(w.fullName); setOpen(false); setSelectedWorker(w); onChange(w.fullName, w.id, w.trade); }}
+              onClick={() => { setQuery(w.fullName); setOpen(false); setSelectedWorker(w); onChange(w.fullName, w.id, w.trade ?? undefined); }}
               style={{
                 display: "flex", alignItems: "center", gap: 10,
                 padding: "9px 12px", minHeight: 40,
@@ -784,7 +784,7 @@ function PreparedByCombobox({
                 display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0, overflow: "hidden",
               }}>
-                <HardHat style={{ width: 14, height: 14, color: tradeIconColor(w.trade) }} />
+                <HardHat style={{ width: 14, height: 14, color: tradeIconColor(w.trade ?? undefined) }} />
               </div>
               <span style={{
                 flex: 1, minWidth: 0,
@@ -896,11 +896,11 @@ function PersonCardCombobox({
           {filtered.map(w => (
             <button key={w.id} type="button"
               onMouseDown={e => e.preventDefault()}
-              onClick={() => { setQuery(w.fullName); setOpen(false); setSelectedWorker(w); onChange(w.fullName, w.id, w.trade); }}
+              onClick={() => { setQuery(w.fullName); setOpen(false); setSelectedWorker(w); onChange(w.fullName, w.id, w.trade ?? undefined); }}
               style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", minHeight: 40, width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer" }}
               className="hover:bg-slate-50 transition-colors">
               <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
-                <HardHat style={{ width: 14, height: 14, color: tradeIconColor(w.trade) }} />
+                <HardHat style={{ width: 14, height: 14, color: tradeIconColor(w.trade ?? undefined) }} />
               </div>
               <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, color: "#1a1a1a" }}>{w.fullName}</span>
               {w.trade && <span style={{ flexShrink: 0, fontSize: 11, color: "#aaa", whiteSpace: "nowrap" }}>{w.trade}</span>}

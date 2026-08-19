@@ -51,6 +51,7 @@ type FieldItem = {
   extractedSubcategory?: string;
   manufacturer?: string | null;
   imageUrl?: string | null;
+  minimumStock?: number | null;
   location?: { name: string } | null;
   category?: { name: string } | null;
   supplier?: { name: string } | null;

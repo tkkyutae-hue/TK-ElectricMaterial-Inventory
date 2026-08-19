@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import type * as ExcelJSNS from "exceljs";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { derivedFamily, derivedType, extractSubcategory } from "./storage";
@@ -11,7 +12,7 @@ import { eq, sql as drizzleSql } from "drizzle-orm";
 import type { Request } from "express";
 import type { User } from "@shared/models/auth";
 
-type RequestWithUser = Request & { currentUser?: User };
+type RequestWithUser = Request & { currentUser?: User; user?: User };
 import { validateNewMovement, validateDraftForConfirmation } from "./services/inventory/movement-validation";
 import { z } from "zod";
 import { registerAuthRoutes, authStorage } from "./replit_integrations/auth";
@@ -112,6 +113,15 @@ function parseIntParam(val: any, name: string, res: any): number | null {
     return null;
   }
   return n;
+}
+
+function parseRouteInt(value: string | string[] | undefined): number {
+  const scalar = Array.isArray(value) ? value[0] : value;
+  return Number.parseInt(scalar ?? "", 10);
+}
+
+function routeParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
 const uploadsDir = path.join(process.cwd(), "uploads");
@@ -1759,8 +1769,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       //   D=On Hand, E=Order QTY, F=UNIT, G=REMARKS
       const itemsToWrite = parsed.items;
       const DATA_FONT = { size: 10, color: { theme: 1 as any }, name: "Calibri", family: 2, scheme: "minor" as any };
-      const THIN_EDGE = { style: "thin" as const, color: { indexed: 64 } };
-      const ALL_BORDERS = { left: THIN_EDGE, right: THIN_EDGE, top: THIN_EDGE, bottom: THIN_EDGE };
+      const THIN_EDGE: Partial<import("exceljs").Border> = { style: "thin", color: { argb: "FF000000" } };
+      const ALL_BORDERS: Partial<import("exceljs").Borders> = { left: THIN_EDGE, right: THIN_EDGE, top: THIN_EDGE, bottom: THIN_EDGE };
 
       let curRow = 9;
       for (let i = 0; i < itemsToWrite.length; i++) {
@@ -1787,7 +1797,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       ws.getRow(curRow).height = 7.5;
       ws.mergeCells(`A${curRow}:G${curRow}`);
       const sepCell = ws.getCell(`A${curRow}`);
-      sepCell.fill = { type: "pattern", pattern: "solid", fgColor: { theme: 0 as any, tint: -0.1499984740745262 }, bgColor: { indexed: 64 } };
+      sepCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
       sepCell.border = { left: THIN_EDGE, right: THIN_EDGE, bottom: THIN_EDGE };
       curRow++;
 
@@ -1958,8 +1968,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       setCell("C5", detail.completionDate || "");
       setCell("C6", detail.deliveryTo || "");
       const DATA_FONT = { size: 10, color: { theme: 1 as any }, name: "Calibri", family: 2, scheme: "minor" as any };
-      const THIN_EDGE = { style: "thin" as const, color: { indexed: 64 } };
-      const ALL_BORDERS = { left: THIN_EDGE, right: THIN_EDGE, top: THIN_EDGE, bottom: THIN_EDGE };
+      const THIN_EDGE: Partial<import("exceljs").Border> = { style: "thin", color: { argb: "FF000000" } };
+      const ALL_BORDERS: Partial<import("exceljs").Borders> = { left: THIN_EDGE, right: THIN_EDGE, top: THIN_EDGE, bottom: THIN_EDGE };
       const sortedLines = [...detail.lines].sort((a, b) => a.sortOrder - b.sortOrder);
       let curRow = 9;
       for (let i = 0; i < sortedLines.length; i++) {
@@ -1984,7 +1994,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       ws.getRow(curRow).height = 7.5;
       ws.mergeCells(`A${curRow}:G${curRow}`);
       const sepCell = ws.getCell(`A${curRow}`);
-      sepCell.fill = { type: "pattern", pattern: "solid", fgColor: { theme: 0 as any, tint: -0.1499984740745262 }, bgColor: { indexed: 64 } };
+      sepCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
       sepCell.border = { left: THIN_EDGE, right: THIN_EDGE, bottom: THIN_EDGE };
       curRow++;
       const remStart = curRow;
@@ -2354,7 +2364,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.patch("/api/inventory/:id/image", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       const { imageUrl } = req.body;
       await storage.setItemImage(id, imageUrl ?? null);
       res.json({ success: true });
@@ -2367,7 +2377,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/inventory/:id/images", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid item id" });
       const images = await storage.getItemImages(id);
       res.json(images);
@@ -2378,7 +2388,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/inventory/:id/images", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid item id" });
       const item = await storage.getItem(id);
       if (!item) return res.status(404).json({ message: "Item not found" });
@@ -2396,8 +2406,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/inventory/:id/images/:imageId", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const imageId = parseInt(req.params.imageId);
+      const id = parseRouteInt(req.params.id);
+      const imageId = parseRouteInt(req.params.imageId);
       if (isNaN(id) || isNaN(imageId)) return res.status(400).json({ message: "Invalid id" });
       const images = await storage.deleteItemImage(id, imageId);
       res.json(images);
@@ -2409,7 +2419,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.patch("/api/inventory/:id/images/reorder", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid item id" });
       const { imageIds } = req.body;
       if (!Array.isArray(imageIds) || imageIds.some(x => typeof x !== "number")) {
@@ -2424,8 +2434,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.patch("/api/inventory/:id/images/:imageId/primary", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const imageId = parseInt(req.params.imageId);
+      const id = parseRouteInt(req.params.id);
+      const imageId = parseRouteInt(req.params.imageId);
       if (isNaN(id) || isNaN(imageId)) return res.status(400).json({ message: "Invalid id" });
       const images = await storage.setItemImagePrimary(id, imageId);
       res.json(images);
@@ -2949,11 +2959,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               // ── Cache hit: reuse existing imageId without re-fetching ──────────
               const cachedId = imageIdCache.get(srcUrl);
               if (cachedId !== undefined) {
-                ws.addImage(cachedId, {
-                  tl: { col: 0, row: startRow - 1 },
-                  br: { col: 1, row: endRow },
-                  editAs: "oneCell",
-                });
+                ws.addImage(cachedId, `A${startRow}:A${endRow}`);
               } else {
                 // ── Cache miss: fetch / decode, then store in cache ──────────────
                 let buf: Buffer | null = null;
@@ -2967,15 +2973,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                     console.warn("[export] PHOTO: malformed data URI, skipping:", srcUrl.slice(0, 60));
                   } else {
                     const mime    = srcUrl.slice("data:image/".length, semicolon).toLowerCase();
-                    const rawExt  = mime === "jpg" || mime === "jpeg" ? "jpeg"
-                                  : mime === "png" ? "png"
-                                  : mime === "webp" ? "webp"
-                                  : null;
-                    if (!rawExt) {
-                      console.warn("[export] PHOTO: unsupported data URI mime type:", mime, "— skipping");
+                    const sourceBuffer = Buffer.from(srcUrl.slice(comma + 1), "base64");
+                    if (mime === "webp") {
+                      buf = await sharp(sourceBuffer).png().toBuffer();
+                      ext = "png";
+                    } else if (mime === "jpg" || mime === "jpeg" || mime === "png") {
+                      buf = sourceBuffer;
+                      ext = mime === "png" ? "png" : "jpeg";
                     } else {
-                      ext = rawExt;
-                      buf = Buffer.from(srcUrl.slice(comma + 1), "base64");
+                      console.warn("[export] PHOTO: unsupported data URI mime type:", mime, "— skipping");
                     }
                   }
                 } else if (srcUrl.startsWith("https://")) {
@@ -3054,11 +3060,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                 if (buf && ext) {
                   const imageId = wb.addImage({ buffer: buf, extension: ext });
                   imageIdCache.set(srcUrl, imageId);
-                  ws.addImage(imageId, {
-                    tl: { col: 0, row: startRow - 1 },
-                    br: { col: 1, row: endRow },
-                    editAs: "oneCell",
-                  });
+                  ws.addImage(imageId, `A${startRow}:A${endRow}`);
                 }
               }
             } catch (err) {
@@ -4054,7 +4056,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       item_groups:                 "SELECT * FROM item_groups LIMIT 50000",
       users:                       "SELECT * FROM users LIMIT 50000",
     };
-    const table = req.params.table;
+    const table = routeParam(req.params.table);
     const exportQuery = EXPORT_QUERIES[table];
     if (!exportQuery) {
       return res.status(400).json({ message: "Unknown table" });
@@ -4096,7 +4098,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/wire-reels/:itemId/next-id", isAuthenticated, async (req, res) => {
     try {
-      const itemId = parseInt(req.params.itemId);
+      const itemId = parseRouteInt(req.params.itemId);
       if (isNaN(itemId)) return res.status(400).json({ message: "Invalid item ID" });
       const nextSeq = await storage.getNextReelSeq(itemId);
       res.json({ nextSeq });
@@ -4107,7 +4109,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/wire-reels/:itemId", isAuthenticated, async (req, res) => {
     try {
-      const itemId = parseInt(req.params.itemId);
+      const itemId = parseRouteInt(req.params.itemId);
       if (isNaN(itemId)) return res.status(400).json({ message: "Invalid item ID" });
       const reels = await storage.getWireReels(itemId);
       res.json(reels);
@@ -4151,7 +4153,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.patch("/api/wire-reels/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid reel ID" });
       const schema = z.object({
         reelId: z.string().min(1).optional(),
@@ -4172,7 +4174,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/wire-reels/:id/restore", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid reel ID" });
       const reel = await storage.restoreWireReel(id);
       res.json(reel);
@@ -4183,7 +4185,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/wire-reels/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid reel ID" });
       await storage.deleteWireReel(id);
       res.json({ ok: true });
@@ -4246,7 +4248,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/daily-reports/:id", isAuthenticated, requireStaff, async (req: any, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid report ID" });
       const report = await storage.getDailyReport(id);
       if (!report) return res.status(404).json({ message: "Report not found" });
@@ -4285,7 +4287,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.patch("/api/daily-reports/:id", isAuthenticated, requireStaff, async (req: any, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid report ID" });
       const existing = await storage.getDailyReport(id);
       if (!existing) return res.status(404).json({ message: "Report not found" });
@@ -4342,7 +4344,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/daily-reports/:id", isAuthenticated, requireManager, async (req: any, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid report ID" });
       // requireManager middleware already ensures only admin/manager can reach here
       await storage.deleteDailyReport(id);
@@ -4417,7 +4419,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.get("/api/workers/:id", isAuthenticated, requireManager, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseRouteInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid worker ID" });
     const worker = await storage.getWorker(id);
     if (!worker) return res.status(404).json({ message: "Worker not found" });
@@ -4435,7 +4437,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.put("/api/workers/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid worker ID" });
       const worker = await storage.updateWorker(id, req.body);
       res.json(worker);
@@ -4446,7 +4448,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/workers/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid worker ID" });
       await storage.deleteWorker(id);
       res.json({ success: true });
@@ -4458,7 +4460,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ── Worker Attendance ──────────────────────────────────────────────────────
   app.get("/api/workers/:id/attendance", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid worker ID" });
       const records = await storage.getWorkerAttendance(id);
       res.json(records);
@@ -4469,7 +4471,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/workers/:id/attendance", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const workerId = parseInt(req.params.id);
+      const workerId = parseRouteInt(req.params.id);
       if (isNaN(workerId)) return res.status(400).json({ message: "Invalid worker ID" });
       const record = await storage.createWorkerAttendance({ ...req.body, workerId });
       res.json(record);
@@ -4480,7 +4482,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/workers/:id/attendance/:recordId", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const recordId = parseInt(req.params.recordId);
+      const recordId = parseRouteInt(req.params.recordId);
       if (isNaN(recordId)) return res.status(400).json({ message: "Invalid record ID" });
       await storage.deleteWorkerAttendance(recordId);
       res.json({ success: true });
@@ -4492,7 +4494,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ── Worker Evaluations (History) ───────────────────────────────────────────
   app.get("/api/workers/:id/evaluations", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid worker ID" });
       const evals = await storage.getWorkerEvaluations(id);
       res.json(evals);
@@ -4503,7 +4505,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/workers/:id/evaluations", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const workerId = parseInt(req.params.id);
+      const workerId = parseRouteInt(req.params.id);
       if (isNaN(workerId)) return res.status(400).json({ message: "Invalid worker ID" });
       const evaluation = await storage.createWorkerEvaluation({ ...req.body, workerId });
       res.json(evaluation);
@@ -4516,7 +4518,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/projects/:id/progress", isAuthenticated, requireStaff, async (req, res) => {
     try {
-      const projectId = parseInt(req.params.id);
+      const projectId = parseRouteInt(req.params.id);
       if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
       const data = await storage.getProjectProgress(projectId);
       res.json(data);
@@ -4544,7 +4546,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ── Scope-item section list (for autocomplete) ────────────────────────────
   app.get("/api/projects/:id/scope-sections", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const projectId = parseInt(req.params.id);
+      const projectId = parseRouteInt(req.params.id);
       if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
       const items = await storage.getScopeItems(projectId);
       const sections = [...new Set(
@@ -4558,7 +4560,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/projects/:id/scope-items", isAuthenticated, requireStaff, async (req, res) => {
     try {
-      const projectId = parseInt(req.params.id);
+      const projectId = parseRouteInt(req.params.id);
       if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
       const items = await storage.getScopeItems(projectId);
       res.json(items);
@@ -4569,7 +4571,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/projects/:id/scope-items", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const projectId = parseInt(req.params.id);
+      const projectId = parseRouteInt(req.params.id);
       if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
       const scopeBody = {
         ...req.body,
@@ -4666,7 +4668,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.patch("/api/scope-items/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid scope item ID" });
       const existing = await storage.getScopeItem(id);
       if (!existing) return res.status(404).json({ message: "Scope item not found" });
@@ -4695,7 +4697,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/scope-items/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseRouteInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid scope item ID" });
       await storage.deleteScopeItem(id);
       res.json({ success: true });
@@ -4747,7 +4749,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     uploadExtract.single("file"),
     async (req, res) => {
       try {
-        const projectId = parseInt(req.params.id);
+        const projectId = parseRouteInt(req.params.id);
         if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
         if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
@@ -4762,12 +4764,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
           if (ws) {
             // Helper: extract plain text from any cell value type
-            function boqCellText(cell: ExcelJS.Cell): string {
+            function boqCellText(cell: ExcelJSNS.Cell): string {
               const v = cell.value;
               if (v === null || v === undefined) return "";
               if (typeof v === "object") {
-                if ("richText" in v) return (v as ExcelJS.CellRichTextValue).richText.map((t: any) => t.text).join("");
-                if ("result" in v) return (v as ExcelJS.CellFormulaValue).result != null ? String((v as ExcelJS.CellFormulaValue).result) : "";
+                if ("richText" in v) return (v as ExcelJSNS.CellRichTextValue).richText.map((t: any) => t.text).join("");
+                if ("result" in v) return (v as ExcelJSNS.CellFormulaValue).result != null ? String((v as ExcelJSNS.CellFormulaValue).result) : "";
                 if ("formula" in v) return "";
                 if ("text" in v) return String((v as any).text);
               }
@@ -5403,7 +5405,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // GET /api/items/:itemId/assets — list active assets for an item
   app.get("/api/items/:itemId/assets", isAuthenticated, async (req, res) => {
     try {
-      const itemId = parseInt(req.params.itemId);
+      const itemId = parseRouteInt(req.params.itemId);
       if (isNaN(itemId)) return res.status(400).json({ message: "Invalid itemId" });
       const assets = await storage.getToolAssetsByItem(itemId);
       res.json(assets);
@@ -5415,7 +5417,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // POST /api/items/:itemId/assets/generate-from-quantity — bulk-generate missing asset IDs
   app.post("/api/items/:itemId/assets/generate-from-quantity", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const itemId = parseInt(req.params.itemId);
+      const itemId = parseRouteInt(req.params.itemId);
       if (isNaN(itemId)) return res.status(400).json({ message: "Invalid itemId" });
       const item = await storage.getItem(itemId);
       if (!item) return res.status(404).json({ message: "Item not found" });
@@ -5443,7 +5445,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // POST /api/items/:itemId/assets — create a new asset under an item
   app.post("/api/items/:itemId/assets", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const itemId = parseInt(req.params.itemId);
+      const itemId = parseRouteInt(req.params.itemId);
       if (isNaN(itemId)) return res.status(400).json({ message: "Invalid itemId" });
 
       const item = await storage.getItem(itemId);
@@ -5492,7 +5494,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // PATCH /api/tool-assets/:assetId — update an asset
   app.patch("/api/tool-assets/:assetId", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const assetId = parseInt(req.params.assetId);
+      const assetId = parseRouteInt(req.params.assetId);
       if (isNaN(assetId)) return res.status(400).json({ message: "Invalid assetId" });
 
       const VALID_STATUSES = ["available", "in_use", "repair_needed", "under_repair", "out_of_service", "lost", "retired"];
@@ -5525,7 +5527,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // DELETE /api/tool-assets/:assetId — soft-delete (isActive = false)
   app.delete("/api/tool-assets/:assetId", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const assetId = parseInt(req.params.assetId);
+      const assetId = parseRouteInt(req.params.assetId);
       if (isNaN(assetId)) return res.status(400).json({ message: "Invalid assetId" });
       await storage.deactivateToolAsset(assetId);
       res.json({ success: true, message: "Asset deactivated" });
@@ -6087,11 +6089,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // PUT /api/crew-dispatch/assignments/:workerId
   app.put("/api/crew-dispatch/assignments/:workerId", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const workerId = parseInt(req.params.workerId);
+      const workerId = parseRouteInt(req.params.workerId);
       if (isNaN(workerId)) return res.status(400).json({ message: "Invalid workerId" });
       const { date, projectId } = req.body as { date: string; projectId: number | null };
       if (!date) return res.status(400).json({ message: "date is required" });
-      const user = req.user as any;
+      const user = (req as RequestWithUser).currentUser;
       const assignedBy = user?.id ?? null;
       const row = await storage.upsertAssignment(workerId, date, projectId ?? null, assignedBy);
       res.json(row);
@@ -6148,7 +6150,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // PUT /api/crew-dispatch/korean-attendance/:workerId
   app.put("/api/crew-dispatch/korean-attendance/:workerId", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const workerId = parseInt(req.params.workerId);
+      const workerId = parseRouteInt(req.params.workerId);
       if (isNaN(workerId)) return res.status(400).json({ message: "Invalid workerId" });
       const { date, present } = req.body as { date: string; present: boolean };
       if (!date) return res.status(400).json({ message: "date is required" });
@@ -6364,8 +6366,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const claimedWorkerIds = new Set<number>();
 
       for (const member of members) {
-        // Skip already-mapped persons
-        if (mappedPersonIds.has(member.uid)) continue;
+        // Skip already-mapped persons (members without a uid are also skipped)
+        if (!member.uid || mappedPersonIds.has(member.uid)) continue;
 
         const code = member.employeeCode ?? member.employeeNumber;
         const normMemberName = normName(member.name);
@@ -6434,7 +6436,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // DELETE /api/jibble/map/:workerId — remove Jibble mapping for a specific worker
   app.delete("/api/jibble/map/:workerId", isAuthenticated, requireAdmin, async (req, res) => {
     try {
-      const workerId = parseInt(req.params.workerId);
+      const workerId = parseRouteInt(req.params.workerId);
       if (isNaN(workerId)) return res.status(400).json({ message: "Invalid workerId" });
       const worker = await storage.getWorker(workerId);
       if (!worker) return res.status(404).json({ message: "Worker not found" });
@@ -6500,7 +6502,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // GET /api/jibble/attendance/:workerId — Jibble attendance history for a worker
   app.get("/api/jibble/attendance/:workerId", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const workerId = parseInt(req.params.workerId);
+      const workerId = parseRouteInt(req.params.workerId);
       if (isNaN(workerId)) return res.status(400).json({ message: "Invalid worker ID" });
 
       const worker = await storage.getWorker(workerId);

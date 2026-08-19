@@ -1,3 +1,4 @@
 - [Jibble integration pattern](jibble-integration.md) — read-only sync via PAT token; same app_settings + service pattern as Monday integration
 - [Gemini model retirement](gemini-model-retirement.md) — verify model names via ListModels; prefer `-latest` aliases; use @google/genai SDK
 - [Browser layout checks](browser-layout-checks.md) — viewport tests need Chromium plus its Nix runtime libraries in Replit.
+- [TypeScript target cache](typescript-target-cache.md) — clear the incremental build info after changing compiler target before trusting cached diagnostics.

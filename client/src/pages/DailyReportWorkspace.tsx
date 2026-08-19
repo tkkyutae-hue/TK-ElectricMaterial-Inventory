@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useSearch } from "wouter";
+import type { FillPattern as ExcelFillPattern } from "exceljs";
 import { useQuery } from "@tanstack/react-query";
 import {
   MapPin, Calendar, ClipboardList, AlertCircle,
@@ -115,13 +116,13 @@ async function exportReportToExcel(report: any, project: any, t: any, lang: stri
     (v != null && v !== "") ? `${v}°F` : "—";
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-  const HEADER_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F3A5F" } };
-  const SECTION_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE8EDF5" } };
-  const LABEL_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF8E7" } };
-  const COL_LABEL_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F4FA" } };
-  const PHOTO_LABEL_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDBEAFE" } };
-  const PHOTO_DESC_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFBF0" } };
-  const PHOTO_MEMO_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9FAFB" } };
+  const HEADER_FILL: ExcelFillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F3A5F" } };
+  const SECTION_FILL: ExcelFillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE8EDF5" } };
+  const LABEL_FILL: ExcelFillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF8E7" } };
+  const COL_LABEL_FILL: ExcelFillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F4FA" } };
+  const PHOTO_LABEL_FILL: ExcelFillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDBEAFE" } };
+  const PHOTO_DESC_FILL: ExcelFillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFBF0" } };
+  const PHOTO_MEMO_FILL: ExcelFillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9FAFB" } };
 
   function addTitle(text: string) {
     const row = ws.addRow([text]);
@@ -220,7 +221,7 @@ async function exportReportToExcel(report: any, project: any, t: any, lang: stri
   // ── Materials ──────────────────────────────────────────────────────────────
   addSectionHeader(t.excelMaterials);
   addColHeader([t.excelColMaterial, t.excelColSizeSpec, t.excelColUnit, t.excelColQty, t.excelColNotes]);
-  const MAT_GROUP_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F0F0" } };
+  const MAT_GROUP_FILL: ExcelFillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F0F0" } };
   let lastMatSection: string | null | undefined = undefined;
   (fd.materials ?? []).forEach((r: any) => {
     const sec: string | null = r.section ?? null;

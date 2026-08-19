@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
+import type { InventoryMovementWithRelations } from "@shared/schema";
 
-async function fetchJson(url: string) {
+async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { credentials: "include" });
   if (!res.ok) throw new Error(`Failed to fetch ${url}`);
-  return res.json();
+  return res.json() as Promise<T>;
 }
 
 export function useMovements(filters?: { itemId?: number; projectId?: number; movementType?: string }) {
@@ -15,9 +16,9 @@ export function useMovements(filters?: { itemId?: number; projectId?: number; mo
 
   const url = `${api.movements.list.path}${params.toString() ? `?${params.toString()}` : ''}`;
 
-  return useQuery({
+  return useQuery<InventoryMovementWithRelations[]>({
     queryKey: [api.movements.list.path, filters],
-    queryFn: () => fetchJson(url),
+    queryFn: () => fetchJson<InventoryMovementWithRelations[]>(url),
   });
 }
 

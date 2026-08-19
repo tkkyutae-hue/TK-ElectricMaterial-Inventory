@@ -93,7 +93,9 @@ export const F_LIGHT = {
   infoBorder:   "rgba(29,78,216,0.30)",
 } as const;
 
-export type FieldToken = typeof F_DARK;
+export type FieldToken = {
+  readonly [K in keyof typeof F_DARK]: typeof F_DARK[K] | typeof F_LIGHT[K];
+};
 export type FieldTheme = "dark" | "light";
 
 // Legacy aliases — prefer F_DARK / F_LIGHT in new code

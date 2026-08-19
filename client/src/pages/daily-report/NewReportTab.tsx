@@ -3270,8 +3270,8 @@ export function NewReportTab({
               return (
                 <div key={row.id}
                   style={{ border: `1px solid ${cardBorderColor}`, borderLeft: equipmentStatus === "broken" ? `3px solid ${eqCfg.border}` : `1px solid ${cardBorderColor}`, borderRadius: 10, padding: "10px 10px 9px", background: cardBg, display: "flex", flexDirection: "column", gap: 9 }}>
-                  {/* Row 1: Name + Size + fixed delete action */}
-                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(74px, 0.45fr) auto", alignItems: "end", gap: 8, minWidth: 0 }}>
+                  {/* Row 1: Name + Size + delete action */}
+                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(74px, 0.45fr) auto", alignItems: "flex-start", gap: 8, minWidth: 0 }}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportEqColName}</div>
                       <Input data-testid={`input-eq-name-${i}`} value={row.name}
@@ -3284,9 +3284,16 @@ export function NewReportTab({
                         onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, size: e.target.value } : r))}
                         className="h-9 text-sm text-center w-full" placeholder={t.newReportSizePh} />
                     </div>
-                    <div style={{ flexShrink: 0 }}>
-                      <DelBtn testId={`btn-remove-eq-${i}`} onClick={() => setEquipment(equipment.filter((r) => r.id !== row.id))} />
-                    </div>
+                    {/* Delete — same size/border/hover treatment as material-card delete */}
+                    <button type="button" data-testid={`btn-remove-eq-${i}`}
+                      aria-label={t.newReportDelete}
+                      title={t.newReportDelete}
+                      onClick={() => setEquipment(equipment.filter((r) => r.id !== row.id))}
+                      style={{ marginTop: 19, width: 28, height: 28, borderRadius: 6, background: "transparent", border: `1px solid ${FT.RULE}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: FT.TEXT_MUTED, flexShrink: 0, transition: "all 0.15s" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = FT.PAPER_MUTED; e.currentTarget.style.borderColor = FT.ACCENT; e.currentTarget.style.color = FT.ACCENT; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = FT.RULE; e.currentTarget.style.color = FT.TEXT_MUTED; }}>
+                      <Trash2 style={{ width: 14, height: 14 }} />
+                    </button>
                   </div>
                   {/* Row 1.5: Qty + Unit (quick-mode mobile only – full row 3 covers non-quick) */}
                   {quickMode && (

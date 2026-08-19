@@ -126,6 +126,7 @@ function DailyReportLayout({
           boxShadow: "0 4px 14px rgba(15,31,23,0.06)",
         }}>
           <FieldThemeSwitcher compact />
+          <LanguageSwitcher theme="light" compact />
           <button
             data-testid="btn-daily-report-back"
             onClick={() => navigate(backTo)}
@@ -150,7 +151,6 @@ function DailyReportLayout({
             <ArrowLeft style={{ width: 14, height: 14 }} />
             <span className="hidden sm:inline">{label}</span>
           </button>
-          <LanguageSwitcher theme="light" compact />
         </div>
       </header>
       <main style={{ flex: 1, maxWidth: 1200, width: "100%", margin: "0 auto" }} className="px-4 py-6 sm:px-8">

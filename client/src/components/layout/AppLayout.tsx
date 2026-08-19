@@ -206,7 +206,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </button>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-[76px] bg-gradient-to-r from-brand-50 via-white to-brand-50/50 border-b border-border border-t-[3px] border-t-brand-600 flex items-center justify-between px-3 sm:px-5 z-10 flex-shrink-0 shadow-[0_1px_0_rgba(22,163,74,0.12)]">
+        <header className="h-[68px] bg-gradient-to-r from-brand-50 via-white to-brand-50/50 border-b border-border border-t-[3px] border-t-brand-600 flex items-center justify-between px-3 sm:px-5 z-10 flex-shrink-0 shadow-[0_1px_0_rgba(22,163,74,0.12)]">
           <div className="flex items-center gap-3 min-w-0">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -223,12 +223,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               className="inventory-header-brand"
               textClassName="hidden sm:block"
               detail={
-                <span className="hidden sm:flex text-[10px] font-semibold text-amber-600 uppercase tracking-wider mt-1 items-center gap-1 whitespace-nowrap">
+                <span className="tk-header-detail hidden sm:flex text-amber-600 mt-1 items-center gap-1 whitespace-nowrap">
                   <Shield className="w-2.5 h-2.5 flex-shrink-0" /> {t.adminModeChip}
                   <span className="text-slate-400 font-normal">·</span>
-                  <span className="text-slate-500 font-medium normal-case tracking-normal">{headerDate}</span>
+                  <span className="tk-header-detail-date text-slate-500">{headerDate}</span>
                   <span className="text-slate-400 font-normal">·</span>
-                  <span className="text-slate-500 font-medium normal-case tracking-normal">{headerTime}</span>
+                  <span className="tk-header-detail-date text-slate-500">{headerTime}</span>
                 </span>
               }
             />
@@ -239,7 +239,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1.5 text-slate-500 hover:text-slate-800 whitespace-nowrap"
+                 className="tk-header-control gap-1.5 text-slate-500 hover:text-slate-800 whitespace-nowrap"
                 onClick={() => window.history.back()}
                 data-testid="btn-header-back"
               >
@@ -251,7 +251,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1.5 text-slate-600 whitespace-nowrap"
+                 className="tk-header-control gap-1.5 text-slate-600 whitespace-nowrap"
                 data-testid="btn-header-back-home"
               >
                 <Home className="w-3.5 h-3.5 flex-shrink-0" />

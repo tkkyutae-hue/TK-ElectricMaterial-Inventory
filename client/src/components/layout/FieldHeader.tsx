@@ -52,38 +52,29 @@ export function FieldHeader() {
           detail={
             <>
               <span
-                className="hidden sm:flex items-center gap-1.5 mt-1 whitespace-nowrap"
+                className="tk-header-detail hidden sm:flex items-center gap-1.5 mt-1 whitespace-nowrap"
                 style={{
                   color: F.accent,
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: 0.8,
-                  textTransform: "uppercase",
                 }}
               >
                 <span className="fl-pulse-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: F.accent }} />
                 <HardHat style={{ width: 10, height: 10 }} />
                 <span>{t.inventoryMode}</span>
                 <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
-                <span style={{ color: F.textDim, fontWeight: 500, letterSpacing: 0, textTransform: "none" }}>
+                <span className="tk-header-detail-date" style={{ color: F.textDim }}>
                   {dateStr} · {timeStr}
                 </span>
               </span>
               <span
-                className="flex sm:hidden items-center gap-1 mt-1 whitespace-nowrap"
+                className="tk-header-detail flex sm:hidden items-center gap-1 mt-1 whitespace-nowrap"
                 style={{
                   color: F.accent,
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  fontSize: 9,
-                  fontWeight: 700,
-                  letterSpacing: 0.45,
                 }}
               >
                 <HardHat style={{ width: 9, height: 9 }} />
                 <span>{t.inventoryMode}</span>
                 <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
-                <span style={{ color: F.textDim, fontWeight: 500 }}>{dateStrShort}</span>
+                <span className="tk-header-detail-date" style={{ color: F.textDim }}>{dateStrShort}</span>
               </span>
             </>
           }
@@ -118,9 +109,9 @@ export function FieldHeader() {
                 height: 32,
                 background: F.surface2, border: `1px solid ${F.borderStrong}`,
                 borderRadius: 8, padding: "0 10px",
-                color: F.textMuted, fontSize: 11,
+                color: F.textMuted, fontSize: 12,
                 fontFamily: "'Barlow Condensed', sans-serif",
-                fontWeight: 600, letterSpacing: 0.5,
+                fontWeight: 600, letterSpacing: 0.4,
                 cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
                 textTransform: "uppercase",
               }}
@@ -151,9 +142,9 @@ export function FieldHeader() {
               height: 32,
               background: F.surface2, border: `1px solid ${F.borderStrong}`,
               borderRadius: 8, padding: "0 10px",
-              color: F.textMuted, fontSize: 11,
+              color: F.textMuted, fontSize: 12,
               fontFamily: "'Barlow Condensed', sans-serif",
-              fontWeight: 600, letterSpacing: 0.5,
+              fontWeight: 600, letterSpacing: 0.4,
               cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
               textTransform: "uppercase",
             }}

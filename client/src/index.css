@@ -168,6 +168,29 @@ input[type="number"] {
   .field-brand-subtitle { display: none !important; }
 }
 
+/* Shared typography for every mode header's brand metadata row. */
+.tk-header-detail {
+  font-family: "'Barlow Condensed'", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.tk-header-detail-date {
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.tk-header-control {
+  font-family: "'Barlow Condensed'", sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.4px;
+}
+
 
 /* Field filter pill-bar entry animation */
 @keyframes filterFadeDown {

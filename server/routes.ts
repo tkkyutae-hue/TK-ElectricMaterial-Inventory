@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { derivedFamily, derivedType, extractSubcategory } from "./storage";
 import { classifyInventoryItem } from "../shared/classifyItem";
 import { classifyReel, resolveReelMode } from "../shared/reelEligibility";
+import { resolveScopeReportTarget } from "../shared/scopeReportTarget";
 import { insertItemSchema, type Item, type CreateRmsExportHistory, type CreateRmsExportHistoryItem, completionReportPhotos, projects, dailyReports, projectScopeItems, workers, dailyWorkerAssignments } from "../shared/schema";
 import { db } from "./db";
 import { eq, sql as drizzleSql } from "drizzle-orm";
@@ -39,6 +40,18 @@ function isImageMagicBytes(buf: Buffer, mimetype: string): boolean {
         && buf.slice(8, 12).toString("ascii") === "WEBP";
   }
   return false;
+}
+
+function normalizeScopeReportTarget(
+  value: unknown,
+  section?: unknown,
+  category?: unknown,
+): "material" | "equipment" {
+  if (value !== undefined) {
+    if (value === "material" || value === "equipment") return value;
+    throw new Error("reportTarget must be either material or equipment");
+  }
+  return resolveScopeReportTarget({ reportTarget: value, section, category });
 }
 
 // ─── RBAC middleware ─────────────────────────────────────────────────────────
@@ -4558,6 +4571,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const projectId = parseInt(req.params.id);
       if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
+      const scopeBody = {
+        ...req.body,
+        reportTarget: normalizeScopeReportTarget(req.body.reportTarget, req.body.section, req.body.category),
+      };
 
       // Atomic upsert: advisory lock serializes concurrent inserts for the same project,
       // preventing a read-then-insert race that would create duplicate scope items.
@@ -4570,19 +4587,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           .where(eq(projectScopeItems.projectId, projectId));
 
         const dup = existing.find(
-          (s) => s.itemName.trim().toLowerCase() === String(req.body.itemName ?? "").trim().toLowerCase()
-               && s.unit.trim().toLowerCase()     === String(req.body.unit    ?? "").trim().toLowerCase()
-               && (s.remarks ?? "").trim().toLowerCase() === String(req.body.remarks ?? "").trim().toLowerCase()
+          (s) => s.itemName.trim().toLowerCase() === String(scopeBody.itemName ?? "").trim().toLowerCase()
+               && s.unit.trim().toLowerCase()     === String(scopeBody.unit    ?? "").trim().toLowerCase()
+               && (s.remarks ?? "").trim().toLowerCase() === String(scopeBody.remarks ?? "").trim().toLowerCase()
         );
 
         if (dup) {
-          const incomingSection   = req.body.section   ?? null;
-          const incomingSortOrder = req.body.sortOrder  ?? null;
-          const hasNewSectionData = incomingSection !== null || incomingSortOrder !== null;
-          if (hasNewSectionData) {
+          const incomingSection   = scopeBody.section   ?? null;
+          const incomingSortOrder = scopeBody.sortOrder ?? null;
+          const targetChanged = dup.reportTarget !== scopeBody.reportTarget;
+          const hasUpdatedMetadata = incomingSection !== null || incomingSortOrder !== null || targetChanged;
+          if (hasUpdatedMetadata) {
+            const changes: Record<string, unknown> = {
+              reportTarget: scopeBody.reportTarget,
+              updatedAt: new Date(),
+            };
+            if (incomingSection !== null) changes.section = incomingSection;
+            if (incomingSortOrder !== null) changes.sortOrder = incomingSortOrder;
             const [updated] = await tx
               .update(projectScopeItems)
-              .set({ section: incomingSection, sortOrder: incomingSortOrder, updatedAt: new Date() })
+              .set(changes)
               .where(eq(projectScopeItems.id, dup.id))
               .returning();
             return { ...updated, sectionUpdated: true };
@@ -4593,7 +4617,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
         const [created] = await tx
           .insert(projectScopeItems)
-          .values({ ...req.body, projectId })
+          .values({ ...scopeBody, projectId })
           .returning();
         return created;
       });
@@ -4646,19 +4670,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (isNaN(id)) return res.status(400).json({ message: "Invalid scope item ID" });
       const existing = await storage.getScopeItem(id);
       if (!existing) return res.status(404).json({ message: "Scope item not found" });
+      const scopeBody = { ...req.body };
+      if (scopeBody.reportTarget !== undefined) {
+        scopeBody.reportTarget = normalizeScopeReportTarget(scopeBody.reportTarget);
+      }
       // Duplicate check (exclude self)
-      if (req.body.itemName !== undefined || req.body.unit !== undefined) {
+      if (scopeBody.itemName !== undefined || scopeBody.unit !== undefined) {
         const siblings = await storage.getScopeItems(existing.projectId);
-        const newName = String(req.body.itemName ?? existing.itemName).trim().toLowerCase();
-        const newUnit = String(req.body.unit ?? existing.unit).trim().toLowerCase();
+        const newName = String(scopeBody.itemName ?? existing.itemName).trim().toLowerCase();
+        const newUnit = String(scopeBody.unit ?? existing.unit).trim().toLowerCase();
         const dup = siblings.find(
           (s) => s.id !== id
               && s.itemName.trim().toLowerCase() === newName
               && s.unit.trim().toLowerCase() === newUnit
         );
-        if (dup) return res.status(409).json({ message: `A scope item "${req.body.itemName ?? existing.itemName} / ${req.body.unit ?? existing.unit}" already exists for this project.` });
+        if (dup) return res.status(409).json({ message: `A scope item "${scopeBody.itemName ?? existing.itemName} / ${scopeBody.unit ?? existing.unit}" already exists for this project.` });
       }
-      const updated = await storage.updateScopeItem(id, req.body);
+      const updated = await storage.updateScopeItem(id, scopeBody);
       res.json(updated);
     } catch (err: any) {
       res.status(400).json({ message: err.message });

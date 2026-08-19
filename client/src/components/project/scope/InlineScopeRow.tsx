@@ -167,6 +167,20 @@ export function InlineScopeRow({
           </select>
         </div>
 
+        {/* Daily report target */}
+        <div className="w-28 space-y-1 shrink-0">
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{t.projScopeFldReportTarget}</label>
+          <select
+            value={row.reportTarget}
+            onChange={e => onChange({ ...row, reportTarget: e.target.value as "material" | "equipment" })}
+            className="h-8 w-full text-xs border border-slate-200 rounded-md px-2 bg-white text-slate-700"
+            data-testid={`inline-scope-report-target-${rowIndex}`}
+          >
+            <option value="material">{t.projScopeReportTargetMaterial}</option>
+            <option value="equipment">{t.projScopeReportTargetEquipment}</option>
+          </select>
+        </div>
+
         {/* Remove */}
         <button
           type="button" onClick={onRemove}

@@ -4,6 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
+import { resolveScopeReportTarget } from "@shared/scopeReportTarget";
 import type { Translations } from "@/lib/i18n";
 
 const TASK_STATUS_LABEL_KEY: Record<string, keyof Translations> = {
@@ -221,6 +222,23 @@ interface EquipmentRow {
   id: number; name: string; size: string; brand: string;
   unit: string; qty: number; hours: number; notes: string;
   eqStatus: "operational" | "partial" | "broken"; tags: string[];
+  scopeItemId: number | null;
+}
+
+function equipmentRowFromScope(scopeItem: any): EquipmentRow {
+  return {
+    id: uid(),
+    name: scopeItem.itemName,
+    size: scopeItem.remarks ?? "",
+    brand: "",
+    unit: scopeItem.unit ?? "EA",
+    qty: 0,
+    hours: 0,
+    notes: "",
+    eqStatus: "operational",
+    tags: [],
+    scopeItemId: scopeItem.id,
+  };
 }
 
 function isWorkerBasedManpower(rows: any[]): boolean {
@@ -1407,19 +1425,27 @@ export function NewReportTab({
     });
   }, [crewLoaded, jibbleLoaded, crewAssignments, reportId]);
 
-  // ── Auto-populate materials from Scope Items (new report + empty materials only) ──
+  // ── Auto-populate materials/equipment from their assigned Scope targets ──
   const scopeAutoApplied = useRef(false);
   useEffect(() => {
     if (reportId || scopeAutoApplied.current || scopeItems.length === 0) return;
     scopeAutoApplied.current = true;
+    const activeScopeItems = scopeItems.filter((s: any) => s.isActive);
     setMaterials(prev => {
       if (prev.length > 0) return prev;
-      return scopeItems
-        .filter((s: any) => s.isActive)
+      return activeScopeItems
+        .filter((s: any) => resolveScopeReportTarget(s) === "material")
         .map((s: any) => ({
           id: uid(), description: s.itemName, spec: s.remarks ?? "", unit: s.unit ?? "EA", qty: 0, notes: "",
           inventoryItemId: s.linkedInventoryItemId ?? null, scopeItemId: s.id, section: s.section ?? null,
         }));
+    });
+    setEquipment(prev => {
+      const existingScopeIds = new Set(prev.map(row => row.scopeItemId).filter(Boolean));
+      const newRows = activeScopeItems
+        .filter((s: any) => resolveScopeReportTarget(s) === "equipment" && !existingScopeIds.has(s.id))
+        .map(equipmentRowFromScope);
+      return newRows.length > 0 ? [...prev, ...newRows] : prev;
     });
   }, [scopeItems, reportId]);
 
@@ -1486,7 +1512,9 @@ export function NewReportTab({
       inventoryItemId: null, scopeItemId: null, spec: "", ...m,
       id: uid(), qty: 0,
     })));
-    setEquipment((pfd.equipment ?? []).map((e: any) => ({ ...e, id: uid(), eqStatus: normalizeEquipmentStatus(e.eqStatus) })));
+    setEquipment((pfd.equipment ?? []).map((e: any) => ({
+      scopeItemId: null, ...e, id: uid(), eqStatus: normalizeEquipmentStatus(e.eqStatus),
+    })));
     if (pfd.generalNotes)       setGeneralNotes(pfd.generalNotes);
     if (pfd.safetyNotes)        setSafetyNotes(pfd.safetyNotes);
     if (pfd.inspectorVisitor)   setInspectorVisitor(pfd.inspectorVisitor);
@@ -1509,7 +1537,7 @@ export function NewReportTab({
   }
 
   function importScopeItems() {
-    const active = scopeItems.filter((s: any) => s.isActive);
+    const active = scopeItems.filter((s: any) => s.isActive && resolveScopeReportTarget(s) === "material");
     if (!active.length) return;
     const existingScopeIds = new Set(materials.map(r => r.scopeItemId).filter(Boolean));
     const newRows = active
@@ -1520,6 +1548,21 @@ export function NewReportTab({
       }));
     if (!newRows.length) { toast({ title: t.newReportToastScopeAlready, description: t.newReportToastScopeAlreadyDesc }); return; }
     setMaterials(prev => [...prev, ...newRows]);
+    toast({ title: t.newReportToastScopeAdded.replace("{n}", String(newRows.length)) });
+  }
+
+  function importScopeEquipment() {
+    const active = scopeItems.filter((s: any) => s.isActive && resolveScopeReportTarget(s) === "equipment");
+    if (!active.length) return;
+    const existingScopeIds = new Set(equipment.map(row => row.scopeItemId).filter(Boolean));
+    const newRows = active
+      .filter((s: any) => !existingScopeIds.has(s.id))
+      .map(equipmentRowFromScope);
+    if (!newRows.length) {
+      toast({ title: t.newReportToastScopeAlready, description: t.newReportToastScopeAlreadyDesc });
+      return;
+    }
+    setEquipment(prev => [...prev, ...newRows]);
     toast({ title: t.newReportToastScopeAdded.replace("{n}", String(newRows.length)) });
   }
 
@@ -1585,7 +1628,9 @@ export function NewReportTab({
     (fd?.materials ?? []).map((m: any) => ({ inventoryItemId: null, scopeItemId: null, spec: "", ...m }))
   );
   const [equipment, setEquipment]  = useState<EquipmentRow[]>(() =>
-    (fd?.equipment ?? []).map((e: any) => ({ ...e, eqStatus: normalizeEquipmentStatus(e.eqStatus) }))
+    (fd?.equipment ?? []).map((e: any) => ({
+      scopeItemId: null, ...e, eqStatus: normalizeEquipmentStatus(e.eqStatus),
+    }))
   );
   const materialSectionCounts = useMemo(() => materials.reduce<Record<string, number>>((counts, row) => {
     if (row.section) counts[row.section] = (counts[row.section] ?? 0) + 1;
@@ -2866,7 +2911,7 @@ export function NewReportTab({
       ══════════════════════════════════════════════════════ */}
       <div ref={el => { sectionRefs.current[3] = el; }} style={quickMode && isMobile && quickStep !== 3 ? { display: "none" } : undefined}>
       <Section num={4} title={t.newReportMaterials} icon={<Package className="w-4 h-4" />} storageKey={sectionStorageScope ? `${sectionStorageScope}:4` : undefined} summary={matSummary} defaultOpen={false}
-        headerRight={!isSubmitted && scopeItems.filter((s: any) => s.isActive).length > 0 ? (
+        headerRight={!isSubmitted && scopeItems.some((s: any) => s.isActive && resolveScopeReportTarget(s) === "material") ? (
           <button type="button" onClick={e => { e.stopPropagation(); importScopeItems(); }}
             className="flex items-center gap-1 whitespace-nowrap transition-colors"
             style={{ fontSize: 11, fontWeight: 700, fontFamily: FT.FONT, letterSpacing: "0.03em", textTransform: "uppercase", padding: "4px 10px", borderRadius: 5, background: FT.PAPER_MUTED, border: `1px solid ${FT.RULE}`, color: FT.INK }}
@@ -3171,7 +3216,7 @@ export function NewReportTab({
         {inventoryItems.length > 0 && (
           <p className="mt-2 text-[10px] text-slate-400">
             {t.newReportInvAvailable.replace("{n}", String(inventoryItems.length))}
-            {scopeItems.length > 0 && (
+            {scopeItems.some((s: any) => s.isActive && resolveScopeReportTarget(s) === "material") && (
               <> · {t.newReportScopeAutoFill}</>
             )}
           </p>
@@ -3183,7 +3228,15 @@ export function NewReportTab({
           §5 — Equipment
       ══════════════════════════════════════════════════════ */}
       <div ref={el => { sectionRefs.current[4] = el; }} style={quickMode && isMobile && quickStep !== 4 ? { display: "none" } : undefined}>
-      <Section num={5} title={t.newReportEquipment} icon={<Truck className="w-4 h-4" />} storageKey={sectionStorageScope ? `${sectionStorageScope}:5` : undefined} summary={eqSummary} alert={eqAlert} defaultOpen={false}>
+      <Section num={5} title={t.newReportEquipment} icon={<Truck className="w-4 h-4" />} storageKey={sectionStorageScope ? `${sectionStorageScope}:5` : undefined} summary={eqSummary} alert={eqAlert} defaultOpen={false}
+        headerRight={!isSubmitted && scopeItems.some((s: any) => s.isActive && resolveScopeReportTarget(s) === "equipment") ? (
+          <button type="button" onClick={e => { e.stopPropagation(); importScopeEquipment(); }}
+            className="flex items-center gap-1 whitespace-nowrap transition-colors"
+            style={{ fontSize: 11, fontWeight: 700, fontFamily: FT.FONT, letterSpacing: "0.03em", textTransform: "uppercase", padding: "4px 10px", borderRadius: 5, background: FT.PAPER_MUTED, border: `1px solid ${FT.RULE}`, color: FT.INK }}
+            title={t.newReportScopeImportTitle}>
+            <Truck className="w-3 h-3" /> {t.newReportScopeImportBtn}
+          </button>
+        ) : undefined}>
 
         {/* Quick-add preset buttons */}
         <div className="mb-4">
@@ -3194,7 +3247,7 @@ export function NewReportTab({
             {EQUIPMENT_PRESETS.map((name) => (
               <button key={name} type="button"
                 data-testid={`btn-eq-preset-${name.replace(/ /g, "-").toLowerCase()}`}
-                onClick={() => setEquipment([...equipment, { id: uid(), name, size: "", brand: "", unit: "EA", qty: 1, hours: 0, notes: "", eqStatus: "operational", tags: [] }])}
+                onClick={() => setEquipment([...equipment, { id: uid(), name, size: "", brand: "", unit: "EA", qty: 1, hours: 0, notes: "", eqStatus: "operational", tags: [], scopeItemId: null }])}
                 className="px-2.5 py-1 rounded-full text-xs border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">
                 + {name}
               </button>
@@ -3472,7 +3525,7 @@ export function NewReportTab({
           </div>
         )}
         <AddRow testId="btn-add-equipment" label={t.newReportAddCustom}
-          onClick={() => setEquipment([...equipment, { id: uid(), name: "", size: "", brand: "", unit: "EA", qty: 1, hours: 0, notes: "", eqStatus: "operational", tags: [] }])} />
+          onClick={() => setEquipment([...equipment, { id: uid(), name: "", size: "", brand: "", unit: "EA", qty: 1, hours: 0, notes: "", eqStatus: "operational", tags: [], scopeItemId: null }])} />
       </Section>
       </div>{/* end §5 */}
 

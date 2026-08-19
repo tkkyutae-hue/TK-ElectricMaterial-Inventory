@@ -13,6 +13,7 @@ import { useLanguage } from "@/hooks/use-language";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { ProjectScopeItem } from "@shared/schema";
+import { resolveScopeReportTarget } from "@shared/scopeReportTarget";
 import { scopeItemSchema, type ScopeItemFormData, COMMON_UNITS, flexMatch } from "../types";
 import { CATEGORY_ORDER } from "../categoryConfig";
 
@@ -48,7 +49,7 @@ export function ScopeItemDialog({
     defaultValues: {
       itemName: "", unit: "", estimatedQty: "", section: "", category: "", remarks: "",
       isActive: true, linkedInventoryItemId: null,
-      scopeType: "primary", progressCountingMode: "exact",
+      scopeType: "primary", reportTarget: "material", progressCountingMode: "exact",
     },
   });
 
@@ -68,6 +69,7 @@ export function ScopeItemDialog({
           isActive: item.isActive ?? true,
           linkedInventoryItemId: lid,
           scopeType: ((item as any).scopeType as "primary" | "support") ?? "primary",
+          reportTarget: resolveScopeReportTarget(item),
           progressCountingMode: ((item as any).progressCountingMode as "exact" | "family" | "manual") ?? "exact",
         });
       } else {
@@ -76,7 +78,7 @@ export function ScopeItemDialog({
         form.reset({
           itemName: "", unit: "", estimatedQty: "", section: "", category: "", remarks: "",
           isActive: true, linkedInventoryItemId: null,
-          scopeType: "primary", progressCountingMode: "exact",
+          scopeType: "primary", reportTarget: "material", progressCountingMode: "exact",
         });
       }
     }
@@ -181,20 +183,35 @@ export function ScopeItemDialog({
                 </FormItem>
               )} />
             </div>
-            <FormField control={form.control} name="progressCountingMode" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t.projScopeFldCountingMode}</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl><SelectTrigger data-testid="select-scope-counting-mode"><SelectValue /></SelectTrigger></FormControl>
-                  <SelectContent>
-                    <SelectItem value="exact">{t.projScopeCountExact}</SelectItem>
-                    <SelectItem value="family">{t.projScopeCountFamily}</SelectItem>
-                    <SelectItem value="manual">{t.projScopeCountManual}</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )} />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="reportTarget" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t.projScopeFldReportTarget}</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger data-testid="select-scope-report-target"><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="material">{t.projScopeReportTargetMaterial}</SelectItem>
+                      <SelectItem value="equipment">{t.projScopeReportTargetEquipment}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="progressCountingMode" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t.projScopeFldCountingMode}</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger data-testid="select-scope-counting-mode"><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="exact">{t.projScopeCountExact}</SelectItem>
+                      <SelectItem value="family">{t.projScopeCountFamily}</SelectItem>
+                      <SelectItem value="manual">{t.projScopeCountManual}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-700">
                 {t.projScopeFldInvLink} <span className="text-slate-400 font-normal text-xs">{t.projScopeFldOptional}</span>

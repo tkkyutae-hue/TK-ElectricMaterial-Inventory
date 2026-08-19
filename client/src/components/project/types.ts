@@ -39,6 +39,7 @@ export const scopeItemSchema = z.object({
   isActive:              z.boolean().default(true),
   linkedInventoryItemId: z.number().nullable().optional(),
   scopeType:             z.enum(["primary", "support"]).default("primary"),
+  reportTarget:          z.enum(["material", "equipment"]).default("material"),
   progressCountingMode:  z.enum(["exact", "family", "manual"]).default("exact"),
 });
 export type ScopeItemFormData = z.infer<typeof scopeItemSchema>;
@@ -71,6 +72,7 @@ export type PendingRow = {
   linkedInventoryItemId: number | null;
   remarks: string;
   scopeType: "primary" | "support";
+  reportTarget: "material" | "equipment";
 };
 
 export type BundleRow = {
@@ -81,6 +83,7 @@ export type BundleRow = {
   section: string;
   category: string;
   scopeType: "primary" | "support";
+  reportTarget: "material" | "equipment";
   checked: boolean;
   linkedInventoryItemId?: number | null;
 };
@@ -90,6 +93,7 @@ export function newBundleRow(): BundleRow {
     localId: Math.random().toString(36).slice(2),
     itemName: "", unit: "EA", estimatedQty: "",
     section: "", category: "Other", scopeType: "primary",
+    reportTarget: "material",
     checked: true, linkedInventoryItemId: null,
   };
 }
@@ -99,6 +103,6 @@ export function newPendingRow(): PendingRow {
     localId: Math.random().toString(36).slice(2),
     itemName: "", unit: "", estimatedQty: "",
     section: "", category: "", linkedInventoryItemId: null, remarks: "",
-    scopeType: "primary",
+    scopeType: "primary", reportTarget: "material",
   };
 }

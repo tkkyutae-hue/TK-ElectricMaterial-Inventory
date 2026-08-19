@@ -7,6 +7,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { resolveScopeReportTarget, type ScopeReportTarget } from "@shared/scopeReportTarget";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ExtractedItem {
@@ -29,6 +30,7 @@ interface InventoryOption {
 interface RowState extends ExtractedItem {
   localId: string;
   selected: boolean;
+  reportTarget: ScopeReportTarget;
 }
 
 const ACCEPTED = ".pdf,.png,.jpg,.jpeg,.webp,.xlsx";
@@ -345,7 +347,7 @@ function ResultTable({
   inventoryItems: InventoryOption[];
   onToggle: (id: string) => void;
   onToggleAll: () => void;
-  onEdit: (id: string, field: keyof ExtractedItem, value: string) => void;
+  onEdit: (id: string, field: keyof ExtractedItem | "reportTarget", value: string) => void;
   onEditInventory: (id: string, invId: number | null, invName: string | null) => void;
 }) {
   const allSelected = rows.length > 0 && rows.every((r) => r.selected);
@@ -376,6 +378,7 @@ function ResultTable({
               <th className="text-right px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide w-20">수량</th>
               <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide w-16">단위</th>
               <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide w-28">카테고리</th>
+              <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide w-24">보고서 탭</th>
               <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">
                 <span className="flex items-center gap-1"><Link2 className="w-3 h-3" /> 인벤토리</span>
               </th>
@@ -446,6 +449,17 @@ function ResultTable({
                     {["Conduit", "Fittings & Connectors", "Cable Tray", "Cable / Wire", "Grounding", "Boxes", "Devices", "Equipment"].map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
+                  </select>
+                </td>
+                <td className="px-3 py-2 w-24">
+                  <select
+                    value={row.reportTarget}
+                    onChange={(e) => onEdit(row.localId, "reportTarget", e.target.value)}
+                    className="w-full bg-transparent text-slate-700 text-xs outline-none cursor-pointer"
+                    data-testid={`extract-row-report-target-${row.localId}`}
+                  >
+                    <option value="material">자재</option>
+                    <option value="equipment">장비</option>
                   </select>
                 </td>
                 <td className="px-3 py-2">
@@ -601,6 +615,7 @@ export function ScopeExtractDialog({
           inventoryItemName: it.inventoryItemName ?? null,
           localId: `${Date.now()}-${i}`,
           selected: true,
+          reportTarget: resolveScopeReportTarget(it),
         })),
       );
       setStep("result");
@@ -629,6 +644,7 @@ export function ScopeExtractDialog({
               section: row.section || null,
               sortOrder: row.sortOrder ?? null,
               linkedInventoryItemId: row.inventoryItemId ?? null,
+              reportTarget: row.reportTarget,
             }),
           }).then(async (r) => {
             if (!r.ok) {
@@ -675,7 +691,7 @@ export function ScopeExtractDialog({
     const allSel = rows.every((r) => r.selected);
     setRows((prev) => prev.map((r) => ({ ...r, selected: !allSel })));
   }
-  function editRow(id: string, field: keyof ExtractedItem, value: string) {
+  function editRow(id: string, field: keyof ExtractedItem | "reportTarget", value: string) {
     setRows((prev) =>
       prev.map((r) =>
         r.localId === id

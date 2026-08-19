@@ -183,6 +183,15 @@ function BundleScopeRow({
             <option value="support">{t.projScopeTypeSupport}</option>
           </select>
         </td>
+        <td className="px-2 py-2 w-20">
+          <select value={row.reportTarget} disabled={!row.checked}
+            onChange={e => onChange({ ...row, reportTarget: e.target.value as "material" | "equipment" })}
+            className="h-7 text-[11px] border border-slate-200 rounded px-1 bg-white w-20"
+            data-testid={`bundle-row-report-target-${rowIndex}`}>
+            <option value="material">{t.projScopeReportTargetMaterial}</option>
+            <option value="equipment">{t.projScopeReportTargetEquipment}</option>
+          </select>
+        </td>
         <td className="px-2 py-2 w-8">
           <button type="button" onClick={onRemove}
             className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
@@ -253,6 +262,7 @@ export function BundleSelector({
         section: "",
         category: it.category,
         scopeType: it.scopeType,
+        reportTarget: "material" as const,
         checked: true,
         linkedInventoryItemId: match ? match.id : null,
       };
@@ -430,6 +440,7 @@ export function BundleSelector({
               <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-20">{t.projScopeBundleColEstQty}</th>
               <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-28">{t.projScopeBundleColCategory}</th>
               <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-20">{t.projScopeBundleColType}</th>
+              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-20">{t.projScopeFldReportTarget}</th>
               <th className="w-8"></th>
             </tr>
           </thead>

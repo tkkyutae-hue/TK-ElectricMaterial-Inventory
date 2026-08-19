@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { ProjectScopeItem } from "@shared/schema";
+import { resolveScopeReportTarget } from "@shared/scopeReportTarget";
 import type { PendingRow, BundleRow } from "../types";
 
 interface UseScopeActionsParams {
@@ -63,7 +64,7 @@ export function useScopeActions({
           category: row.category.trim() || null,
           remarks: row.remarks.trim() || null,
           linkedInventoryItemId: row.linkedInventoryItemId,
-          scopeType: row.scopeType, isActive: true,
+          scopeType: row.scopeType, reportTarget: row.reportTarget, isActive: true,
         })
       ));
       invalidate();
@@ -85,7 +86,7 @@ export function useScopeActions({
           itemName: row.itemName.trim(), unit: row.unit.trim(),
           estimatedQty: row.estimatedQty || "0",
           section: (row as any).section?.trim() || null,
-          category: row.category || null, scopeType: row.scopeType, isActive: true,
+          category: row.category || null, scopeType: row.scopeType, reportTarget: row.reportTarget, isActive: true,
         })
       ));
       invalidate();
@@ -106,7 +107,9 @@ export function useScopeActions({
         section: (item as any).section ?? null,
         category: item.category ?? null,
         remarks: item.remarks ?? null, linkedInventoryItemId: (item as any).linkedInventoryItemId ?? null,
-        scopeType: (item as any).scopeType ?? "primary", isActive: item.isActive,
+        scopeType: (item as any).scopeType ?? "primary",
+        reportTarget: resolveScopeReportTarget(item),
+        isActive: item.isActive,
       });
       invalidate();
       toast({ title: "Item duplicated" });
@@ -135,6 +138,7 @@ export function useScopeActions({
                 remarks: item.remarks ?? null,
                 linkedInventoryItemId: (item as any).linkedInventoryItemId ?? null,
                 scopeType: (item as any).scopeType ?? "primary",
+                reportTarget: resolveScopeReportTarget(item),
                 isActive: item.isActive,
               })
             ));

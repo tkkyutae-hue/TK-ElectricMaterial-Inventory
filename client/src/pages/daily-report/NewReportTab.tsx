@@ -3288,6 +3288,23 @@ export function NewReportTab({
                       <DelBtn testId={`btn-remove-eq-${i}`} onClick={() => setEquipment(equipment.filter((r) => r.id !== row.id))} />
                     </div>
                   </div>
+                  {/* Row 1.5: Qty + Unit (quick-mode mobile only – full row 3 covers non-quick) */}
+                  {quickMode && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 80px", gap: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportEqColQty}</div>
+                        <Input data-testid={`input-eq-qty-${i}`} type="number" min={0} inputMode="numeric" value={row.qty}
+                          onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
+                          className="h-9 text-sm text-center tabular-nums w-full" />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportEqColUnit}</div>
+                        <Input data-testid={`input-eq-unit-${i}`} value={row.unit}
+                          onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
+                          className="h-9 text-sm text-center w-full" placeholder={t.newReportUnitEAPh} />
+                      </div>
+                    </div>
+                  )}
                   {/* Row 2: Brand */}
                   {!(quickMode && isMobile) && <div>
                     <div>

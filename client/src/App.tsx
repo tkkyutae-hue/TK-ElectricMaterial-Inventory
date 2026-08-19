@@ -112,22 +112,26 @@ function DailyReportLayout({
 }
 
 function DailyReportRouter() {
+  const { isManagerOrAbove } = useAuth();
   return (
-    <ManagerGuard>
-      <DailyReportLayout backTo="/crew-dispatch" backLabel="Crew Dispatch">
+    <DailyReportGuard>
+      <DailyReportLayout
+        backTo={isManagerOrAbove ? "/crew-dispatch" : "/home"}
+        backLabel={isManagerOrAbove ? "Crew Dispatch" : "Home"}
+      >
         <DailyReport />
       </DailyReportLayout>
-    </ManagerGuard>
+    </DailyReportGuard>
   );
 }
 
 function CrewDispatchRouter() {
   return (
-    <CrewDispatchGuard>
+    <ProjectOperationsGuard>
       <DailyReportLayout backTo="/home" backLabel="Home">
         <CrewDispatch />
       </DailyReportLayout>
-    </CrewDispatchGuard>
+    </ProjectOperationsGuard>
   );
 }
 
@@ -143,16 +147,33 @@ function CrewDispatchAssignmentRouter() {
 
 function DailyReportWorkspaceRouter() {
   return (
-    <ManagerGuard>
+    <DailyReportGuard>
       <DailyReportLayout backTo="/daily-report" backLabel="Project List">
         <DailyReportWorkspace />
       </DailyReportLayout>
-    </ManagerGuard>
+    </DailyReportGuard>
   );
 }
 
 // Allows admin + manager + staff into Daily Report; viewer/manager_viewer are redirected to /home
-function ManagerGuard({ children }: { children: React.ReactNode }) {
+function DailyReportGuard({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, canAccessDailyReport } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-700" />
+      </div>
+    );
+  }
+
+  if (!user) return <Redirect to="/login" />;
+  if (!canAccessDailyReport) return <Redirect to="/home" />;
+  return <>{children}</>;
+}
+
+// Project Operations hub is available to staff, but its assignment route has a stricter guard below.
+function ProjectOperationsGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading, canAccessDailyReport } = useAuth();
 
   if (isLoading) {
@@ -185,7 +206,7 @@ function CrewDispatchGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Allows admin + manager into Admin Mode; all others go back to /home
+// Allows staff and above, plus read-only manager_viewer, into Admin Mode.
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading, canAccessAdminMode } = useAuth();
 

@@ -238,7 +238,7 @@ function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
 
 export default function Home() {
   const [, navigate] = useLocation();
-  const { user, logout, isAdminRole, canAccessAdminMode } = useAuth();
+  const { user, logout, isAdminRole, canAccessAdminMode, canAccessDailyReport } = useAuth();
   const { t } = useLanguage();
   const { F, theme: fieldTheme } = useFieldTheme();
 
@@ -405,14 +405,14 @@ export default function Home() {
                   border: "1px solid rgba(245,158,11,0.18)",
                   color: "#d97706",
                 }}
-                locked={!canAccessAdminMode}
+                locked={!canAccessDailyReport}
                 F={F}
                 hoverShadow={hoverShadow}
                 restShadow={restShadow}
               />
             </div>
 
-            {/* Bottom row: full-width Admin Mode card — always visible, locked for staff/viewer */}
+            {/* Bottom row: full-width Admin Mode card — STAFF and above, plus read-only manager_viewer */}
             <WideCard
               testId="btn-admin-mode"
               onClick={() => navigate("/")}

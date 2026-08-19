@@ -58,9 +58,11 @@ export default function ProjectDetail() {
           {project.customerName && <p className="text-slate-500 mt-1">{project.customerName}</p>}
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="bg-white" onClick={() => setEditOpen(true)} data-testid="button-edit-project">
-            <Edit className="w-4 h-4 mr-2" /> {t.projDetailEditBtn}
-          </Button>
+          {isManagerOrAbove && (
+            <Button variant="outline" className="bg-white" onClick={() => setEditOpen(true)} data-testid="button-edit-project">
+              <Edit className="w-4 h-4 mr-2" /> {t.projDetailEditBtn}
+            </Button>
+          )}
           <Dialog open={logOpen} onOpenChange={setLogOpen}>
             <Button className="bg-brand-700 hover:bg-brand-800 text-white shadow-sm" onClick={() => setLogOpen(true)}>
               <ArrowUpRight className="w-4 h-4 mr-2" />{t.projDetailLogMaterial}
@@ -77,7 +79,9 @@ export default function ProjectDetail() {
         </div>
       </div>
 
-      <EditProjectDialog project={project} open={editOpen} onClose={() => setEditOpen(false)} allProjects={allProjects} />
+      {isManagerOrAbove && (
+        <EditProjectDialog project={project} open={editOpen} onClose={() => setEditOpen(false)} allProjects={allProjects} />
+      )}
 
       {/* Main tabs */}
       <Tabs defaultValue="overview">

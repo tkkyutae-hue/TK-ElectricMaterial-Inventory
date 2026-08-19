@@ -96,6 +96,8 @@ export function FieldHeader() {
         {/* Dark/Light theme toggle — left of language switcher */}
         <FieldThemeSwitcher compact={true} />
 
+        <LanguageSwitcher theme={fieldTheme} compact={true} />
+
         {/* Back button — sub-pages only */}
         {!isFieldHome && (
           <Link href="/field">
@@ -162,7 +164,6 @@ export function FieldHeader() {
           </button>
         </Link>
 
-        <LanguageSwitcher theme={fieldTheme} compact={true} />
       </div>
     </header>
   );

@@ -104,23 +104,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-white border-r border-border w-64">
-      <Link href="/" className="px-5 py-4 flex items-center gap-3 border-b border-brand-100 hover:bg-brand-50 transition-colors">
-        <img
-          src={tkLogo}
-          alt="TK Electric"
-          className="h-11 w-auto object-contain flex-shrink-0"
-          style={{ imageRendering: "crisp-edges" }}
-        />
-        <div className="min-w-0">
-          <span className="font-display font-bold text-xl tracking-tight text-slate-900 leading-none block whitespace-nowrap">TK Electric</span>
-          <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider mt-1 flex items-center gap-1 whitespace-nowrap">
-            <Shield className="w-2.5 h-2.5 inline flex-shrink-0" /> {t.adminModeChip}
-          </span>
-        </div>
-      </Link>
-      <div className="h-px bg-gradient-to-r from-brand-500/50 via-brand-300/25 to-transparent" />
-
-      <div className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
+      <div className="flex-1 px-3 py-5 space-y-5 overflow-y-auto">
         {navGroups.map((group) => (
           <div key={group.label}>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-3 mb-1.5 whitespace-nowrap truncate">{group.label}</p>

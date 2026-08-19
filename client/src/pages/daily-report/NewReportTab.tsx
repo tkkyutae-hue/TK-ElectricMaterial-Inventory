@@ -337,6 +337,8 @@ function Section({
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
           <button type="button" data-testid={`section-toggle-${num}`}
             onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-controls={`section-content-${num}`}
             className="flex-1 flex items-center justify-between py-3 text-left min-w-0">
             <div className="flex items-center gap-3 min-w-0">
               {/* 30×30 square number badge */}
@@ -371,7 +373,7 @@ function Section({
         </div>
       </div>
       {open && (
-        <CardContent className="pt-0 pb-6 px-5" style={{ borderTop: "none" }}>
+        <CardContent id={`section-content-${num}`} className="pt-0 pb-6 px-5" style={{ borderTop: "none" }}>
           <div className="pt-4">{children}</div>
         </CardContent>
       )}
@@ -2636,9 +2638,13 @@ export function NewReportTab({
                     {/* Only extra materials are deletable by all users; scope items require admin */}
                     {(isExtra || isAdminRole) && (
                       <button type="button" data-testid={`btn-remove-mat-${i}`}
+                        aria-label={t.newReportDelete}
+                        title={t.newReportDelete}
                         onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))}
-                        style={{ width: 22, height: 22, borderRadius: "50%", background: "#fee2e2", border: "1px solid #fecaca", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#f87171", flexShrink: 0 }}>
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        style={{ width: 28, height: 26, borderRadius: 6, background: "transparent", border: `1px solid ${FT.RULE}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: FT.TEXT_MUTED, flexShrink: 0, transition: "all 0.15s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = FT.PAPER_MUTED; e.currentTarget.style.borderColor = FT.ACCENT; e.currentTarget.style.color = FT.ACCENT; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = FT.RULE; e.currentTarget.style.color = FT.TEXT_MUTED; }}>
+                        <Trash2 style={{ width: 14, height: 14 }} />
                       </button>
                     )}
                   </div>

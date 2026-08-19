@@ -2338,9 +2338,19 @@ export function NewReportTab({
                   style={{ display: "flex", alignItems: "center", minHeight: 56, paddingRight: isMobile ? 8 : 12 }}>
 
                   {/* Task # */}
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#9db8a2", flexShrink: 0, padding: isMobile ? "0 6px 0 8px" : "0 8px 0 12px" }}>
+                  <button type="button"
+                    data-testid={`btn-toggle-task-${i}`}
+                    aria-label={row.expanded ? "Collapse task details" : "Expand task details"}
+                    aria-expanded={row.expanded}
+                    aria-controls={`task-detail-${row.id}`}
+                    onClick={e => {
+                      e.stopPropagation();
+                      setTasks(tasks.map(r => r.id === row.id ? { ...r, expanded: !r.expanded } : r));
+                    }}
+                    className="rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3f7d46]"
+                    style={{ background: "transparent", border: "none", fontSize: 10, fontWeight: 700, color: "#9db8a2", flexShrink: 0, padding: isMobile ? "0 6px 0 8px" : "0 8px 0 12px" }}>
                     #{i + 1}
-                  </span>
+                  </button>
 
                   {/* Description — flex:1 */}
                   <div style={{ flex: isMobile ? "1 1 0" : "1 1 auto", minWidth: isMobile ? 72 : 0 }} onClick={e => e.stopPropagation()}>
@@ -2415,7 +2425,7 @@ export function NewReportTab({
 
                 {/* ── Detail panel ── */}
                 {row.expanded && (
-                  <div style={{ background: "#f8faf9", borderTop: "1px solid #e2e8e4", padding: 16, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 }}>
+                  <div id={`task-detail-${row.id}`} style={{ background: "#f8faf9", borderTop: "1px solid #e2e8e4", padding: 16, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 }}>
                     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.6fr 0.9fr", gap: 0 }}>
 
                       {/* Col B: 작업사진 — 2×2 photo grid with per-photo Work Description / Memo */}

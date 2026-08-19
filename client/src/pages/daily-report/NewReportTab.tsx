@@ -56,6 +56,12 @@ const TASK_STATUS_CFG: Record<string, {
 };
 
 const TRADE_COLOR_CFG: Record<string, { bg: string; color: string; border: string }> = {
+  "General Manager":        { bg: "#312E81", color: "#fff", border: "#27236b" },
+  "Deputy General Manager": { bg: "#0F766E", color: "#fff", border: "#0b625c" },
+  "Manager":                { bg: "#0369A1", color: "#fff", border: "#075985" },
+  "Assistant Manager":      { bg: "#B45309", color: "#fff", border: "#92400e" },
+  "Staff":                  { bg: "#475569", color: "#fff", border: "#334155" },
+  "Project Engineer":       { bg: "#6D28D9", color: "#fff", border: "#5b21b6" },
   "Foreman":     { bg: FT.SUCCESS,  color: "#fff", border: "#2d6b29" },
   "Helper":      { bg: "#1d4ed8",   color: "#fff", border: "#1741b0" },
   "Safety":      { bg: FT.DANGER,   color: "#fff", border: "#8a2a17" },
@@ -71,8 +77,9 @@ function tradeBadge(trade: string | undefined) {
     <span style={{
       display: "inline-flex", padding: "2px 8px", borderRadius: 3,
       fontSize: 11, fontWeight: 700, border: `1px solid ${t.border}`,
-      background: t.bg, color: t.color, whiteSpace: "nowrap", flexShrink: 0,
+      background: t.bg, color: t.color, flexShrink: 0,
       fontFamily: FT.FONT, letterSpacing: "0.02em", textTransform: "uppercase",
+      maxWidth: "100%", overflowWrap: "anywhere",
     }}>{trade}</span>
   );
 }
@@ -538,10 +545,11 @@ function AutoSizeTextarea({
 
 // ─── Worker Combobox ──────────────────────────────────────────────────────────
 function WorkerCombobox({
-  row, allWorkers, takenIds, testId, onChange,
+  row, allWorkers, takenIds, testId, onChange, hideTrade = false, hideClearButton = false,
 }: {
   row: ManpowerRow; allWorkers: Worker[]; takenIds: Set<number | null>;
   testId: string; onChange: (patch: Partial<ManpowerRow>) => void;
+  hideTrade?: boolean; hideClearButton?: boolean;
 }) {
   const { t } = useLanguage();
   const [open, setOpen]       = useState(false);
@@ -588,7 +596,7 @@ function WorkerCombobox({
           }}
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)} />
-        {row.trade && (
+        {row.trade && !hideTrade && (
           <span style={{
             flexShrink: 0, fontSize: 11, color: "#94a3b8",
             whiteSpace: "nowrap",
@@ -596,7 +604,7 @@ function WorkerCombobox({
             {row.trade}
           </span>
         )}
-        <button
+        {!hideClearButton && <button
           type="button"
           onMouseDown={e => e.preventDefault()}
           onClick={() => { setQuery(""); setOpen(false); onChange({ workerName: "", workerId: null, trade: "" }); }}
@@ -613,7 +621,7 @@ function WorkerCombobox({
           onMouseEnter={e => { const b = e.currentTarget; b.style.background = "#f43f5e"; b.style.color = "#fff"; }}
           onMouseLeave={e => { const b = e.currentTarget; b.style.background = "#f0f0f0"; b.style.color = "#aaa"; }}>
           ×
-        </button>
+        </button>}
       </div>
       {open && filtered.length > 0 && (
         <div className="absolute z-[100] top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-xl max-h-48 overflow-y-auto overflow-x-hidden" style={{ minWidth: 240 }}>
@@ -2152,43 +2160,48 @@ export function NewReportTab({
                 const hoursActive = HOURS_COMPUTED.has(row.attendanceStatus);
                 const sc = STATUS_COLOR_CFG[row.attendanceStatus] ?? { color: "#374151", bg: "#f9fafb", border: "#e5e7eb" };
                 return (
-                  <div key={row.id} style={{ border: `1.5px solid ${FT.INK}`, borderRadius: 10, padding: "12px 12px 10px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 9 }}>
-                    {/* Row 1: Worker + Delete */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                  <div key={row.id} style={{ border: `1.5px solid ${FT.INK}`, borderRadius: 10, padding: "8px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 8 }}>
+                    {/* Compact main row: worker | attendance | fixed delete action */}
+                    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto auto", alignItems: "center", gap: 6, minWidth: 0 }}>
+                      <div style={{ minWidth: 0 }}>
                         <WorkerCombobox row={row} allWorkers={activeWorkers} takenIds={takenIds}
                           testId={`input-mp-worker-${i}`}
+                          hideTrade
+                          hideClearButton
                           onChange={(p) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, ...p } : r))} />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <Select value={row.attendanceStatus}
+                          onValueChange={(v) => {
+                            const hrs = calcHours(row.startTime, row.endTime, v);
+                            setManpower(manpower.map((r) => r.id === row.id ? { ...r, attendanceStatus: v, hoursWorked: hrs } : r));
+                          }}>
+                          <SelectTrigger data-testid={`select-mp-status-${i}`} className="h-8"
+                            style={{ width: 86, minWidth: 86, padding: "4px 21px 4px 7px", fontSize: row.attendanceStatus === "EARLY_LEAVE" ? 8.5 : 10, fontWeight: 700,
+                              fontFamily: FT.FONT, letterSpacing: "0.02em", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                              color: sc.color, background: sc.bg, border: `1px solid ${sc.border}` }}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ATTENDANCE_STATUSES.map((s) => (
+                              <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <DelBtn testId={`btn-remove-mp-${i}`} onClick={() => setManpower(manpower.filter((r) => r.id !== row.id))} />
                     </div>
-                    {/* Row 2: Status + Hrs badge */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <Select value={row.attendanceStatus}
-                        onValueChange={(v) => {
-                          const hrs = calcHours(row.startTime, row.endTime, v);
-                          setManpower(manpower.map((r) => r.id === row.id ? { ...r, attendanceStatus: v, hoursWorked: hrs } : r));
-                        }}>
-                        <SelectTrigger data-testid={`select-mp-status-${i}`} className="h-9"
-                          style={{ minWidth: 120, padding: "5px 28px 5px 10px", fontSize: 13, fontWeight: 700,
-                            fontFamily: FT.FONT, letterSpacing: "0.02em", textTransform: "uppercase",
-                            color: sc.color, background: sc.bg, border: `1px solid ${sc.border}` }}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ATTENDANCE_STATUSES.map((s) => (
-                            <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {hoursActive && !(quickMode && isMobile) && (
-                        <div style={{ marginLeft: "auto", display: "flex", alignItems: "baseline", gap: 4 }}>
-                          <span style={{ fontSize: 11, color: FT.TEXT_MUTED, fontFamily: FT.FONT, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t.newReportColHrs}</span>
-                          <span style={{ fontSize: 22, fontWeight: 800, color: FT.ACCENT, fontVariantNumeric: "tabular-nums", lineHeight: 1, fontFamily: FT.FONT }}>{row.hoursWorked.toFixed(1)}</span>
-                        </div>
-                      )}
-                    </div>
-                    {/* Row 3: Start + End (only when time matters) */}
+                    {(row.trade || hoursActive) && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0, padding: "0 2px" }}>
+                        {row.trade && <span style={{ minWidth: 0 }} title={row.trade}>{tradeBadge(row.trade)}</span>}
+                        {hoursActive && (
+                          <span data-testid={`mp-quick-hours-${i}`} style={{ marginLeft: "auto", flexShrink: 0, fontSize: 13, fontWeight: 800, color: quickMode ? FT.ACCENT : FT.TEXT_MUTED, fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT, whiteSpace: "nowrap" }}>
+                            {quickMode ? `${row.hoursWorked.toFixed(1)}h` : row.hoursWorked.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {/* Detail rows remain available outside Quick Mode */}
                     {hoursActive && !(quickMode && isMobile) && (
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         {(["start", "end"] as const).map((which) => {

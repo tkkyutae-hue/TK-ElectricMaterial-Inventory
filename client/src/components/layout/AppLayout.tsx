@@ -32,6 +32,8 @@ import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
+import { FieldBrandLockup } from "@/components/layout/FieldBrandLockup";
+import { F_LIGHT } from "@/lib/fieldTokens";
 
 const SIDEBAR_HIDDEN_KEY = "admin.sidebarHidden.v1";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -208,8 +210,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </button>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-[76px] bg-gradient-to-r from-brand-50 via-white to-brand-50/50 border-b border-border border-t-[3px] border-t-brand-600 flex items-center justify-between px-4 sm:px-6 z-10 flex-shrink-0 shadow-[0_1px_0_rgba(22,163,74,0.12)]">
-          <div className="flex items-center gap-3 md:hidden">
+        <header className="h-[76px] bg-gradient-to-r from-brand-50 via-white to-brand-50/50 border-b border-border border-t-[3px] border-t-brand-600 flex items-center justify-between px-3 sm:px-5 z-10 flex-shrink-0 shadow-[0_1px_0_rgba(22,163,74,0.12)]">
+          <div className="flex items-center gap-3 min-w-0">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="-ml-2 text-slate-600">
@@ -220,13 +222,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <SidebarContent />
               </SheetContent>
             </Sheet>
-            <div className="flex items-center gap-2">
-              <img src={tkLogo} alt="TK Electric" className="h-7 w-auto object-contain" />
-              <span className="font-display font-bold text-base text-slate-900">TK Electric</span>
-            </div>
+            <FieldBrandLockup F={F_LIGHT} />
           </div>
 
-          <div className="hidden md:flex items-center gap-2 min-w-0">
+          <div className="hidden lg:flex items-center gap-2 min-w-0">
             <span className="text-xs font-semibold uppercase tracking-wider text-brand-700 bg-brand-100 px-2.5 py-1 rounded-full flex items-center gap-1 whitespace-nowrap flex-shrink-0 border border-brand-200">
               <Shield className="w-3 h-3 flex-shrink-0" /> {t.adminModeChip}
             </span>

@@ -2373,8 +2373,10 @@ export function NewReportTab({
                   </div>
 
                   {/* Chevron + delete */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, paddingLeft: isMobile ? 4 : 8, flexShrink: 0 }}>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${row.expanded ? "rotate-180" : ""}`} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, paddingLeft: isMobile ? 0 : 8, flexShrink: 0 }}>
+                    {!isMobile && (
+                      <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${row.expanded ? "rotate-180" : ""}`} />
+                    )}
                     <button type="button" data-testid={`btn-remove-task-${i}`}
                       onClick={e => { e.stopPropagation(); setDeleteConfirm(row.id); }}
                       className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-red-400">

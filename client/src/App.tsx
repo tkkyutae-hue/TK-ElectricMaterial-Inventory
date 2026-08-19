@@ -161,9 +161,10 @@ function DailyReportLayout({
 }
 
 function DailyReportRouter() {
+  const { t } = useLanguage();
   return (
     <ManagerGuard>
-      <DailyReportLayout backTo="/crew-dispatch" backLabel="Crew Dispatch">
+      <DailyReportLayout backTo="/crew-dispatch" backLabel={t.projectOpsMode}>
         <DailyReport />
       </DailyReportLayout>
     </ManagerGuard>
@@ -171,9 +172,10 @@ function DailyReportRouter() {
 }
 
 function CrewDispatchRouter() {
+  const { t } = useLanguage();
   return (
     <ProjectOperationsGuard>
-      <DailyReportLayout backTo="/home" backLabel="Home">
+      <DailyReportLayout backTo="/home" backLabel={t.backToHome}>
         <CrewDispatch />
       </DailyReportLayout>
     </ProjectOperationsGuard>
@@ -181,9 +183,10 @@ function CrewDispatchRouter() {
 }
 
 function CrewDispatchAssignmentRouter() {
+  const { t } = useLanguage();
   return (
     <CrewDispatchGuard>
-      <DailyReportLayout backTo="/crew-dispatch" backLabel="Crew Dispatch">
+      <DailyReportLayout backTo="/crew-dispatch" backLabel={t.projectOpsMode}>
         <CrewDispatchAssignment />
       </DailyReportLayout>
     </CrewDispatchGuard>
@@ -191,9 +194,10 @@ function CrewDispatchAssignmentRouter() {
 }
 
 function DailyReportWorkspaceRouter() {
+  const { t } = useLanguage();
   return (
     <ManagerGuard>
-      <DailyReportLayout backTo="/daily-report" backLabel="Project List">
+      <DailyReportLayout backTo="/daily-report" backLabel={t.dailyReportMode}>
         <DailyReportWorkspace />
       </DailyReportLayout>
     </ManagerGuard>

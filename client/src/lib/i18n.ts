@@ -1788,7 +1788,7 @@ const en = {
   crewDispatchPageSubtitle:    "Set today's worker assignments or write daily reports.",
   crewDispatchWorkerTitle:     "Worker Assignment",
   crewDispatchWorkerSubtitle:  "Assign today's workers\nto their projects",
-  crewDispatchDailyTitle:      "Daily Report",
+  crewDispatchDailyTitle:      "일일 보고서",
   crewDispatchDailySubtitle:   "Write and view\ndaily project reports",
   tagAssignment:               "Assignment",
   tagAttendance:               "Attendance",

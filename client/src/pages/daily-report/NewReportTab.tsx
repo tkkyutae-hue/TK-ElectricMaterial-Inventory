@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -1090,6 +1090,159 @@ function MaterialSearch({
   );
 }
 
+// ─── Mobile manpower card ─────────────────────────────────────────────────────
+export function MobileManpowerCard({
+  row,
+  index,
+  allWorkers,
+  takenIds,
+  quickMode,
+  onChange,
+  onRemove,
+}: {
+  row: ManpowerRow;
+  index: number;
+  allWorkers: Worker[];
+  takenIds: Set<number | null>;
+  quickMode: boolean;
+  onChange: (patch: Partial<ManpowerRow>) => void;
+  onRemove: () => void;
+}) {
+  const { t } = useLanguage();
+  const hoursActive = HOURS_COMPUTED.has(row.attendanceStatus);
+  const sc = STATUS_COLOR_CFG[row.attendanceStatus] ?? { color: "#374151", bg: "#f9fafb", border: "#e5e7eb" };
+
+  return (
+    <div
+      data-testid={`mp-mobile-card-${index}`}
+      style={{ border: `1.5px solid ${FT.INK}`, borderRadius: 10, padding: "8px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 8 }}
+    >
+      {/* Compact main row: worker | attendance | fixed delete action */}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto auto", alignItems: "center", gap: 6, minWidth: 0 }}>
+        <div style={{ minWidth: 0 }}>
+          <WorkerCombobox
+            row={row}
+            allWorkers={allWorkers}
+            takenIds={takenIds}
+            testId={`input-mp-worker-${index}`}
+            hideTrade
+            hideClearButton
+            onChange={onChange}
+          />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <Select
+            value={row.attendanceStatus}
+            onValueChange={(attendanceStatus) => {
+              onChange({
+                attendanceStatus,
+                hoursWorked: calcHours(row.startTime, row.endTime, attendanceStatus),
+              });
+            }}
+          >
+            <SelectTrigger
+              data-testid={`select-mp-status-${index}`}
+              className="h-8"
+              style={{
+                width: 86, minWidth: 86, padding: "4px 21px 4px 7px",
+                fontSize: row.attendanceStatus === "EARLY_LEAVE" ? 8.5 : 10, fontWeight: 700,
+                fontFamily: FT.FONT, letterSpacing: "0.02em", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                color: sc.color, background: sc.bg, border: `1px solid ${sc.border}`,
+              }}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ATTENDANCE_STATUSES.map((status) => (
+                <SelectItem key={status} value={status}>{status.replace(/_/g, " ")}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <DelBtn testId={`btn-remove-mp-${index}`} onClick={onRemove} />
+      </div>
+
+      {/* Compact detail row: rank | punch range | total hours. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0, padding: "0 2px" }}>
+        {row.trade && (
+          <span data-testid={`mp-mobile-rank-${index}`} style={{ minWidth: 0, maxWidth: "40%", overflow: "hidden" }} title={row.trade}>
+            {tradeBadge(row.trade)}
+          </span>
+        )}
+        <span
+          data-testid={`mp-mobile-punch-time-${index}`}
+          style={{
+            minWidth: 0, flex: "1 1 auto", overflow: "hidden",
+            textOverflow: "ellipsis", whiteSpace: "nowrap",
+            fontSize: 12, fontWeight: 650,
+            color: hoursActive ? FT.TEXT_MUTED : "#a8a29e",
+            fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT,
+          }}
+          aria-label={hoursActive ? "Punch in and out time" : "No working hours"}
+        >
+          {mobilePunchRange(row.attendanceStatus, row.startTime, row.endTime)}
+        </span>
+        <span
+          data-testid={`mp-quick-hours-${index}`}
+          style={{
+            flexShrink: 0, fontSize: 13, fontWeight: 800,
+            color: hoursActive ? FT.ACCENT : "#a8a29e",
+            fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {hoursActive && row.startTime && row.endTime ? `${row.hoursWorked.toFixed(1)}h` : "—"}
+        </span>
+      </div>
+
+      {/* Detail rows remain available outside Quick Mode. */}
+      {hoursActive && !quickMode && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          {(["start", "end"] as const).map((which) => {
+            const value = which === "start" ? row.startTime : row.endTime;
+            return (
+              <div key={which} style={{ display: "flex", alignItems: "center", padding: "6px 9px", gap: 6, height: 40, border: "1px solid #e0e0e0", borderRadius: 8 }}>
+                <svg style={{ color: "#ccc", flexShrink: 0, width: 13, height: 13 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                </svg>
+                <span style={{ fontSize: 9, fontWeight: 700, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>
+                  {which === "start" ? t.newReportStart : t.newReportEnd}
+                </span>
+                <input
+                  data-testid={which === "start" ? `input-mp-start-${index}` : `input-mp-end-${index}`}
+                  type="time"
+                  value={value}
+                  onChange={(event) => {
+                    const nextTime = event.target.value;
+                    onChange({
+                      [which === "start" ? "startTime" : "endTime"]: nextTime,
+                      hoursWorked: which === "start"
+                        ? calcHours(nextTime, row.endTime, row.attendanceStatus)
+                        : calcHours(row.startTime, nextTime, row.attendanceStatus),
+                    });
+                  }}
+                  style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 13, padding: 0, colorScheme: "light" as any }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!quickMode && (
+        <Input
+          data-testid={`input-mp-notes-${index}`}
+          value={row.notes}
+          onChange={(event) => onChange({ notes: event.target.value })}
+          className={cellInputCls}
+          placeholder={t.newReportOptional}
+          style={{ fontSize: 13, color: row.notes ? "#1a1a1a" : "#bbb" }}
+        />
+      )}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export function NewReportTab({
   projectId, reportId, initialData, onSaved, forceEdit = false,
@@ -2169,106 +2322,16 @@ export function NewReportTab({
                 const hoursActive = HOURS_COMPUTED.has(row.attendanceStatus);
                 const sc = STATUS_COLOR_CFG[row.attendanceStatus] ?? { color: "#374151", bg: "#f9fafb", border: "#e5e7eb" };
                 return (
-                  <div key={row.id} style={{ border: `1.5px solid ${FT.INK}`, borderRadius: 10, padding: "8px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 8 }}>
-                    {/* Compact main row: worker | attendance | fixed delete action */}
-                    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto auto", alignItems: "center", gap: 6, minWidth: 0 }}>
-                      <div style={{ minWidth: 0 }}>
-                        <WorkerCombobox row={row} allWorkers={activeWorkers} takenIds={takenIds}
-                          testId={`input-mp-worker-${i}`}
-                          hideTrade
-                          hideClearButton
-                          onChange={(p) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, ...p } : r))} />
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <Select value={row.attendanceStatus}
-                          onValueChange={(v) => {
-                            const hrs = calcHours(row.startTime, row.endTime, v);
-                            setManpower(manpower.map((r) => r.id === row.id ? { ...r, attendanceStatus: v, hoursWorked: hrs } : r));
-                          }}>
-                          <SelectTrigger data-testid={`select-mp-status-${i}`} className="h-8"
-                            style={{ width: 86, minWidth: 86, padding: "4px 21px 4px 7px", fontSize: row.attendanceStatus === "EARLY_LEAVE" ? 8.5 : 10, fontWeight: 700,
-                              fontFamily: FT.FONT, letterSpacing: "0.02em", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                              color: sc.color, background: sc.bg, border: `1px solid ${sc.border}` }}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ATTENDANCE_STATUSES.map((s) => (
-                              <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <DelBtn testId={`btn-remove-mp-${i}`} onClick={() => setManpower(manpower.filter((r) => r.id !== row.id))} />
-                    </div>
-                    {/* Compact detail row: rank | punch range | total hours.
-                        Keep this visible in both Quick Mode and regular mobile mode. */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0, padding: "0 2px" }}>
-                      {row.trade && (
-                        <span style={{ minWidth: 0, maxWidth: "40%", overflow: "hidden" }} title={row.trade}>
-                          {tradeBadge(row.trade)}
-                        </span>
-                      )}
-                      <span
-                        data-testid={`mp-mobile-punch-time-${i}`}
-                        style={{
-                          minWidth: 0, flex: "1 1 auto", overflow: "hidden",
-                          textOverflow: "ellipsis", whiteSpace: "nowrap",
-                          fontSize: 12, fontWeight: 650,
-                          color: hoursActive ? FT.TEXT_MUTED : "#a8a29e",
-                          fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT,
-                        }}
-                        aria-label={hoursActive ? "Punch in and out time" : "No working hours"}
-                      >
-                        {mobilePunchRange(row.attendanceStatus, row.startTime, row.endTime)}
-                      </span>
-                      <span
-                        data-testid={`mp-quick-hours-${i}`}
-                        style={{
-                          flexShrink: 0, fontSize: 13, fontWeight: 800,
-                          color: hoursActive ? FT.ACCENT : "#a8a29e",
-                          fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {hoursActive && row.startTime && row.endTime ? `${row.hoursWorked.toFixed(1)}h` : "—"}
-                      </span>
-                    </div>
-                    {/* Detail rows remain available outside Quick Mode */}
-                    {hoursActive && !(quickMode && isMobile) && (
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                        {(["start", "end"] as const).map((which) => {
-                          const val = which === "start" ? row.startTime : row.endTime;
-                          return (
-                            <div key={which} style={{ display: "flex", alignItems: "center", padding: "6px 9px", gap: 6, height: 40, border: "1px solid #e0e0e0", borderRadius: 8 }}>
-                              <svg style={{ color: "#ccc", flexShrink: 0, width: 13, height: 13 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                              </svg>
-                              <span style={{ fontSize: 9, fontWeight: 700, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>
-                                {which === "start" ? t.newReportStart : t.newReportEnd}
-                              </span>
-                              <input data-testid={which === "start" ? `input-mp-start-${i}` : `input-mp-end-${i}`}
-                                type="time" value={val}
-                                onChange={(e) => {
-                                  const v = e.target.value;
-                                  const hrs = which === "start"
-                                    ? calcHours(v, row.endTime, row.attendanceStatus)
-                                    : calcHours(row.startTime, v, row.attendanceStatus);
-                                  setManpower(manpower.map((r) => r.id === row.id ? { ...r, [which === "start" ? "startTime" : "endTime"]: v, hoursWorked: hrs } : r));
-                                }}
-                                style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 13, padding: 0, colorScheme: "light" as any }} />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {/* Row 4: Notes */}
-                    {!(quickMode && isMobile) && (
-                    <Input data-testid={`input-mp-notes-${i}`} value={row.notes}
-                      onChange={(e) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
-                      className={cellInputCls} placeholder={t.newReportOptional}
-                      style={{ fontSize: 13, color: row.notes ? "#1a1a1a" : "#bbb" }} />
-                    )}
-                  </div>
+                  <MobileManpowerCard
+                    key={row.id}
+                    row={row}
+                    index={i}
+                    allWorkers={activeWorkers}
+                    takenIds={takenIds}
+                    quickMode={quickMode}
+                    onChange={(patch) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, ...patch } : r))}
+                    onRemove={() => setManpower(manpower.filter((r) => r.id !== row.id))}
+                  />
                 );
               })}
             </div>

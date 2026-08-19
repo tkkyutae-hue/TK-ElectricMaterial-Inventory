@@ -2157,34 +2157,36 @@ export function NewReportTab({
           {manpower.length > 0 && (
             <div data-testid="manpower-summary-bar" style={{
               borderTop: `1px solid ${FT.RULE}`, background: FT.PAPER_MUTED,
-              padding: "9px 14px", display: "flex", alignItems: "center",
+               padding: "9px 14px", display: "flex", flexDirection: isMobile ? "column" : "row",
+               alignItems: isMobile ? "stretch" : "center", gap: isMobile ? 8 : 0,
+               width: "100%", minWidth: 0, boxSizing: "border-box", overflow: "hidden",
             }}>
               {/* Left: label, Present, Exceptions */}
-              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 0, width: isMobile ? "100%" : undefined, display: "flex", alignItems: "center", gap: isMobile ? 8 : 14, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 13, fontWeight: 800, color: FT.INK, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: FT.FONT }}>
                   {t.newReportMpSummary}
                 </span>
-                <div style={{ display: "flex", alignItems: "center", gap: 4, paddingRight: 12, marginRight: 0, borderRight: `1px solid ${FT.RULE}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, paddingRight: isMobile ? 0 : 12, marginRight: 0, borderRight: isMobile ? "none" : `1px solid ${FT.RULE}`, minWidth: 0 }}>
                   <span style={{ fontSize: 13, color: FT.TEXT_MUTED }}>{t.newReportMpPresent}</span>
                   <span style={{ fontSize: 13, fontWeight: 800, color: FT.SUCCESS, fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT }}>{presentCount}</span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
                   <span style={{ fontSize: 13, color: FT.TEXT_MUTED }}>{t.newReportMpExceptions}</span>
                   <span style={{ fontSize: 13, fontWeight: 800, color: exceptionsCount > 0 ? FT.ACCENT : FT.TEXT_MUTED, fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT }}>{exceptionsCount}</span>
                 </div>
               </div>
               {/* Right: Total Work Hrs, Issues */}
-              <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
-                  <span style={{ fontSize: 13, color: FT.TEXT_MUTED, whiteSpace: "nowrap" }}>{t.newReportMpTotalHrs}</span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: isMobile ? "space-between" : undefined, gap: isMobile ? 8 : 14, flexShrink: isMobile ? 1 : 0, minWidth: 0, width: isMobile ? "100%" : undefined, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 5, minWidth: 0 }}>
+                  <span style={{ fontSize: 13, color: FT.TEXT_MUTED, whiteSpace: isMobile ? "normal" : "nowrap" }}>{t.newReportMpTotalHrs}</span>
                   <span style={{ fontSize: 22, fontWeight: 800, color: exceptionsCount > 0 ? FT.ACCENT : FT.SUCCESS, fontVariantNumeric: "tabular-nums", lineHeight: 1, fontFamily: FT.FONT }}>
                     {totalManhours.toFixed(1)}
                   </span>
                 </div>
                 {exceptionsCount === 0 ? (
-                  <span style={{ fontSize: 13, color: FT.TEXT_MUTED, whiteSpace: "nowrap" }}>{t.newReportMpIssuesNone}</span>
+                  <span style={{ fontSize: 13, color: FT.TEXT_MUTED, whiteSpace: isMobile ? "normal" : "nowrap", minWidth: 0, textAlign: "right" }}>{t.newReportMpIssuesNone}</span>
                 ) : (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: 4, background: FT.ACCENT, fontSize: 11, fontWeight: 700, color: "#fff", whiteSpace: "nowrap", fontFamily: FT.FONT, letterSpacing: "0.03em" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: 4, background: FT.ACCENT, fontSize: 11, fontWeight: 700, color: "#fff", whiteSpace: isMobile ? "normal" : "nowrap", minWidth: 0, maxWidth: "100%", textAlign: "center", fontFamily: FT.FONT, letterSpacing: "0.03em" }}>
                     ⚠ {exceptionsCount} {t.newReportMpFlagged}
                   </span>
                 )}

@@ -472,6 +472,17 @@ function ROCell({ children, center }: { children: React.ReactNode; center?: bool
 // ─── Transparent input (for table cells) ─────────────────────────────────────
 const cellInputCls = "h-8 text-[13px] border-transparent bg-transparent hover:border-[#D8D3C4] hover:bg-[#F7F5EF] focus:border-[#E85D04] focus:bg-[#F7F5EF] transition-colors";
 
+function materialSectionColor(section: string) {
+  const name = section.trim().toLowerCase();
+  if (name.includes("power") && name.includes("distribution")) return "#263248";
+  if (name.includes("receptacle")) return "#176B87";
+  if (name.includes("lighting")) return "#A16207";
+  if (name.includes("fire") && name.includes("alarm")) return "#9F3A38";
+  if (name.includes("communication")) return "#5B4B8A";
+  if (name.includes("ground")) return "#3F6212";
+  return FT.INK;
+}
+
 // ─── Content-sized textarea ───────────────────────────────────────────────────
 function AutoSizeTextarea({
   value, style, ...props
@@ -2671,7 +2682,7 @@ export function NewReportTab({
                   if (sec) {
                     mobileNodes.push(
                       <div key={`sec-${sec}`}
-                        style={{ padding: "7px 12px", background: FT.INK, borderRadius: 6, fontSize: 12, fontWeight: 800, color: "#fff", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 4 }}>
+                        style={{ padding: "7px 12px", background: materialSectionColor(sec), borderRadius: 6, fontSize: 12, fontWeight: 800, color: "#fff", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 4 }}>
                         {sec}
                       </div>
                     );
@@ -2784,9 +2795,10 @@ export function NewReportTab({
                   if (sec !== lastDeskSection) {
                     lastDeskSection = sec;
                     if (sec) {
+                      const sectionColor = materialSectionColor(sec);
                       deskRows.push(
-                        <tr key={`sec-${sec}`} style={{ background: "#f8fafc" }}>
-                          <td colSpan={6} style={{ padding: "5px 8px 3px", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", borderBottom: `1px solid ${FT.RULE}` }}>
+                        <tr key={`sec-${sec}`} style={{ background: sectionColor }}>
+                          <td colSpan={6} style={{ padding: "5px 8px 3px", fontSize: 10, fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.08em", borderBottom: `1px solid ${sectionColor}` }}>
                             {sec}
                           </td>
                         </tr>

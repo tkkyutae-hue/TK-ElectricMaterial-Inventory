@@ -305,6 +305,7 @@ export default function Home() {
         gap: 12,
         background: `linear-gradient(90deg, ${F.bg} 0%, ${F.surface2} 50%, ${F.bg} 100%)`,
         borderBottom: `1px solid ${F.borderStrong}`,
+         borderTop: `3px solid ${F.accent}`,
         boxShadow: `0 1px 0 ${F.accentBorder}`,
         transition: "background 0.2s, border-color 0.2s",
       }}>

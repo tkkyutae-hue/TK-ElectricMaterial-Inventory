@@ -77,35 +77,60 @@ function DailyReportLayout({
   backLabel?: string;
 }) {
   const [, navigate] = useLocation();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const label = backLabel ?? t.dailyReportMode;
+  const headerDate = new Date().toLocaleDateString(
+    lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US",
+    { weekday: "short", month: "short", day: "numeric", year: "numeric" },
+  );
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", flexDirection: "column" }}>
       <header style={{
-        display: "flex", alignItems: "center", gap: 12,
-        padding: "12px 20px",
-        background: "#ffffff",
+        height: 76,
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+        padding: "10px clamp(12px, 3vw, 28px)",
+        background: "linear-gradient(90deg, #f0faf3 0%, #ffffff 50%, #f0faf3 100%)",
         borderBottom: "1px solid #e2e8f0",
+        borderTop: "3px solid #16803a",
+        boxShadow: "0 1px 0 rgba(22,163,74,0.12)",
       }}>
-        <TkElectricBrand compact textClassName="hidden sm:block" />
-        <button
-          data-testid="btn-daily-report-back"
-          onClick={() => navigate(backTo)}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            background: "none", border: "none", cursor: "pointer",
-            color: "#64748b", fontSize: 13, fontFamily: "'Barlow', sans-serif",
-            padding: "6px 10px", borderRadius: 8,
-            transition: "color 0.15s",
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = "#334155")}
-          onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}
-        >
-          <ArrowLeft style={{ width: 14, height: 14 }} />
-          <span>{label}</span>
-        </button>
-        <div style={{ flex: 1 }} />
-        <LanguageSwitcher theme="light" />
+        <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+          <TkElectricBrand
+            compact
+            textClassName="hidden sm:block"
+            detail={
+              <span className="hidden sm:flex text-[10px] font-semibold text-amber-600 uppercase tracking-wider mt-1 items-center gap-1 whitespace-nowrap">
+                <span>●</span> {t.projectOpsMode}
+                <span className="text-slate-400 font-normal">·</span>
+                <span className="text-slate-500 font-medium normal-case tracking-normal">{headerDate}</span>
+              </span>
+            }
+          />
+          <button
+            data-testid="btn-daily-report-back"
+            onClick={() => navigate(backTo)}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              background: "none", border: "none", cursor: "pointer",
+              color: "#64748b", fontSize: 13, fontFamily: "'Barlow', sans-serif",
+              padding: "6px 10px", borderRadius: 8,
+              transition: "color 0.15s",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = "#334155")}
+            onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}
+          >
+            <ArrowLeft style={{ width: 14, height: 14 }} />
+            <span className="hidden sm:inline">{label}</span>
+          </button>
+        </div>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: 4, background: "#ffffff",
+          border: "1px solid #b7dfc2", borderRadius: 14,
+          boxShadow: "0 4px 14px rgba(15,31,23,0.06)",
+        }}>
+          <LanguageSwitcher theme="light" compact />
+        </div>
       </header>
       <main style={{ flex: 1, maxWidth: 1200, width: "100%", margin: "0 auto" }} className="px-4 py-6 sm:px-8">
         {children}

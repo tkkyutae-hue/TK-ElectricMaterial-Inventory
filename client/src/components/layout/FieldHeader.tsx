@@ -34,12 +34,13 @@ export function FieldHeader() {
       className="px-3 sm:px-5"
       style={{
         position: "relative", zIndex: 50, flexShrink: 0,
-        minHeight: 52,
+         minHeight: 68,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         paddingTop: "env(safe-area-inset-top)",
         paddingBottom: 0,
-        background: F.bg,
+         background: `linear-gradient(90deg, ${F.bg} 0%, ${F.surface2} 50%, ${F.bg} 100%)`,
         borderBottom: `1px solid ${F.borderStrong}`,
+         borderTop: `3px solid ${F.accent}`,
         transition: "background 0.2s, border-color 0.2s",
       }}
     >
@@ -83,7 +84,14 @@ export function FieldHeader() {
       </div>
 
       {/* Right side */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 6,
+        padding: 4,
+        background: F.surface,
+        border: `1px solid ${F.borderStrong}`,
+        borderRadius: 14,
+        boxShadow: fieldTheme === "light" ? "0 4px 14px rgba(15,31,23,0.06)" : "0 8px 18px rgba(0,0,0,0.18)",
+      }}>
 
         {/* Dark/Light theme toggle — left of language switcher */}
         <FieldThemeSwitcher compact={true} />

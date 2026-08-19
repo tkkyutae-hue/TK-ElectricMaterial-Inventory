@@ -320,6 +320,7 @@ function SectionNavigator({
 }
 
 const SECTION_STATE_STORAGE_PREFIX = "daily-report-section-state";
+const MATERIAL_SECTION_STATE_STORAGE_PREFIX = "daily-report-material-section-state";
 function Section({
   num, title, defaultOpen = true, storageKey, summary, alert, headerRight, children,
 }: {
@@ -1093,6 +1094,9 @@ export function NewReportTab({
   const sectionStorageScope = reportId
     ? `${SECTION_STATE_STORAGE_PREFIX}:${projectId}:${reportId}`
     : undefined;
+  const materialSectionStorageKey = reportId
+    ? `${MATERIAL_SECTION_STATE_STORAGE_PREFIX}:${projectId}:${reportId}`
+    : undefined;
 
   // ── Section navigator ──
   const sectionRefs     = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null, null]);
@@ -1396,12 +1400,50 @@ export function NewReportTab({
   const [materials,  setMaterials]  = useState<MaterialRow[]>(
     (fd?.materials ?? []).map((m: any) => ({ inventoryItemId: null, scopeItemId: null, spec: "", ...m }))
   );
-  const [collapsedMaterialSections, setCollapsedMaterialSections] = useState<Record<string, boolean>>({});
   const [equipment, setEquipment]  = useState<EquipmentRow[]>(fd?.equipment  ?? []);
   const materialSectionCounts = useMemo(() => materials.reduce<Record<string, number>>((counts, row) => {
     if (row.section) counts[row.section] = (counts[row.section] ?? 0) + 1;
     return counts;
   }, {}), [materials]);
+  const materialSections = useMemo(
+    () => Array.from(new Set(materials.map((row) => row.section).filter((section): section is string => Boolean(section)))),
+    [materials],
+  );
+  const [materialSectionState, setMaterialSectionState] = useState<{
+    storageKey: string | undefined;
+    collapsed: Record<string, boolean>;
+  }>(() => ({
+    storageKey: materialSectionStorageKey,
+    collapsed: materialSectionStorageKey
+      ? pruneCollapsedMaterialSections(readCollapsedMaterialSections(materialSectionStorageKey), materialSections)
+      : {},
+  }));
+  // Never show or write a previous report's state while the saved-report identity changes.
+  const collapsedMaterialSections = materialSectionState.storageKey === materialSectionStorageKey
+    ? materialSectionState.collapsed
+    : {};
+
+  useEffect(() => {
+    const restored = materialSectionStorageKey
+      ? pruneCollapsedMaterialSections(readCollapsedMaterialSections(materialSectionStorageKey), materialSections)
+      : {};
+    setMaterialSectionState({ storageKey: materialSectionStorageKey, collapsed: restored });
+  }, [materialSectionStorageKey]);
+
+  useEffect(() => {
+    setMaterialSectionState((previous) => {
+      if (previous.storageKey !== materialSectionStorageKey) return previous;
+      const collapsed = pruneCollapsedMaterialSections(previous.collapsed, materialSections);
+      return collapsedMaterialSectionsEqual(previous.collapsed, collapsed)
+        ? previous
+        : { ...previous, collapsed };
+    });
+  }, [materialSectionStorageKey, materialSections]);
+
+  useEffect(() => {
+    if (!materialSectionStorageKey || materialSectionState.storageKey !== materialSectionStorageKey) return;
+    writeCollapsedMaterialSections(materialSectionStorageKey, materialSectionState.collapsed);
+  }, [materialSectionStorageKey, materialSectionState]);
 
   function createEmptyMaterial(section: string | null = null): MaterialRow {
     return {
@@ -1411,11 +1453,25 @@ export function NewReportTab({
   }
 
   function toggleMaterialSection(section: string) {
-    setCollapsedMaterialSections(prev => ({ ...prev, [section]: !prev[section] }));
+    setMaterialSectionState((previous) => {
+      const collapsed = previous.storageKey === materialSectionStorageKey ? previous.collapsed : {};
+      return {
+        storageKey: materialSectionStorageKey,
+        collapsed: {
+          ...collapsed,
+          [section]: collapsed[section] !== true,
+        },
+      };
+    });
   }
 
   function addMaterialToSection(section: string) {
-    setCollapsedMaterialSections(prev => ({ ...prev, [section]: false }));
+    setMaterialSectionState((previous) => {
+      const collapsed = previous.storageKey === materialSectionStorageKey ? previous.collapsed : {};
+      if (collapsed[section] !== true) return previous;
+      const { [section]: _expandedSection, ...remaining } = collapsed;
+      return { storageKey: materialSectionStorageKey, collapsed: remaining };
+    });
     setMaterials(prev => {
       const newMaterial = createEmptyMaterial(section);
       const lastSectionIndex = prev.reduce((lastIndex, row, index) =>
@@ -2744,10 +2800,10 @@ export function NewReportTab({
                 mobileNodes.push(
                 /* ── 2-row compact card: name full-width top, spec+qty+unit bottom ── */
                 <div key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
-                  style={{ border: `1px solid ${FT.RULE}`, borderLeft: isExtra ? `3px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`, borderRadius: 8, padding: "8px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 7, minWidth: 0, maxWidth: "100%", overflow: "hidden", boxSizing: "border-box" }}>
+                  style={{ border: `1px solid ${FT.RULE}`, borderLeft: isExtra ? `3px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`, borderRadius: 8, padding: "8px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 7, minWidth: 0, maxWidth: "100%", boxSizing: "border-box" }}>
                   {/* Name + delete — name can grow over multiple lines */}
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 8, minWidth: 0 }}>
-                    <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                    <div style={{ flex: 1, minWidth: 0, overflow: "visible" }}>
                       <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
                         onChange={(p) => {
                           let patch: Partial<MaterialRow> = { ...p };
@@ -2776,9 +2832,8 @@ export function NewReportTab({
                   <AutoSizeTextarea data-testid={`input-mat-spec-${i}`} value={row.spec}
                     onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, spec: e.target.value } : r))}
                     placeholder={t.newReportSpec}
-                    aria-label={t.newReportSpec}
-                    className="placeholder:text-[#78716c] placeholder:opacity-100"
-                    style={{ display: "block", width: "100%", maxWidth: "100%", minHeight: 20, padding: 0, border: "none", background: "transparent", outline: "none", boxShadow: "none", resize: "none", overflow: "hidden", overflowWrap: "anywhere", wordBreak: "break-word", fontSize: 12, fontWeight: 500, lineHeight: 1.5, color: "#374151", boxSizing: "border-box" }} />
+                    className="placeholder:text-[#a8a29e]"
+                    style={{ width: "100%", minHeight: 20, padding: 0, border: "none", background: "transparent", outline: "none", boxShadow: "none", resize: "none", overflow: "hidden", overflowWrap: "anywhere", fontSize: 12, fontWeight: 500, lineHeight: 1.5, color: row.spec ? "#4b5563" : "#a8a29e", boxSizing: "border-box" }} />
                   {/* Badges and quantity controls use a dedicated bottom row */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, minWidth: 0, flexWrap: "wrap" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, flexWrap: "wrap" }}>
@@ -2799,9 +2854,8 @@ export function NewReportTab({
                       ) : (
                         <input data-testid={`input-mat-unit-${i}`} value={row.unit}
                           onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                          placeholder={t.newReportUnitEAPh}
-                          aria-label={t.newReportEqColUnit}
-                          style={{ width: 48, minWidth: 48, maxWidth: "100%", fontSize: 12, fontWeight: 700, textAlign: "center", border: "none", background: "transparent", outline: "none", color: "#4b5563", flexShrink: 0 }} />
+                          placeholder="EA"
+                          style={{ width: 30, fontSize: 12, fontWeight: 700, textAlign: "center", border: "none", background: "transparent", outline: "none", color: "#666", flexShrink: 0 }} />
                       )}
                     </div>
                   </div>
@@ -3452,6 +3506,48 @@ function writeSectionOpenState(storageKey: string, open: boolean): void {
   } catch {
     // Browser storage can be unavailable or full; section toggling still works.
   }
+}
+
+function readCollapsedMaterialSections(storageKey: string): Record<string, boolean> {
+  try {
+    const stored = window.localStorage.getItem(storageKey);
+    if (!stored) return {};
+    const parsed: unknown = JSON.parse(stored);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([section, collapsed]) => section.length > 0 && collapsed === true),
+    );
+  } catch {
+    return {};
+  }
+}
+
+function writeCollapsedMaterialSections(storageKey: string, collapsed: Record<string, boolean>): void {
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(collapsed));
+  } catch {
+    // Browser storage can be unavailable or full; group toggling still works.
+  }
+}
+
+function pruneCollapsedMaterialSections(
+  collapsed: Record<string, boolean>,
+  sections: readonly string[],
+): Record<string, boolean> {
+  const activeSections = new Set(sections);
+  return Object.fromEntries(
+    Object.entries(collapsed).filter(([section, isCollapsed]) => activeSections.has(section) && isCollapsed === true),
+  );
+}
+
+function collapsedMaterialSectionsEqual(
+  first: Record<string, boolean>,
+  second: Record<string, boolean>,
+): boolean {
+  const firstKeys = Object.keys(first);
+  const secondKeys = Object.keys(second);
+  return firstKeys.length === secondKeys.length
+    && firstKeys.every((key) => first[key] === second[key]);
 }
 
 function readSectionOpenState(storageKey: string, defaultOpen: boolean): boolean {

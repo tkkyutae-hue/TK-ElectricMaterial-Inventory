@@ -2724,7 +2724,8 @@ export function NewReportTab({
                   <AutoSizeTextarea data-testid={`input-mat-spec-${i}`} value={row.spec}
                     onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, spec: e.target.value } : r))}
                     placeholder={t.newReportSpec}
-                    style={{ width: "100%", minHeight: 18, padding: 0, border: "none", background: "transparent", outline: "none", boxShadow: "none", resize: "none", overflow: "hidden", overflowWrap: "anywhere", fontSize: 11, lineHeight: 1.45, color: row.spec ? "#6b7280" : "#d1d5db", boxSizing: "border-box" }} />
+                    className="placeholder:text-[#a8a29e]"
+                    style={{ width: "100%", minHeight: 20, padding: 0, border: "none", background: "transparent", outline: "none", boxShadow: "none", resize: "none", overflow: "hidden", overflowWrap: "anywhere", fontSize: 12, fontWeight: 500, lineHeight: 1.5, color: row.spec ? "#4b5563" : "#a8a29e", boxSizing: "border-box" }} />
                   {/* Badges and quantity controls use a dedicated bottom row */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, minWidth: 0, flexWrap: "wrap" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, flexWrap: "wrap" }}>

@@ -8,6 +8,7 @@
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
+    "test:manpower-summary": "playwright install chromium && tsx tests/manpowerSummaryLayout.test.tsx",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
@@ -123,6 +124,7 @@
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.31.8",
     "esbuild": "^0.25.0",
+    "playwright": "^1.62.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.20.5",

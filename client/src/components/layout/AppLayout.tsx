@@ -214,7 +214,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3 min-w-0">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="-ml-2 text-slate-600">
+                <Button variant="ghost" size="icon" className="-ml-2 text-slate-600 md:hidden">
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
@@ -222,7 +222,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <SidebarContent />
               </SheetContent>
             </Sheet>
-            <FieldBrandLockup F={F_LIGHT} />
+            <div className="inventory-header-brand">
+              <FieldBrandLockup F={F_LIGHT} compact />
+            </div>
           </div>
 
           <div className="hidden lg:flex items-center gap-2 min-w-0">
@@ -234,7 +236,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </span>
           </div>
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-1.5 ml-3 pl-1.5 pr-1.5 py-1 rounded-[14px] border border-brand-200 bg-white/80 shadow-sm">
             {location !== "/" && (
               <Button
                 variant="ghost"
@@ -258,7 +260,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="hidden sm:inline">{t.modeSelect}</span>
               </Button>
             </Link>
-            <LanguageSwitcher theme="light" />
+            <LanguageSwitcher theme="light" compact={true} />
             <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-brand-50 relative w-9 h-9">
               <Bell className="w-4 h-4" />
             </Button>

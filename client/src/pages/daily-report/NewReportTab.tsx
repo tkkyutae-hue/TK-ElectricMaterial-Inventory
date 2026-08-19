@@ -1734,11 +1734,11 @@ export function NewReportTab({
         ) : undefined}>
         <div style={{ padding: isMobile ? "16px 12px" : "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
 
-          {/* ROW 1 — Report No | Shift | Date (mobile: 3-col; desktop: Report No | Shift | Weather+Temp | Date) */}
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "72px 1fr 1fr" : "72px 130px 1fr 148px", gap: 10, alignItems: "end" }}>
+          {/* General info header — mobile puts Report No on its own row, then Shift + Date */}
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "72px 130px 1fr 148px", gap: 10, alignItems: "end" }}>
 
             {/* Col 1: Report No */}
-            <div>
+            <div style={isMobile ? { gridColumn: "1 / -1", width: 72 } : undefined}>
               <FL>{t.newReportReportNo}</FL>
               <div style={{ width: 72, height: 36, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 16, fontWeight: 700, letterSpacing: "0.06em", textAlign: "center", background: "#f9fafb", color: "#374151", fontFamily: "monospace" }}>
                 {reportNumber || <span style={{ fontSize: 11, color: "#d1d5db", fontWeight: 400, fontStyle: "italic", fontFamily: "sans-serif" }}>auto…</span>}

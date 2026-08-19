@@ -18,6 +18,15 @@ const CSS = `
 .fl-outer     { height: 100vh; }
 @supports (height: 100dvh) { .fl-outer { height: 100dvh; } }
 @media (max-width: 767px) {
+  /* Keep native touch scrolling while removing distracting page scrollbars. */
+  html, body, #root, .fl-outer {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  #root::-webkit-scrollbar,
+  .fl-outer::-webkit-scrollbar { display: none; }
   /* Icon-only header buttons: tighter horizontal padding */
   .fl-hdr-btn { padding: 5px 7px !important; }
   /* Chip text hidden on mobile — reinforces hidden-mobile from index.css */

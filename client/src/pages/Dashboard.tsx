@@ -198,9 +198,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 pb-12">
-      <PageHeader size="lg" title={t.dashTitle} subtitle={t.dashSubtitle}>
-        <span className="text-xs text-slate-400 font-medium">{format(new Date(), "EEEE, MMMM d, yyyy")}</span>
-      </PageHeader>
+      <PageHeader size="lg" title={t.dashTitle} subtitle={t.dashSubtitle} />
 
       {/* KPI cards — problem-first order */}
       {isLoading ? (

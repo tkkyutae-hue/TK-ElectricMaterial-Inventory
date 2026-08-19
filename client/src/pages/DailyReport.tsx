@@ -379,14 +379,28 @@ export default function DailyReport() {
     return ids;
   }, [linkedWorker, crewAssignments]);
 
-  // Whether to personalise the highlighted section for a linked manager.
+  // Whether to show only the current user's assigned projects in the highlighted section.
   // DailyReport is accessible to "manager", "staff" and "admin" roles (see useAuth/App.tsx).
   // - admin: always sees everything regardless of linked worker.
   // - manager with a linked worker record: sees only their own dispatched projects
   //   (treated as a foreman-manager / 작업반장).
   // - manager without a linked worker: falls back to seeing all (existing behaviour).
-  // - staff: sees the full project list; assignment is not an access boundary.
-  const isSelfFilterActive = user?.role === "manager" && myWorkerProjectIds !== null;
+  // - staff: restricted to their own assigned projects only (see staffProjectIds below).
+  const isStaff = user?.role === "staff";
+  const isSelfFilterActive = (user?.role === "manager" || isStaff) && myWorkerProjectIds !== null;
+
+  // Staff-only: distinct projectIds (across all dates) where this user's linked worker
+  // was dispatched. null → no linked worker (staff sees nothing until an admin links one).
+  const { data: staffProjectIds = null, isLoading: staffIdsLoading } = useQuery<number[] | null>({
+    queryKey: ["/api/me/worker-project-ids"],
+    queryFn: async () => {
+      const res = await fetch("/api/me/worker-project-ids", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: isStaff,
+    staleTime: 1000 * 60 * 5,
+  });
 
   const summaryMap = useMemo(
     () => reportSummaries.reduce<Record<number, ReportSummary>>((acc, s) => { acc[s.projectId] = s; return acc; }, {}),
@@ -408,7 +422,14 @@ export default function DailyReport() {
     setHiddenStatuses(prev => new Set([...prev, ...extra]));
   }, [allStatusOptions]);
 
+  // Staff only see projects they've been dispatched to (any date)
+  const staffIdSet = useMemo(
+    () => (isStaff ? new Set(staffProjectIds ?? []) : null),
+    [isStaff, staffProjectIds],
+  );
+
   const filtered = useMemo(() => allProjects.filter((p) => {
+    if (staffIdSet && !staffIdSet.has(p.id)) return false;
     if (hiddenStatuses.has((p.status ?? "").toLowerCase())) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
@@ -419,7 +440,7 @@ export default function DailyReport() {
       (p.customerName ?? "").toLowerCase().includes(q) ||
       (p.ownerName ?? "").toLowerCase().includes(q)
     );
-  }), [allProjects, hiddenStatuses, search]);
+  }), [allProjects, hiddenStatuses, search, staffIdSet]);
 
   // Split into assigned-today vs rest.
   // When isSelfFilterActive, "assigned" means ONLY projects where the current user's own
@@ -488,9 +509,15 @@ export default function DailyReport() {
     });
   }
 
-  const totalCount     = allProjects.length;
-  const activeCount    = allProjects.filter((p) => !["completed","cancelled","canceled","done"].includes((p.status ?? "").toLowerCase())).length;
-  const completedCount = allProjects.filter((p) => ["completed","done"].includes((p.status ?? "").toLowerCase())).length;
+  // KPI uses the full project list for admin/manager, but only the staff-scoped
+  // project set for staff (no totals disclosed for unassigned projects).
+  const kpiProjects = useMemo(
+    () => (staffIdSet ? allProjects.filter((p) => staffIdSet.has(p.id)) : allProjects),
+    [allProjects, staffIdSet],
+  );
+  const totalCount     = kpiProjects.length;
+  const activeCount    = kpiProjects.filter((p) => !["completed","cancelled","canceled","done"].includes((p.status ?? "").toLowerCase())).length;
+  const completedCount = kpiProjects.filter((p) => ["completed","done"].includes((p.status ?? "").toLowerCase())).length;
   const visibleCount   = filtered.length;
 
   // How many visible statuses vs total
@@ -652,8 +679,17 @@ export default function DailyReport() {
                 <FileText className="w-7 h-7 text-slate-400" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-slate-600">{t.dailyReportNoProjectsFound}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{t.dailyReportTryAdjusting}</p>
+                {isStaff && staffIdSet !== null && staffIdSet.size === 0 && !staffIdsLoading ? (
+                  <>
+                    <p className="text-sm font-medium text-slate-600">배치된 프로젝트가 없습니다</p>
+                    <p className="text-xs text-slate-400 mt-0.5">프로젝트에 배치되면 여기에 표시됩니다. 계정이 작업자와 연결되지 않았다면 관리자에게 문의하세요.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-slate-600">{t.dailyReportNoProjectsFound}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{t.dailyReportTryAdjusting}</p>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>

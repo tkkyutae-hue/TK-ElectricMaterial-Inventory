@@ -35,8 +35,8 @@ export function useAuth() {
     isAuthenticated: !!user,
     // Admin Tools access (User Approvals, Export Backup) — admin only
     isAdminRole: role === "admin",
-    // Admin Mode access — staff and above, plus manager_viewer (read-only)
-    canAccessAdminMode: role === "admin" || role === "manager" || role === "manager_viewer" || role === "staff",
+    // Admin Mode access — admin + manager + manager_viewer (read-only for manager_viewer)
+    canAccessAdminMode: role === "admin" || role === "manager" || role === "manager_viewer",
     // Daily Report access — admin + manager + staff (manager_viewer excluded)
     canAccessDailyReport: role === "admin" || role === "manager" || role === "staff",
     // Read-only admin mode (no edit/add/delete buttons shown)

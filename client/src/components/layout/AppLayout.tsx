@@ -42,9 +42,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout, isAdminRole } = useAuth();
   const { t, lang } = useLanguage();
-  const headerDate = new Date().toLocaleDateString(
-    lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US",
-    { weekday: "short", month: "short", day: "numeric", year: "numeric" },
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const locale = lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US";
+  const headerDate = now.toLocaleDateString(
+    locale,
+    { weekday: "short", month: "long", day: "numeric", year: "numeric" },
+  );
+  const headerTime = now.toLocaleTimeString(
+    locale,
+    { hour: "numeric", minute: "2-digit", hour12: true },
   );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState<boolean>(() => {
@@ -217,6 +227,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <Shield className="w-2.5 h-2.5 flex-shrink-0" /> {t.adminModeChip}
                   <span className="text-slate-400 font-normal">·</span>
                   <span className="text-slate-500 font-medium normal-case tracking-normal">{headerDate}</span>
+                  <span className="text-slate-400 font-normal">·</span>
+                  <span className="text-slate-500 font-medium normal-case tracking-normal">{headerTime}</span>
                 </span>
               }
             />

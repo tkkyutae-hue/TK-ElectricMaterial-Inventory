@@ -1,4 +1,5 @@
 import { Switch, Route, Redirect } from "wouter";
+import { useEffect, useState } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -79,10 +80,19 @@ function DailyReportLayout({
   const [, navigate] = useLocation();
   const { t, lang } = useLanguage();
   const label = backLabel ?? t.dailyReportMode;
-  const headerDate = new Date().toLocaleDateString(
-    lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US",
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const locale = lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US";
+  const headerDate = now.toLocaleDateString(
+    locale,
     { weekday: "short", month: "short", day: "numeric", year: "numeric" },
   );
+  const headerTime = now.toLocaleTimeString(locale, {
+    hour: "numeric", minute: "2-digit", hour12: true,
+  });
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", flexDirection: "column" }}>
       <header style={{
@@ -103,6 +113,8 @@ function DailyReportLayout({
                 <span>●</span> {t.projectOpsMode}
                 <span className="text-slate-400 font-normal">·</span>
                 <span className="text-slate-500 font-medium normal-case tracking-normal">{headerDate}</span>
+                <span className="text-slate-400 font-normal">·</span>
+                <span className="text-slate-500 font-medium normal-case tracking-normal">{headerTime}</span>
               </span>
             }
           />

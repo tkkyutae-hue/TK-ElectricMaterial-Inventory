@@ -259,6 +259,12 @@ export default function Home() {
   const emoji = EMOJI_MAP[timeKey];
   const label = t[timeKey];
   const locale = lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US";
+  const headerDate = now.toLocaleDateString(locale, {
+    weekday: "short",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
   const headerTime = now.toLocaleTimeString(locale, {
     hour: "numeric",
     minute: "2-digit",
@@ -337,6 +343,10 @@ export default function Home() {
             >
               <span style={{ color: F.accent }}>●</span>
               <span>{t.modeSelect}</span>
+              <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
+              <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>
+                {headerDate}
+              </span>
               <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
               <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>
                 {headerTime}

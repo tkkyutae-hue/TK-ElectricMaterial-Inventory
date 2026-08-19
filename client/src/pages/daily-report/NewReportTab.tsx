@@ -115,9 +115,12 @@ function tradeIconColor(trade?: string): string {
 
 const EQ_STATUS_CFG = {
   operational: { label: "✓  Operational",  border: FT.RULE,   bg: FT.PAPER, color: FT.SUCCESS },
-  partial:     { label: "⚠  Partial Issue", border: FT.ACCENT, bg: FT.PAPER, color: FT.ACCENT  },
   broken:      { label: "✕  Broken Down",   border: FT.DANGER, bg: FT.PAPER, color: FT.DANGER  },
 } as const;
+
+function normalizeEquipmentStatus(status: string | null | undefined): "operational" | "broken" {
+  return status === "operational" ? "operational" : "broken";
+}
 
 const EQ_TAG_CFG: Record<string, { bg: string; border: string; color: string; label: string }> = {
   repair:  { bg: FT.DANGER,       border: "#8a2a17", color: "#fff",  label: "🔧 Repair Requested" },
@@ -1310,7 +1313,7 @@ export function NewReportTab({
       inventoryItemId: null, scopeItemId: null, spec: "", ...m,
       id: uid(), qty: 0,
     })));
-    setEquipment((pfd.equipment ?? []).map((e: any) => ({ ...e, id: uid() })));
+    setEquipment((pfd.equipment ?? []).map((e: any) => ({ ...e, id: uid(), eqStatus: normalizeEquipmentStatus(e.eqStatus) })));
     if (pfd.generalNotes)       setGeneralNotes(pfd.generalNotes);
     if (pfd.safetyNotes)        setSafetyNotes(pfd.safetyNotes);
     if (pfd.inspectorVisitor)   setInspectorVisitor(pfd.inspectorVisitor);
@@ -1408,7 +1411,9 @@ export function NewReportTab({
   const [materials,  setMaterials]  = useState<MaterialRow[]>(
     (fd?.materials ?? []).map((m: any) => ({ inventoryItemId: null, scopeItemId: null, spec: "", ...m }))
   );
-  const [equipment, setEquipment]  = useState<EquipmentRow[]>(fd?.equipment  ?? []);
+  const [equipment, setEquipment]  = useState<EquipmentRow[]>(() =>
+    (fd?.equipment ?? []).map((e: any) => ({ ...e, eqStatus: normalizeEquipmentStatus(e.eqStatus) }))
+  );
   const materialSectionCounts = useMemo(() => materials.reduce<Record<string, number>>((counts, row) => {
     if (row.section) counts[row.section] = (counts[row.section] ?? 0) + 1;
     return counts;
@@ -1528,7 +1533,7 @@ export function NewReportTab({
   const mpSummary  = manpower.length  ? `${totalWorkers}w · ${totalManhours.toFixed(1)}h` : undefined;
   const matSummary = materials.length ? `${materials.length} item${materials.length !== 1 ? "s" : ""}` : undefined;
   const eqSummary  = equipment.length ? `${equipment.length} item${equipment.length !== 1 ? "s" : ""}` : undefined;
-  const eqIssueCount = equipment.filter(r => r.eqStatus === "partial" || r.eqStatus === "broken").length;
+  const eqIssueCount = equipment.filter(r => normalizeEquipmentStatus(r.eqStatus) === "broken").length;
   const eqAlert = eqIssueCount > 0 ? (
     <span style={{ background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#e11d48", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 5 }}>
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -3086,37 +3091,34 @@ export function NewReportTab({
               <div style={{ textAlign: "center", padding: "28px 0", fontSize: 13, color: FT.TEXT_MUTED, fontStyle: "italic" }}>{t.newReportNoEquipment}</div>
             )}
             {equipment.map((row, i) => {
-              const eqCfg = EQ_STATUS_CFG[row.eqStatus] ?? EQ_STATUS_CFG.operational;
-              const cardBorderColor = row.eqStatus === "broken" ? FT.DANGER : row.eqStatus === "partial" ? FT.ACCENT : FT.RULE;
+              const equipmentStatus = normalizeEquipmentStatus(row.eqStatus);
+              const eqCfg = EQ_STATUS_CFG[equipmentStatus];
+              const cardBorderColor = equipmentStatus === "broken" ? FT.DANGER : FT.RULE;
               const cardBg = FT.PAPER;
-              const visibleTags = row.eqStatus === "broken"
-                ? ["repair", "return"]
-                : row.eqStatus === "partial"
-                ? ["repair", "return", "pending"]
-                : [];
+              const visibleTags = equipmentStatus === "broken" ? ["repair", "return"] : [];
               return (
                 <div key={row.id}
-                  style={{ border: `1px solid ${cardBorderColor}`, borderLeft: row.eqStatus !== "operational" ? `3px solid ${eqCfg.border}` : `1px solid ${cardBorderColor}`, borderRadius: 10, padding: "12px 12px 10px", background: cardBg, display: "flex", flexDirection: "column", gap: 10 }}>
-                  {/* Row 1: Name + Status badge + Delete */}
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                  style={{ border: `1px solid ${cardBorderColor}`, borderLeft: equipmentStatus === "broken" ? `3px solid ${eqCfg.border}` : `1px solid ${cardBorderColor}`, borderRadius: 10, padding: "10px 10px 9px", background: cardBg, display: "flex", flexDirection: "column", gap: 9 }}>
+                  {/* Row 1: Name + Size + fixed delete action */}
+                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(74px, 0.45fr) auto", alignItems: "end", gap: 8, minWidth: 0 }}>
+                    <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportEqColName}</div>
                       <Input data-testid={`input-eq-name-${i}`} value={row.name}
                         onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, name: e.target.value } : r))}
                         className="h-9 text-sm w-full" placeholder={t.newReportEqNamePh} />
                     </div>
-                    <div style={{ flexShrink: 0, paddingTop: 17 }}>
-                      <DelBtn testId={`btn-remove-eq-${i}`} onClick={() => setEquipment(equipment.filter((r) => r.id !== row.id))} />
-                    </div>
-                  </div>
-                  {/* Row 2: Size + Brand */}
-                  {!(quickMode && isMobile) && <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    <div>
+                    <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportSize}</div>
                       <Input data-testid={`input-eq-size-${i}`} value={row.size}
                         onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, size: e.target.value } : r))}
                         className="h-9 text-sm text-center w-full" placeholder={t.newReportSizePh} />
                     </div>
+                    <div style={{ flexShrink: 0 }}>
+                      <DelBtn testId={`btn-remove-eq-${i}`} onClick={() => setEquipment(equipment.filter((r) => r.id !== row.id))} />
+                    </div>
+                  </div>
+                  {/* Row 2: Brand */}
+                  {!(quickMode && isMobile) && <div>
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportBrand}</div>
                       <Input data-testid={`input-eq-brand-${i}`} value={row.brand}
@@ -3151,9 +3153,9 @@ export function NewReportTab({
                     <div style={{ position: "relative", marginBottom: visibleTags.length > 0 ? 8 : 0 }}>
                       <select
                         data-testid={`select-eq-status-${i}`}
-                        value={row.eqStatus}
+                        value={equipmentStatus}
                         onChange={(e) => {
-                          const newStatus = e.target.value as "operational" | "partial" | "broken";
+                          const newStatus = e.target.value as "operational" | "broken";
                           setEquipment(equipment.map((r) => {
                             if (r.id !== row.id) return r;
                             let tags = r.tags;
@@ -3170,7 +3172,6 @@ export function NewReportTab({
                           fontWeight: 600, outline: "none",
                         }}>
                         <option value="operational">{t.newReportEqOperational}</option>
-                        <option value="partial">{t.newReportEqPartial}</option>
                         <option value="broken">{t.newReportEqBroken}</option>
                       </select>
                       <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#aaa", fontSize: 11, pointerEvents: "none" }}>▾</span>
@@ -3233,13 +3234,10 @@ export function NewReportTab({
                 <tr><td colSpan={9} className="py-7 text-center text-xs text-slate-300 italic">{t.newReportNoEquipment}</td></tr>
               )}
               {equipment.map((row, i) => {
-                const eqCfg = EQ_STATUS_CFG[row.eqStatus] ?? EQ_STATUS_CFG.operational;
+                const equipmentStatus = normalizeEquipmentStatus(row.eqStatus);
+                const eqCfg = EQ_STATUS_CFG[equipmentStatus];
                 const rowBg = undefined;
-                const visibleTags = row.eqStatus === "broken"
-                  ? ["repair", "return"]
-                  : row.eqStatus === "partial"
-                  ? ["repair", "return", "pending"]
-                  : [];
+                const visibleTags = equipmentStatus === "broken" ? ["repair", "return"] : [];
                 return (
                   <tr key={row.id} className="last:border-0 group" style={{ borderBottom: `1px solid ${FT.RULE}` }}>
                     {/* SIZE */}
@@ -3285,9 +3283,9 @@ export function NewReportTab({
                         <div style={{ position: "relative" }}>
                           <select
                             data-testid={`select-eq-status-${i}`}
-                            value={row.eqStatus}
+                            value={equipmentStatus}
                             onChange={(e) => {
-                              const newStatus = e.target.value as "operational" | "partial" | "broken";
+                              const newStatus = e.target.value as "operational" | "broken";
                               setEquipment(equipment.map((r) => {
                                 if (r.id !== row.id) return r;
                                 let tags = r.tags;
@@ -3304,7 +3302,6 @@ export function NewReportTab({
                               fontWeight: 500, outline: "none",
                             }}>
                             <option value="operational">{t.newReportEqOperational}</option>
-                            <option value="partial">{t.newReportEqPartial}</option>
                             <option value="broken">{t.newReportEqBroken}</option>
                           </select>
                           <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "#aaa", fontSize: 10, pointerEvents: "none" }}>▾</span>

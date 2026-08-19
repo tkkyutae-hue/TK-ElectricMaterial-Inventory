@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -467,6 +467,58 @@ function ROCell({ children, center }: { children: React.ReactNode; center?: bool
 // ─── Transparent input (for table cells) ─────────────────────────────────────
 const cellInputCls = "h-8 text-[13px] border-transparent bg-transparent hover:border-[#D8D3C4] hover:bg-[#F7F5EF] focus:border-[#E85D04] focus:bg-[#F7F5EF] transition-colors";
 
+// ─── Content-sized textarea ───────────────────────────────────────────────────
+function AutoSizeTextarea({
+  value, style, ...props
+}: Omit<React.ComponentProps<typeof Textarea>, "value"> & { value: string }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const resize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+
+  useLayoutEffect(() => {
+    resize();
+  }, [value, resize]);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+
+    let lastWidth = el.getBoundingClientRect().width;
+    const observer = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(([entry]) => {
+          const nextWidth = entry.contentRect.width;
+          if (nextWidth !== lastWidth) {
+            lastWidth = nextWidth;
+            resize();
+          }
+        })
+      : null;
+
+    observer?.observe(el);
+    window.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("resize", resize);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", resize);
+      window.visualViewport?.removeEventListener("resize", resize);
+    };
+  }, [resize]);
+
+  return (
+    <Textarea
+      {...props}
+      ref={textareaRef}
+      value={value}
+      style={{ ...style, overflowY: "hidden" }}
+    />
+  );
+}
+
 // ─── Worker Combobox ──────────────────────────────────────────────────────────
 function WorkerCombobox({
   row, allWorkers, takenIds, testId, onChange,
@@ -925,16 +977,34 @@ function MaterialSearch({
 
   return (
     <div className="relative" ref={wrapperRef}>
-      <Input data-testid={testId} value={query}
-        placeholder={t.newReportSearchInventory}
-        className={cellInputCls}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          openWithPos();
-          onChange({ description: e.target.value, inventoryItemId: null });
-        }}
-        onFocus={() => openWithPos()}
-        onBlur={() => setTimeout(() => setOpen(false), 150)} />
+      {isMobile ? (
+        <AutoSizeTextarea data-testid={testId} value={query}
+          placeholder={t.newReportSearchInventory}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            openWithPos();
+            onChange({ description: e.target.value, inventoryItemId: null });
+          }}
+          onFocus={() => openWithPos()}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          style={{
+            width: "100%", minHeight: 30, padding: "3px 0", border: "none",
+            outline: "none", boxShadow: "none", resize: "none", overflow: "hidden",
+            background: "transparent", color: "#1a1a1a", fontSize: 13,
+            fontWeight: 600, lineHeight: 1.4, overflowWrap: "anywhere",
+          }} />
+      ) : (
+        <Input data-testid={testId} value={query}
+          placeholder={t.newReportSearchInventory}
+          className={cellInputCls}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            openWithPos();
+            onChange({ description: e.target.value, inventoryItemId: null });
+          }}
+          onFocus={() => openWithPos()}
+          onBlur={() => setTimeout(() => setOpen(false), 150)} />
+      )}
       {open && filtered.length > 0 && (
         <div style={{ ...dropdownStyle, background: "#fff", border: "1px solid #e0e0e0", borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.10)", overflowY: "auto" }}>
           {filtered.map((item) => {
@@ -1266,7 +1336,7 @@ export function NewReportTab({
   const drawingInputRef    = useRef<HTMLInputElement>(null);
   const photoInputRef      = useRef<HTMLInputElement>(null);
   const [photoTaskId,      setPhotoTaskId]      = useState<number | null>(null);
-  const matRowRefs         = useRef<(HTMLTableRowElement | null)[]>([]);
+  const matRowRefs         = useRef<(HTMLElement | null)[]>([]);
   const matDragRef         = useRef<{ col: "photo" | "spec"; startX: number; startW: number } | null>(null);
   const [matColWidths, setMatColWidths] = useState<{ photo: number; spec: number }>(() => {
     try { const s = localStorage.getItem("dr-mat-col-widths"); if (s) return JSON.parse(s); } catch {}
@@ -2676,9 +2746,9 @@ export function NewReportTab({
                 mobileNodes.push(
                 /* ── 2-row compact card: name full-width top, spec+qty+unit bottom ── */
                 <div key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
-                  style={{ border: `1px solid ${FT.RULE}`, borderLeft: isExtra ? `3px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`, borderRadius: 8, padding: "7px 8px 6px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 4 }}>
-                  {/* Row 1: Name + Delete (photo removed) */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  style={{ border: `1px solid ${FT.RULE}`, borderLeft: isExtra ? `3px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`, borderRadius: 8, padding: "8px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 7, minWidth: 0, maxWidth: "100%", boxSizing: "border-box" }}>
+                  {/* Name + delete — name can grow over multiple lines */}
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8, minWidth: 0 }}>
                     <div style={{ flex: 1, minWidth: 0, overflow: "visible" }}>
                       <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
                         onChange={(p) => {
@@ -2704,30 +2774,35 @@ export function NewReportTab({
                       </button>
                     )}
                   </div>
-                  {/* Row 2: Spec + Badges + Qty + Unit */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, paddingLeft: 0 }}>
-                    <input data-testid={`input-mat-spec-${i}`} value={row.spec}
-                      onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, spec: e.target.value } : r))}
-                      placeholder={t.newReportSpec}
-                      style={{ flex: 1, fontSize: 11, border: "none", background: "transparent", outline: "none", color: row.spec ? "#6b7280" : "#d1d5db", padding: 0, minWidth: 0 }} />
-                    {row.inventoryItemId && (
-                      <span style={{ fontSize: 10, fontWeight: 600, color: "#2e7d32", background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 4, padding: "0px 4px", flexShrink: 0 }}>{t.newReportInv}</span>
-                    )}
-                    {isExtra && (
-                      <span style={{ fontSize: 10, fontWeight: 700, color: FT.ACCENT, background: "transparent", border: `1px solid ${FT.ACCENT}`, borderRadius: 3, padding: "0px 4px", fontFamily: FT.FONT, flexShrink: 0 }}>{t.newReportMaterialExtraLabel}</span>
-                    )}
-                    <input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
-                      onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
-                      onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
-                      style={{ width: 52, height: 32, fontSize: 14, fontWeight: 600, textAlign: "center", border: `1px solid ${FT.RULE}`, borderRadius: 6, background: "#fff", outline: "none", color: "#374151", flexShrink: 0 }} />
-                    {row.inventoryItemId ? (
-                      <span data-testid={`input-mat-unit-${i}`} style={{ fontSize: 12, fontWeight: 700, color: "#666", flexShrink: 0, minWidth: 22 }}>{row.unit || "EA"}</span>
-                    ) : (
-                      <input data-testid={`input-mat-unit-${i}`} value={row.unit}
-                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                        placeholder="EA"
-                        style={{ width: 30, fontSize: 12, fontWeight: 700, textAlign: "center", border: "none", background: "transparent", outline: "none", color: "#666", flexShrink: 0 }} />
-                    )}
+                  {/* Specification gets its own line so it never competes with quantity controls */}
+                  <AutoSizeTextarea data-testid={`input-mat-spec-${i}`} value={row.spec}
+                    onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, spec: e.target.value } : r))}
+                    placeholder={t.newReportSpec}
+                    style={{ width: "100%", minHeight: 18, padding: 0, border: "none", background: "transparent", outline: "none", boxShadow: "none", resize: "none", overflow: "hidden", overflowWrap: "anywhere", fontSize: 11, lineHeight: 1.45, color: row.spec ? "#6b7280" : "#d1d5db", boxSizing: "border-box" }} />
+                  {/* Badges and quantity controls use a dedicated bottom row */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, minWidth: 0, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, flexWrap: "wrap" }}>
+                      {row.inventoryItemId && (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: "#2e7d32", background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 4, padding: "0px 4px", flexShrink: 0 }}>{t.newReportInv}</span>
+                      )}
+                      {isExtra && (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: FT.ACCENT, background: "transparent", border: `1px solid ${FT.ACCENT}`, borderRadius: 3, padding: "0px 4px", fontFamily: FT.FONT, flexShrink: 0 }}>{t.newReportMaterialExtraLabel}</span>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto", flexShrink: 0 }}>
+                      <input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
+                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
+                        onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
+                        style={{ width: 52, height: 32, fontSize: 14, fontWeight: 600, textAlign: "center", border: `1px solid ${FT.RULE}`, borderRadius: 6, background: "#fff", outline: "none", color: "#374151", flexShrink: 0 }} />
+                      {row.inventoryItemId ? (
+                        <span data-testid={`input-mat-unit-${i}`} style={{ fontSize: 12, fontWeight: 700, color: "#666", flexShrink: 0, minWidth: 22 }}>{row.unit || "EA"}</span>
+                      ) : (
+                        <input data-testid={`input-mat-unit-${i}`} value={row.unit}
+                          onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
+                          placeholder="EA"
+                          style={{ width: 30, fontSize: 12, fontWeight: 700, textAlign: "center", border: "none", background: "transparent", outline: "none", color: "#666", flexShrink: 0 }} />
+                      )}
+                    </div>
                   </div>
                 </div>
                 );

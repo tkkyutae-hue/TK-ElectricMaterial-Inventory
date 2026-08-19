@@ -2326,15 +2326,15 @@ export function NewReportTab({
                 <div
                   onClick={() => setTasks(tasks.map(r => r.id === row.id ? { ...r, expanded: !r.expanded } : r))}
                   className="cursor-pointer hover:bg-[#f8faf9] transition-colors"
-                  style={{ display: "flex", alignItems: "center", minHeight: 56, paddingRight: 12 }}>
+                  style={{ display: "flex", alignItems: "center", minHeight: 56, paddingRight: isMobile ? 8 : 12 }}>
 
                   {/* Task # */}
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#9db8a2", flexShrink: 0, padding: "0 8px 0 12px" }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#9db8a2", flexShrink: 0, padding: isMobile ? "0 6px 0 8px" : "0 8px 0 12px" }}>
                     #{i + 1}
                   </span>
 
                   {/* Description — flex:1 */}
-                  <div style={{ flex: 1, minWidth: 0 }} onClick={e => e.stopPropagation()}>
+                  <div style={{ flex: "1 1 auto", minWidth: 0 }} onClick={e => e.stopPropagation()}>
                     <Input data-testid={`input-task-desc-${i}`} value={row.description}
                       onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, description: e.target.value } : r))}
                       className="shadow-none h-auto focus-visible:ring-0 border-0 bg-transparent font-semibold placeholder:italic placeholder:text-[#999] truncate w-full p-0"
@@ -2343,16 +2343,16 @@ export function NewReportTab({
                   </div>
 
                   {/* Divider */}
-                  <span style={{ width: 1, height: 22, background: "#f0f0f0", margin: "0 10px", flexShrink: 0 }} />
+                  <span style={{ width: 1, height: 22, background: "#f0f0f0", margin: isMobile ? "0 6px" : "0 10px", flexShrink: 0 }} />
 
                   {/* Status Select — single dot badge style */}
-                  <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                  <div style={{ flex: "0 0 auto", width: isMobile ? 100 : undefined }} onClick={e => e.stopPropagation()}>
                     <Select value={row.status} onValueChange={v => setTasks(tasks.map(r => r.id === row.id ? { ...r, status: v } : r))}>
                       <SelectTrigger data-testid={`select-task-status-${i}`}
                         style={{
-                          display: "inline-flex", alignItems: "center", gap: 7,
-                          borderRadius: 20, padding: "5px 10px 5px 13px",
-                          fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+                          display: "inline-flex", alignItems: "center", justifyContent: "center", gap: isMobile ? 4 : 7,
+                          width: "100%", borderRadius: 20, padding: isMobile ? "5px 6px" : "5px 10px 5px 13px",
+                          fontSize: isMobile ? 11 : 12, fontWeight: 600, whiteSpace: "nowrap",
                           border: `1px solid ${cfg.badgeBorder}`,
                           background: cfg.badgeBg, color: cfg.badgeText,
                           height: "auto", minWidth: 0, boxShadow: "none",
@@ -2373,7 +2373,7 @@ export function NewReportTab({
                   </div>
 
                   {/* Chevron + delete */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, paddingLeft: 8, flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, paddingLeft: isMobile ? 4 : 8, flexShrink: 0 }}>
                     <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${row.expanded ? "rotate-180" : ""}`} />
                     <button type="button" data-testid={`btn-remove-task-${i}`}
                       onClick={e => { e.stopPropagation(); setDeleteConfirm(row.id); }}

@@ -4,6 +4,7 @@ interface TkElectricBrandProps {
   compact?: boolean;
   className?: string;
   textClassName?: string;
+  detailClassName?: string;
   textColor?: string;
   detail?: React.ReactNode;
 }
@@ -12,6 +13,7 @@ export function TkElectricBrand({
   compact = false,
   className = "",
   textClassName = "",
+  detailClassName = "",
   textColor = "#0f1f17",
   detail,
 }: TkElectricBrandProps) {
@@ -26,9 +28,9 @@ export function TkElectricBrand({
           imageRendering: "crisp-edges",
         }}
       />
-      <div className={`min-w-0 leading-none ${textClassName}`}>
+      <div className="min-w-0 leading-none">
         <p
-          className="m-0 whitespace-nowrap"
+          className={`m-0 whitespace-nowrap ${textClassName}`}
           style={{
             color: textColor,
             fontFamily: "'Barlow Condensed', sans-serif",
@@ -39,7 +41,7 @@ export function TkElectricBrand({
         >
           TK ELECTRIC
         </p>
-        {detail}
+        {detail && <div className={detailClassName}>{detail}</div>}
       </div>
     </div>
   );

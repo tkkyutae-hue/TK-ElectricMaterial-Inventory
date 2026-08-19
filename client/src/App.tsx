@@ -9,7 +9,7 @@ import { FieldLayout } from "@/components/layout/FieldLayout";
 import { TkElectricBrand } from "@/components/layout/TkElectricBrand";
 import { useAuth } from "@/hooks/use-auth";
 import { LanguageProvider, useLanguage, LanguageSwitcher } from "@/hooks/use-language";
-import { FieldThemeProvider } from "@/hooks/use-field-theme";
+import { FieldThemeProvider, FieldThemeSwitcher } from "@/hooks/use-field-theme";
 import { useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { canAccessCrewDispatchAssignment } from "@/lib/role-access";
@@ -106,22 +106,6 @@ function DailyReportLayout({
               </span>
             }
           />
-          <button
-            data-testid="btn-daily-report-back"
-            onClick={() => navigate(backTo)}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              background: "none", border: "none", cursor: "pointer",
-              color: "#64748b", fontSize: 13, fontFamily: "'Barlow', sans-serif",
-              padding: "6px 10px", borderRadius: 8,
-              transition: "color 0.15s",
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = "#334155")}
-            onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}
-          >
-            <ArrowLeft style={{ width: 14, height: 14 }} />
-            <span className="hidden sm:inline">{label}</span>
-          </button>
         </div>
         <div style={{
           display: "flex", alignItems: "center", gap: 6,
@@ -129,6 +113,30 @@ function DailyReportLayout({
           border: "1px solid #b7dfc2", borderRadius: 14,
           boxShadow: "0 4px 14px rgba(15,31,23,0.06)",
         }}>
+          <FieldThemeSwitcher compact />
+          <button
+            data-testid="btn-daily-report-back"
+            onClick={() => navigate(backTo)}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              height: 32, background: "#ffffff", border: "1px solid #b7dfc2",
+              cursor: "pointer", color: "#64748b", fontSize: 12,
+              fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
+              padding: "0 10px", borderRadius: 8, transition: "color 0.15s, border-color 0.15s",
+              whiteSpace: "nowrap",
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = "#14532d";
+              e.currentTarget.style.borderColor = "#4db96c";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = "#64748b";
+              e.currentTarget.style.borderColor = "#b7dfc2";
+            }}
+          >
+            <ArrowLeft style={{ width: 14, height: 14 }} />
+            <span className="hidden sm:inline">{label}</span>
+          </button>
           <LanguageSwitcher theme="light" compact />
         </div>
       </header>

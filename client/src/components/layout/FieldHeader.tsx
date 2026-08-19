@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import { ArrowLeft, HardHat, Home } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useFieldTheme, FieldThemeSwitcher } from "@/hooks/use-field-theme";
 import { TkElectricBrand } from "@/components/layout/TkElectricBrand";
 
@@ -23,7 +22,6 @@ export function FieldHeader() {
   const [location] = useLocation();
   const isFieldHome = location === "/field";
   const now = useClock();
-  const isMobile = useIsMobile();
 
   const dateStr      = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   const dateStrShort = now.toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -52,35 +50,45 @@ export function FieldHeader() {
           textColor={F.text}
           className="field-header-brand"
           textClassName="hidden sm:block"
+          detail={
+            <>
+              <span
+                className="hidden sm:flex items-center gap-1.5 mt-1 whitespace-nowrap"
+                style={{
+                  color: F.accent,
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: 0.8,
+                  textTransform: "uppercase",
+                }}
+              >
+                <span className="fl-pulse-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: F.accent }} />
+                <HardHat style={{ width: 10, height: 10 }} />
+                <span>{t.fieldModeChip}</span>
+                <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
+                <span style={{ color: F.textDim, fontWeight: 500, letterSpacing: 0, textTransform: "none" }}>
+                  {dateStr} · {timeStr}
+                </span>
+              </span>
+              <span
+                className="flex sm:hidden items-center gap-1 mt-1 whitespace-nowrap"
+                style={{
+                  color: F.accent,
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: 0.45,
+                }}
+              >
+                <HardHat style={{ width: 9, height: 9 }} />
+                <span>{t.fieldModeChip}</span>
+                <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
+                <span style={{ color: F.textDim, fontWeight: 500 }}>{dateStrShort}</span>
+              </span>
+            </>
+          }
         />
-
-        {/* Field Mode chip */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 6,
-          background: F.accentBg,
-          border: `1px solid ${F.accentBorder}`,
-          borderRadius: 20, padding: "3px 10px",
-          fontFamily: "'Barlow Condensed', sans-serif",
-          fontSize: 11, fontWeight: 700, letterSpacing: 1,
-          color: F.accent, textTransform: "uppercase",
-        }}>
-          <div className="fl-pulse-dot" style={{ width: 5, height: 5,
-            borderRadius: "50%", background: F.accent, flexShrink: 0 }} />
-          <HardHat style={{ width: 11, height: 11, flexShrink: 0 }} />
-          <span className="hidden-mobile">{t.fieldModeChip}</span>
-        </div>
-
-        {/* Date & Time — compact on mobile, full on desktop */}
-        <div style={{
-          fontSize: 11, color: F.textDim,
-          fontFamily: "'Barlow Condensed', sans-serif",
-          letterSpacing: 0.5,
-          display: "flex", gap: 4, alignItems: "center",
-        }}>
-          <span>{isMobile ? dateStrShort : dateStr}</span>
-          <span style={{ opacity: 0.5 }}>·</span>
-          <span style={{ fontVariantNumeric: "tabular-nums" }}>{timeStr}</span>
-        </div>
       </div>
 
       {/* Right side */}

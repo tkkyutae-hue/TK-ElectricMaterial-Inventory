@@ -319,16 +319,17 @@ function SectionNavigator({
   );
 }
 
-// ─── Section wrapper ──────────────────────────────────────────────────────────
-// overflow-hidden removed so combobox dropdowns are not clipped
+const SECTION_STATE_STORAGE_PREFIX = "daily-report-section-state";
 function Section({
-  num, title, defaultOpen = true, summary, alert, headerRight, children,
+  num, title, defaultOpen = true, storageKey, summary, alert, headerRight, children,
 }: {
   num: number; title: string; icon?: React.ReactNode;
-  defaultOpen?: boolean; summary?: string; alert?: React.ReactNode;
+  defaultOpen?: boolean; storageKey?: string; summary?: string; alert?: React.ReactNode;
   headerRight?: React.ReactNode; children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(() => (
+    storageKey ? readSectionOpenState(storageKey, defaultOpen) : defaultOpen
+  ));
   return (
     <Card style={{ boxShadow: "none", border: `1px solid ${FT.RULE}`, background: FT.PAPER, borderRadius: 10 }}>
       <div style={{ borderBottom: open ? `3px solid ${FT.ACCENT}` : "none" }}>
@@ -336,7 +337,11 @@ function Section({
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = FT.PAPER_MUTED; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
           <button type="button" data-testid={`section-toggle-${num}`}
-            onClick={() => setOpen((o) => !o)}
+            onClick={() => setOpen((o) => {
+              const next = !o;
+              if (storageKey) writeSectionOpenState(storageKey, next);
+              return next;
+            })}
             aria-expanded={open}
             aria-controls={`section-content-${num}`}
             className="flex-1 flex items-center justify-between py-3 text-left min-w-0">
@@ -1072,6 +1077,11 @@ export function NewReportTab({
   const { isManagerOrAbove, isAdminRole } = useAuth();
   const isMobile    = useIsMobile();
   const fd          = initialData?.formData ?? null;
+  // Unsaved reports have no stable identity, so they keep the default state.
+  // Saved reports are isolated by both project and report ID.
+  const sectionStorageScope = reportId
+    ? `${SECTION_STATE_STORAGE_PREFIX}:${projectId}:${reportId}`
+    : undefined;
 
   // ── Section navigator ──
   const sectionRefs     = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null, null]);
@@ -1795,6 +1805,7 @@ export function NewReportTab({
       ══════════════════════════════════════════════════════ */}
       <div ref={el => { sectionRefs.current[0] = el; }} style={quickMode && isMobile && quickStep !== 0 ? { display: "none" } : undefined}>
       <Section num={1} title={t.newReportGeneralInfo} icon={<Calendar className="w-4 h-4" />}
+        storageKey={sectionStorageScope ? `${sectionStorageScope}:1` : undefined}
         headerRight={!reportId && prevReport ? (
           <button type="button" onClick={handleCopyPrevious}
             style={{ fontSize: 11, fontFamily: FT.FONT, fontWeight: 700, letterSpacing: "0.04em",
@@ -2023,7 +2034,7 @@ export function NewReportTab({
           §2 — Manpower
       ══════════════════════════════════════════════════════ */}
       <div ref={el => { sectionRefs.current[1] = el; }} style={quickMode && isMobile && quickStep !== 1 ? { display: "none" } : undefined}>
-      <Section num={2} title={t.newReportManpower} icon={<Users className="w-4 h-4" />} summary={mpSummary}
+      <Section num={2} title={t.newReportManpower} icon={<Users className="w-4 h-4" />} storageKey={sectionStorageScope ? `${sectionStorageScope}:2` : undefined} summary={mpSummary}
         headerRight={!isSubmitted ? (
           <button type="button" onClick={e => { e.stopPropagation(); importCrewDispatch(); }}
             className="flex items-center gap-1 whitespace-nowrap transition-colors"
@@ -2340,7 +2351,7 @@ export function NewReportTab({
           §3 — Work Tasks
       ══════════════════════════════════════════════════════ */}
       <div ref={el => { sectionRefs.current[2] = el; }} style={quickMode && isMobile && quickStep !== 2 ? { display: "none" } : undefined}>
-      <Section num={3} title={t.newReportWorkTasks} icon={<FileText className="w-4 h-4" />} summary={taskSummary} headerRight={taskStatusChips}>
+      <Section num={3} title={t.newReportWorkTasks} icon={<FileText className="w-4 h-4" />} storageKey={sectionStorageScope ? `${sectionStorageScope}:3` : undefined} summary={taskSummary} headerRight={taskStatusChips}>
 
         {/* ── Drawing Board ── */}
         <div style={{ border: "1px solid #d0dbd2", borderRadius: 10, overflow: "hidden", marginBottom: 18 }}>
@@ -2711,7 +2722,7 @@ export function NewReportTab({
           §4 — Materials
       ══════════════════════════════════════════════════════ */}
       <div ref={el => { sectionRefs.current[3] = el; }} style={quickMode && isMobile && quickStep !== 3 ? { display: "none" } : undefined}>
-      <Section num={4} title={t.newReportMaterials} icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}
+      <Section num={4} title={t.newReportMaterials} icon={<Package className="w-4 h-4" />} storageKey={sectionStorageScope ? `${sectionStorageScope}:4` : undefined} summary={matSummary} defaultOpen={false}
         headerRight={!isSubmitted && scopeItems.filter((s: any) => s.isActive).length > 0 ? (
           <button type="button" onClick={e => { e.stopPropagation(); importScopeItems(); }}
             className="flex items-center gap-1 whitespace-nowrap transition-colors"
@@ -2965,7 +2976,7 @@ export function NewReportTab({
           §5 — Equipment
       ══════════════════════════════════════════════════════ */}
       <div ref={el => { sectionRefs.current[4] = el; }} style={quickMode && isMobile && quickStep !== 4 ? { display: "none" } : undefined}>
-      <Section num={5} title={t.newReportEquipment} icon={<Truck className="w-4 h-4" />} summary={eqSummary} alert={eqAlert} defaultOpen={false}>
+      <Section num={5} title={t.newReportEquipment} icon={<Truck className="w-4 h-4" />} storageKey={sectionStorageScope ? `${sectionStorageScope}:5` : undefined} summary={eqSummary} alert={eqAlert} defaultOpen={false}>
 
         {/* Quick-add preset buttons */}
         <div className="mb-4">
@@ -3270,7 +3281,7 @@ export function NewReportTab({
           §6 — Notes / Remarks
       ══════════════════════════════════════════════════════ */}
       <div ref={el => { sectionRefs.current[5] = el; }} style={quickMode && isMobile && quickStep !== 5 ? { display: "none" } : undefined}>
-      <Section num={6} title={t.newReportNotesRemarks} icon={<FileText className="w-4 h-4" />}
+      <Section num={6} title={t.newReportNotesRemarks} icon={<FileText className="w-4 h-4" />} storageKey={sectionStorageScope ? `${sectionStorageScope}:6` : undefined}
         summary={generalNotes.trim() ? generalNotes.trim().slice(0, 44) + (generalNotes.length > 44 ? "…" : "") : undefined}
         defaultOpen={false}>
         <div className="space-y-4">
@@ -3416,4 +3427,23 @@ export function NewReportTab({
 
     </div>
   );
+}
+
+function writeSectionOpenState(storageKey: string, open: boolean): void {
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(open));
+  } catch {
+    // Browser storage can be unavailable or full; section toggling still works.
+  }
+}
+
+function readSectionOpenState(storageKey: string, defaultOpen: boolean): boolean {
+  try {
+    const stored = window.localStorage.getItem(storageKey);
+    if (stored === null) return defaultOpen;
+    const parsed = JSON.parse(stored);
+    return typeof parsed === "boolean" ? parsed : defaultOpen;
+  } catch {
+    return defaultOpen;
+  }
 }

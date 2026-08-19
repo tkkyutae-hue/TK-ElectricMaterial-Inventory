@@ -519,22 +519,32 @@ function AutoSizeTextarea({
     const el = textareaRef.current;
     if (!el) return;
 
-    let lastWidth = el.getBoundingClientRect().width;
+    // Observe the layout container rather than the textarea itself. Resizing
+    // the textarea height in the callback can otherwise trigger a
+    // ResizeObserver loop in Chromium/Radix overlays.
+    const observedEl = el.parentElement ?? el;
+    let lastWidth = observedEl.getBoundingClientRect().width;
+    let frameId: number | null = null;
     const observer = typeof ResizeObserver !== "undefined"
       ? new ResizeObserver(([entry]) => {
           const nextWidth = entry.contentRect.width;
-          if (nextWidth !== lastWidth) {
+          if (Math.abs(nextWidth - lastWidth) > 0.5) {
             lastWidth = nextWidth;
-            resize();
+            if (frameId !== null) cancelAnimationFrame(frameId);
+            frameId = requestAnimationFrame(() => {
+              frameId = null;
+              resize();
+            });
           }
         })
       : null;
 
-    observer?.observe(el);
+    observer?.observe(observedEl);
     window.addEventListener("resize", resize);
     window.visualViewport?.addEventListener("resize", resize);
     return () => {
       observer?.disconnect();
+      if (frameId !== null) cancelAnimationFrame(frameId);
       window.removeEventListener("resize", resize);
       window.visualViewport?.removeEventListener("resize", resize);
     };

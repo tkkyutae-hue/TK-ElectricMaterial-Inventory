@@ -9,13 +9,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 // This is dev-only — has zero effect in production builds.
 if (import.meta.env.DEV) {
   window.addEventListener("error", (e) => {
-    if (
-      !e.message ||
-      e.message === "" ||
-      e.message.includes("ResizeObserver") ||
-      e.error === null
-    ) {
-      console.warn("[dev] suppressed benign overlay error:", e.message || "(no message)");
+    if (String(e.message).includes("ResizeObserver")) {
+      console.warn("[dev] suppressed benign overlay error:", e.message);
       e.stopImmediatePropagation();
       e.preventDefault();
       return;
@@ -23,7 +18,7 @@ if (import.meta.env.DEV) {
   }, true);
 
   window.onerror = function(msg) {
-    if (!msg || msg === "" || String(msg).includes("ResizeObserver")) {
+    if (String(msg).includes("ResizeObserver")) {
       console.warn("[dev] suppressed benign onerror:", msg);
       return true;
     }

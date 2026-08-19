@@ -247,18 +247,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="hidden sm:inline">{t.back}</span>
               </Button>
             )}
+            <LanguageSwitcher theme="light" compact={true} />
             <Link href="/home">
               <Button
                 variant="ghost"
                 size="sm"
-                className="tk-header-control h-8 gap-1.5 text-slate-600 whitespace-nowrap"
+                className="tk-header-control h-8 gap-1.5 rounded-lg border border-brand-200 bg-white text-slate-600 whitespace-nowrap hover:border-brand-300 hover:bg-brand-50"
                 data-testid="btn-header-back-home"
               >
                 <Home className="w-3.5 h-3.5 flex-shrink-0" />
                 <span className="hidden sm:inline">{t.modeSelect}</span>
               </Button>
             </Link>
-            <LanguageSwitcher theme="light" compact={true} />
             <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-brand-50 relative w-9 h-9">
               <Bell className="w-4 h-4" />
             </Button>

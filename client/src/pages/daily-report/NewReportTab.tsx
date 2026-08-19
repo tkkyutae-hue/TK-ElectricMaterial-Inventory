@@ -2744,10 +2744,10 @@ export function NewReportTab({
                 mobileNodes.push(
                 /* ── 2-row compact card: name full-width top, spec+qty+unit bottom ── */
                 <div key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
-                  style={{ border: `1px solid ${FT.RULE}`, borderLeft: isExtra ? `3px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`, borderRadius: 8, padding: "8px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 7, minWidth: 0, maxWidth: "100%", boxSizing: "border-box" }}>
+                  style={{ border: `1px solid ${FT.RULE}`, borderLeft: isExtra ? `3px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`, borderRadius: 8, padding: "8px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 7, minWidth: 0, maxWidth: "100%", overflow: "hidden", boxSizing: "border-box" }}>
                   {/* Name + delete — name can grow over multiple lines */}
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 8, minWidth: 0 }}>
-                    <div style={{ flex: 1, minWidth: 0, overflow: "visible" }}>
+                    <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
                       <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
                         onChange={(p) => {
                           let patch: Partial<MaterialRow> = { ...p };
@@ -2776,8 +2776,9 @@ export function NewReportTab({
                   <AutoSizeTextarea data-testid={`input-mat-spec-${i}`} value={row.spec}
                     onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, spec: e.target.value } : r))}
                     placeholder={t.newReportSpec}
-                    className="placeholder:text-[#a8a29e]"
-                    style={{ width: "100%", minHeight: 20, padding: 0, border: "none", background: "transparent", outline: "none", boxShadow: "none", resize: "none", overflow: "hidden", overflowWrap: "anywhere", fontSize: 12, fontWeight: 500, lineHeight: 1.5, color: row.spec ? "#4b5563" : "#a8a29e", boxSizing: "border-box" }} />
+                    aria-label={t.newReportSpec}
+                    className="placeholder:text-[#78716c] placeholder:opacity-100"
+                    style={{ display: "block", width: "100%", maxWidth: "100%", minHeight: 20, padding: 0, border: "none", background: "transparent", outline: "none", boxShadow: "none", resize: "none", overflow: "hidden", overflowWrap: "anywhere", wordBreak: "break-word", fontSize: 12, fontWeight: 500, lineHeight: 1.5, color: "#374151", boxSizing: "border-box" }} />
                   {/* Badges and quantity controls use a dedicated bottom row */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, minWidth: 0, flexWrap: "wrap" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, flexWrap: "wrap" }}>
@@ -2798,8 +2799,9 @@ export function NewReportTab({
                       ) : (
                         <input data-testid={`input-mat-unit-${i}`} value={row.unit}
                           onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                          placeholder="EA"
-                          style={{ width: 30, fontSize: 12, fontWeight: 700, textAlign: "center", border: "none", background: "transparent", outline: "none", color: "#666", flexShrink: 0 }} />
+                          placeholder={t.newReportUnitEAPh}
+                          aria-label={t.newReportEqColUnit}
+                          style={{ width: 48, minWidth: 48, maxWidth: "100%", fontSize: 12, fontWeight: 700, textAlign: "center", border: "none", background: "transparent", outline: "none", color: "#4b5563", flexShrink: 0 }} />
                       )}
                     </div>
                   </div>

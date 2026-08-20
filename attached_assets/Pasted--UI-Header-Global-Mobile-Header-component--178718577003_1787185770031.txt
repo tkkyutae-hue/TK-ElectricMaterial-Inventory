@@ -1,0 +1,365 @@
+현재 모바일 UI의 Header를 **페이지별 개별 수정이 아니라 공통 Global Mobile Header component 기준으로 통일**해줘.
+
+첨부된 화면들을 보면 각 페이지마다 Header 구조, 높이, 버튼 배치, secondary text가 조금씩 달라서 전체 앱의 일관성이 떨어진다.
+
+이번 작업의 목표는 **모바일 전 페이지의 Header visual system을 하나로 통일하는 것**이다.
+
+## 적용 대상
+
+최소 다음 화면에 동일한 Header system을 적용해줘.
+
+* Mode Select
+* Inventory Mode / Field Actions
+* Project Operations
+* Admin Dashboard
+* 기타 동일한 기존 Header component를 사용하는 모바일 페이지
+
+기존 페이지의 본문 디자인이나 기능은 변경하지 말고 **Header만 수정**한다.
+
+---
+
+## 1. 기본 Header 구조
+
+모바일에서는 다음 구조를 기본으로 사용한다.
+
+```text
+[Navigation] [TK Logo]  TK ELECTRIC            [Controls]
+                        Section Name
+```
+
+예:
+
+```text
+[←] [TK LOGO]  TK ELECTRIC                 [EN] [Home]
+               PROJECT OPERATIONS
+```
+
+또는 Root page라면:
+
+```text
+[TK LOGO]  TK ELECTRIC                [Theme] [EN] [Logout]
+           OPERATIONS
+```
+
+Header 전체가 하나의 일관된 component처럼 보여야 한다.
+
+---
+
+## 2. 제거할 정보
+
+모바일 Header에서 다음 정보는 제거해줘.
+
+* `Wed, Aug 19`
+* `8:28 PM`
+* 기타 날짜 / 현재 시간
+* 불필요하게 긴 breadcrumb text
+
+현재처럼:
+
+`INVENTORY MODE · Wed, Aug 19 · 8:28 PM`
+
+형태로 길게 표시하지 말 것.
+
+모바일에서는 현재 section 이름만 있으면 충분하다.
+
+---
+
+## 3. Logo / Brand 영역
+
+TK Electric logo는 모든 페이지에서:
+
+* 동일한 크기
+* 동일한 위치
+* 동일한 left alignment
+* aspect ratio 유지
+
+로 통일해줘.
+
+로고 옆에는:
+
+**Primary**
+`TK ELECTRIC`
+
+**Secondary**
+현재 Section 또는 Mode
+
+예:
+
+* `OPERATIONS`
+* `INVENTORY MODE`
+* `PROJECT OPERATIONS`
+* `ADMIN MODE`
+
+Secondary text는 작은 uppercase text로 표시하되 현재보다 가독성을 조금 높여줘.
+
+너무 작은 micro text는 피할 것.
+
+---
+
+## 4. Navigation button 규칙
+
+페이지 hierarchy에 따라 left/right navigation을 일관되게 사용해줘.
+
+### Root / Mode Select
+
+별도의 back button 필요 없음.
+
+### Mode 내부 메인 페이지
+
+Home 또는 back navigation을 하나만 사용.
+
+### Sub Page
+
+Back arrow 사용.
+
+현재처럼 어떤 페이지는 Home이고 다른 페이지는 Back인데 기준이 불명확하게 보이지 않도록 hierarchy 기준을 명확히 해줘.
+
+기존 navigation 기능 자체는 변경하지 말고 UI만 통일할 것.
+
+---
+
+## 5. Header Controls
+
+Header 오른쪽 control은 최대한 간단하게 정리해줘.
+
+사용 가능한 controls:
+
+* Theme
+* Language
+* Home
+* Back
+* Notification
+* Logout
+
+하지만 **모든 페이지에서 모든 버튼을 보여줄 필요는 없다.**
+
+현재 페이지에서 실제 필요한 control만 표시한다.
+
+### Language
+
+모바일에서는 `ENGLISH` 대신:
+
+`EN`
+
+또는 globe + `EN`
+
+형태로 compact하게 사용.
+
+### Theme
+
+작은 icon button 사용.
+
+### Logout
+
+icon button 사용.
+
+### Notification
+
+Admin처럼 실제 필요한 페이지에서만 bell icon 표시.
+
+---
+
+## 6. 현재 큰 외곽 Control Container 제거
+
+현재 일부 Header에서:
+
+Theme / English / Home 버튼 전체를 하나의 큰 rounded rectangle로 감싸고 있는데 이 구조는 제거해줘.
+
+각 control을 독립된 small icon/button 형태로 만들거나 최소한의 grouping만 사용할 것.
+
+Border를 중복해서 사용하지 말 것.
+
+목표는:
+
+**Toolbar 느낌 ↓**
+**Professional mobile app header 느낌 ↑**
+
+---
+
+## 7. Header Size
+
+모든 모바일 Header의 전체 높이를 최대한 일정하게 맞춰줘.
+
+권장:
+
+`72px ~ 84px`
+
+범위.
+
+페이지에 따라 Header 높이가 크게 달라지지 않도록 한다.
+
+Header 안에서:
+
+* Logo
+* Company Name
+* Section Name
+* Controls
+
+가 vertical center 기준으로 정돈되어 보여야 한다.
+
+---
+
+## 8. Alignment
+
+Header의 좌우 padding은 해당 페이지 main content와 동일한 grid를 사용해줘.
+
+즉:
+
+Header logo 시작점
+Hero text 시작점
+Card 시작점
+
+등의 기본 alignment가 시각적으로 연결되어야 한다.
+
+현재 화면 일부는 Header content와 body content의 시작점이 달라 보여 어색하다.
+
+---
+
+## 9. Divider / Border
+
+TK Electric green accent는 유지한다.
+
+상단 thin green line도 유지 가능.
+
+Header bottom divider는:
+
+* 얇게
+* subtle하게
+* 기존 green identity는 유지
+
+하되 Header 전체가 박스처럼 보이지 않도록 한다.
+
+---
+
+## 10. Admin Dashboard Header
+
+Admin Dashboard도 동일 system에 맞춰 수정한다.
+
+현재:
+
+```text
+hamburger
+logo
+TK ELECTRIC
+ADMIN MODE
+date/time
+
+ENGLISH
+Home
+Bell
+```
+
+구조를 다음처럼 단순화한다.
+
+```text
+[☰] [TK LOGO]  TK ELECTRIC              [EN] [Home] [Bell]
+               ADMIN MODE
+```
+
+날짜와 시간은 제거.
+
+Hamburger는 Admin navigation에 실제 필요하므로 유지한다.
+
+다만 logo / typography / controls / spacing은 다른 Header와 동일한 component 규칙을 사용한다.
+
+---
+
+## 11. Inventory Mode
+
+현재:
+
+`INVENTORY MODE · Wed, Aug 19 · 8:28 PM`
+
+에서 날짜와 시간을 제거하고:
+
+```text
+TK ELECTRIC
+INVENTORY MODE
+```
+
+만 표시.
+
+Header의 Home / Language / Theme control도 Global Header 규칙에 맞춰 정리한다.
+
+---
+
+## 12. Project Operations
+
+현재 Project Operations Header도:
+
+`PROJECT OPERATIONS · Wed, Aug 19 · 8:28 PM`
+
+에서 날짜와 시간을 제거.
+
+Back button은 유지하되 다른 페이지의 navigation icon과 동일한 크기 / border / spacing을 사용한다.
+
+---
+
+## 13. Mode Select
+
+Mode Select에서는:
+
+```text
+TK ELECTRIC
+OPERATIONS
+```
+
+형태를 사용.
+
+Header 아래의:
+
+`GOOD EVENING, MICHAEL.`
+
+Hero section은 그대로 유지한다.
+
+Header에서 사용자 이름이나 greeting을 반복하지 않는다.
+
+---
+
+## 디자인 방향
+
+전체 Header 디자인은:
+
+* Professional
+* Industrial
+* Minimal
+* Clean
+* Consistent
+* Mobile-first
+
+방향으로 유지한다.
+
+TK Electric의 기존:
+
+* Green accent
+* Typography character
+* Light industrial dashboard style
+
+은 유지한다.
+
+**새로운 디자인 시스템을 만드는 것이 아니라 현재 디자인을 정돈하고 통일하는 작업이다.**
+
+---
+
+## 중요한 제한사항
+
+이번 작업에서:
+
+* Main body layout 변경 금지
+* Card 디자인 변경 금지
+* Existing navigation logic 변경 금지
+* Route 변경 금지
+* Button functionality 변경 금지
+* Desktop UI에 영향 주지 말 것
+
+Mobile breakpoint에만 적용하도록 기존 responsive structure를 확인해서 구현해줘.
+
+가능하면 기존 Header 코드를 분석해서 공통 component 또는 shared styles로 통합하여 이후 Header 디자인 수정이 한 곳에서 가능하도록 만들어줘.
+
+작업 완료 후 다음 내용을 간단히 알려줘.
+
+1. 공통 Header component를 만들었는지
+2. 어떤 page/component를 수정했는지
+3. 각 페이지 navigation button을 어떤 기준으로 정리했는지
+4. Mobile breakpoint만 변경되었는지
+5. Desktop에 영향이 없는지

@@ -113,6 +113,7 @@ async function main() {
   const recorder = new RouteRecorder();
   const originalSetInterval = globalThis.setInterval;
   const originalAuthGetUser = authStorage.getUser;
+  const originalAuthListUsers = authStorage.listUsers;
   const originalDbSelect = (db as any).select;
   const restoreStorage: Array<() => void> = [];
   let mutationCount = 0;
@@ -130,6 +131,7 @@ async function main() {
 
   try {
     authStorage.getUser = async (id: string) => usersById.get(id) as any;
+    authStorage.listUsers = async () => Array.from(usersById.values()) as any;
     (db as any).select = () => ({
       from: (table: unknown) => {
         if (table === workers) {
@@ -167,8 +169,8 @@ async function main() {
       { id: 2, workerId: 2, projectId: UNASSIGNED_PROJECT_ID },
     ]);
     stubStorage("getWorkers", async () => [
-      { id: 1, linkedUserId: STAFF_USER_ID, fullName: "Staff Tester" },
-      { id: 2, linkedUserId: null, fullName: "Other Worker" },
+      { id: 1, linkedUserId: STAFF_USER_ID, fullName: "Staff Tester", trade: "Foreman", isActive: true },
+      { id: 2, linkedUserId: null, fullName: "Other Worker", trade: "Foreman", isActive: true },
     ]);
     stubStorage("upsertAssignment", async () => { mutationCount++; return { id: 1 }; });
     stubStorage("setAppSetting", async () => { mutationCount++; });
@@ -285,6 +287,27 @@ async function main() {
         `${usersById.get(userId)?.role} should retain the full crew dispatch list`);
     }
 
+    const staffAudit = await request("get", "/api/workers/foreman-link-audit", STAFF_USER_ID, {}, {
+      today: "2026-08-19",
+      yesterday: "2026-08-18",
+    });
+    assert.equal(staffAudit.statusCode, 403, "STAFF must not access the foreman account-link audit");
+
+    const managerAudit = await request("get", "/api/workers/foreman-link-audit", MANAGER_USER_ID, {}, {
+      today: "2026-08-19",
+      yesterday: "2026-08-18",
+    });
+    assert.equal(managerAudit.statusCode, 200, "Manager should access the foreman account-link audit");
+    assert.deepEqual(
+      (managerAudit.body as { foremen: Array<{ id: number; linkedUserId: string | null; todayProjectIds: number[] }> }).foremen
+        .map((foreman) => ({ id: foreman.id, linkedUserId: foreman.linkedUserId, todayProjectIds: foreman.todayProjectIds })),
+      [
+        { id: 1, linkedUserId: STAFF_USER_ID, todayProjectIds: [ASSIGNED_PROJECT_ID] },
+        { id: 2, linkedUserId: null, todayProjectIds: [UNASSIGNED_PROJECT_ID] },
+      ],
+      "Manager audit must expose each active foreman's explicit link and recent assignment count",
+    );
+
     const protectedMutations: Array<{
       path: string;
       params: Record<string, string>;
@@ -327,6 +350,7 @@ async function main() {
   } finally {
     globalThis.setInterval = originalSetInterval;
     authStorage.getUser = originalAuthGetUser;
+    authStorage.listUsers = originalAuthListUsers;
     (db as any).select = originalDbSelect;
     for (const restore of restoreStorage.reverse()) restore();
   }

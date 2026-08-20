@@ -332,6 +332,63 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Foreman account-link audit (manager+) ──────────────────────────────────
+  // Shows only active foremen and their recent assignment counts. A manager must
+  // still explicitly choose an app account through the link endpoint above.
+  app.get("/api/workers/foreman-link-audit", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const isDate = (value: unknown): value is string =>
+        typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+      const localDate = (dayOffset: number) => {
+        const date = new Date();
+        date.setDate(date.getDate() + dayOffset);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      };
+      const today = isDate(req.query.today) ? req.query.today : localDate(0);
+      const yesterday = isDate(req.query.yesterday) ? req.query.yesterday : localDate(-1);
+      const [allWorkers, todayAssignments, yesterdayAssignments, activeUsers] = await Promise.all([
+        storage.getWorkers(),
+        storage.getAssignmentsByDate(today),
+        storage.getAssignmentsByDate(yesterday),
+        authStorage.listUsers("active"),
+      ]);
+      const safeUsers = new Map(activeUsers.map((user: any) => [user.id, {
+        id: user.id,
+        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+      }]));
+      const projectIdsByWorker = (assignments: Array<{ workerId: number; projectId: number | null }>) => {
+        const result = new Map<number, Set<number>>();
+        assignments.forEach((assignment) => {
+          if (assignment.projectId == null) return;
+          const projectIds = result.get(assignment.workerId) ?? new Set<number>();
+          projectIds.add(assignment.projectId);
+          result.set(assignment.workerId, projectIds);
+        });
+        return result;
+      };
+      const todayByWorker = projectIdsByWorker(todayAssignments);
+      const yesterdayByWorker = projectIdsByWorker(yesterdayAssignments);
+      const foremen = allWorkers
+        .filter((worker) => worker.isActive && (worker.trade ?? "").toLowerCase().includes("foreman"))
+        .map((worker) => ({
+          id: worker.id,
+          fullName: worker.fullName,
+          trade: worker.trade,
+          linkedUserId: worker.linkedUserId ?? null,
+          linkedUser: worker.linkedUserId ? safeUsers.get(worker.linkedUserId) ?? null : null,
+          todayProjectIds: Array.from(todayByWorker.get(worker.id) ?? []),
+          yesterdayProjectIds: Array.from(yesterdayByWorker.get(worker.id) ?? []),
+        }));
+      res.json({ today, yesterday, foremen });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ─── Dashboard ──────────────────────────────────────────────────────────────
   app.get("/api/dashboard/stats", isAuthenticated, async (req, res) => {
     try {

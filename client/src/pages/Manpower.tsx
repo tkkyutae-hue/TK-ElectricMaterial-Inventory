@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { type Worker } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
+import { useAuth } from "@/hooks/use-auth";
+import { ForemanAccountAudit } from "@/components/manpower/ForemanAccountAudit";
 
 // ─── Trade options — bilingual, consistent Korean — English format ────────────
 export const TRADE_OPTIONS = [
@@ -183,6 +185,7 @@ export default function Manpower() {
   const [, navigate] = useLocation();
   const { toast }    = useToast();
   const { t }        = useLanguage();
+  const { user }     = useAuth();
 
   const [draftKeys, setDraftKeys]     = useState<number[]>([]);
   const [sortByTrade, setSortByTrade] = useState(false);
@@ -316,6 +319,9 @@ export default function Manpower() {
           </CardContent>
         </Card>
       )}
+
+      {/* ── Foreman account links — changing links remains manager/admin only ── */}
+      {(user?.role === "admin" || user?.role === "manager") && <ForemanAccountAudit />}
 
       {/* ── Worker Registry ── */}
       <Card>

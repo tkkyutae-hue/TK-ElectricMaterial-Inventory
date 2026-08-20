@@ -1647,11 +1647,40 @@ export function NewReportTab({
   const [materials,  setMaterials]  = useState<MaterialRow[]>(
     (fd?.materials ?? []).map((m: any) => ({ inventoryItemId: null, scopeItemId: null, spec: "", ...m }))
   );
+  const [materialQtyDrafts, setMaterialQtyDrafts] = useState<Record<number, string>>({});
   const [equipment, setEquipment]  = useState<EquipmentRow[]>(() =>
     (fd?.equipment ?? []).map((e: any) => ({
       scopeItemId: null, ...e, eqStatus: normalizeEquipmentStatus(e.eqStatus),
     }))
   );
+  const materialQtyValue = (row: MaterialRow) => materialQtyDrafts[row.id] ?? row.qty;
+  const normalizeMaterialQty = (value: string) => {
+    const quantity = Number(value);
+    return value.trim() !== "" && Number.isFinite(quantity) && quantity >= 0 ? quantity : 0;
+  };
+  const handleMaterialQtyChange = (rowId: number, value: string) => {
+    setMaterialQtyDrafts((previous) => ({ ...previous, [rowId]: value }));
+    const quantity = Number(value);
+    if (value.trim() !== "" && Number.isFinite(quantity) && quantity >= 0) {
+      setMaterials((previous) => previous.map((row) => row.id === rowId ? { ...row, qty: quantity } : row));
+    }
+  };
+  const commitMaterialQty = (rowId: number) => {
+    const value = materialQtyDrafts[rowId];
+    if (value === undefined) return;
+    const quantity = normalizeMaterialQty(value);
+    setMaterials((previous) => previous.map((row) => row.id === rowId ? { ...row, qty: quantity } : row));
+    setMaterialQtyDrafts((previous) => {
+      const { [rowId]: _draft, ...remaining } = previous;
+      return remaining;
+    });
+  };
+  const materialsForSave = () => {
+    if (Object.keys(materialQtyDrafts).length === 0) return materials;
+    return materials.map((row) => (
+      materialQtyDrafts[row.id] === undefined ? row : { ...row, qty: normalizeMaterialQty(materialQtyDrafts[row.id]) }
+    ));
+  };
   const materialSectionCounts = useMemo(() => materials.reduce<Record<string, number>>((counts, row) => {
     if (row.section) counts[row.section] = (counts[row.section] ?? 0) + 1;
     return counts;
@@ -1917,7 +1946,11 @@ export function NewReportTab({
       // Staff cannot POST /api/projects/:id/scope-items (requireManager), so we skip for them.
       // The server endpoint is now a transactional upsert: it always returns the item (200),
       // never 409, so concurrent same-key submissions resolve to the same scope item ID.
-      let updatedMaterials = [...materials];
+      let updatedMaterials = materialsForSave();
+      if (updatedMaterials !== materials) {
+        setMaterials(updatedMaterials);
+        setMaterialQtyDrafts({});
+      }
       if (isManagerOrAbove && projectId) {
         const extraToRegister = materials.filter(r => r.scopeItemId === null && r.description.trim() !== "");
         if (extraToRegister.length > 0) {
@@ -3072,9 +3105,9 @@ export function NewReportTab({
                       )}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, marginLeft: "auto", minWidth: 0, maxWidth: "100%", flexWrap: "wrap" }}>
-                      <input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
-                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
-                        onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
+                      <input data-testid={`input-mat-qty-${i}`} type="number" min={0} step="any" value={materialQtyValue(row)}
+                        onChange={(e) => handleMaterialQtyChange(row.id, e.target.value)}
+                        onBlur={() => commitMaterialQty(row.id)}
                         style={{ width: 52, height: 32, fontSize: 14, fontWeight: 600, textAlign: "center", border: `1px solid ${FT.RULE}`, borderRadius: 6, background: "#fff", outline: "none", color: "#374151", flexShrink: 0 }} />
                       {scopeQuantity && (
                         <span
@@ -3242,9 +3275,9 @@ export function NewReportTab({
                     </td>
                     {/* QTY */}
                     <td className="py-1.5 px-1">
-                      <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
-                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
-                        onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
+                      <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} step="any" value={materialQtyValue(row)}
+                        onChange={(e) => handleMaterialQtyChange(row.id, e.target.value)}
+                        onBlur={() => commitMaterialQty(row.id)}
                         className="h-8 text-xs text-center tabular-nums w-full" />
                     </td>
                     {/* UNIT */}

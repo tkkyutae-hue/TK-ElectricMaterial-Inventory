@@ -2953,13 +2953,15 @@ export function NewReportTab({
                             {materialSectionCounts[sec] ?? 0}
                           </span>
                         </button>
-                        {!isSubmitted && (
-                          <button type="button"
+                        {sectionCollapsed && !isSubmitted && (
+                          <button
+                            type="button"
                             data-testid={`add-material-section-${sec}`}
                             aria-label={`${t.newReportAddMaterial}: ${sec}`}
                             title={`${t.newReportAddMaterial}: ${sec}`}
                             onClick={() => addMaterialToSection(sec)}
-                            style={{ width: 40, border: "none", borderLeft: "1px solid rgba(255,255,255,0.24)", background: "rgba(255,255,255,0.08)", color: "inherit", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            style={{ width: 40, border: "none", borderLeft: "1px solid rgba(255,255,255,0.24)", background: "rgba(255,255,255,0.08)", color: "inherit", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                          >
                             <Plus style={{ width: 15, height: 15 }} />
                           </button>
                         )}
@@ -2968,6 +2970,7 @@ export function NewReportTab({
                   }
                 }
                 if (sectionCollapsed) return;
+                const isLastInMobileSection = materials[i + 1]?.section !== sec;
                 const isExtra = row.scopeItemId === null && row.description.trim() !== "";
                 const scopeItem = row.scopeItemId !== null
                   ? scopeItems.find((s: any) => s.id === row.scopeItemId)
@@ -3045,6 +3048,28 @@ export function NewReportTab({
                   </div>
                 </div>
                 );
+                if (sec && isLastInMobileSection && !isSubmitted) {
+                  mobileNodes.push(
+                    <button
+                      key={`add-${sec}-${row.id}`}
+                      type="button"
+                      data-testid={`add-material-section-${sec}`}
+                      aria-label={`${t.newReportAddMaterial}: ${sec}`}
+                      title={`${t.newReportAddMaterial}: ${sec}`}
+                      onClick={() => addMaterialToSection(sec)}
+                      style={{
+                        minHeight: 34, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                        border: `1.5px dashed ${FT.RULE}`, borderRadius: 7, background: FT.PAPER_MUTED,
+                        color: FT.TEXT_MUTED, cursor: "pointer", fontFamily: FT.FONT, fontSize: 12, fontWeight: 700,
+                        letterSpacing: "0.02em",
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = FT.TEXT_MUTED; e.currentTarget.style.color = FT.INK; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = FT.RULE; e.currentTarget.style.color = FT.TEXT_MUTED; }}
+                    >
+                      <Plus style={{ width: 14, height: 14 }} /> {t.newReportAddMaterial}
+                    </button>
+                  );
+                }
               });
               return mobileNodes;
             })()}
@@ -3107,13 +3132,15 @@ export function NewReportTab({
                                   {materialSectionCounts[sec] ?? 0}
                                 </span>
                               </button>
-                              {!isSubmitted && (
-                                <button type="button"
+                              {sectionCollapsed && !isSubmitted && (
+                                <button
+                                  type="button"
                                   data-testid={`add-material-section-${sec}`}
                                   aria-label={`${t.newReportAddMaterial}: ${sec}`}
                                   title={`${t.newReportAddMaterial}: ${sec}`}
                                   onClick={() => addMaterialToSection(sec)}
-                                  style={{ width: 36, border: "none", borderLeft: "1px solid rgba(255,255,255,0.24)", background: "rgba(255,255,255,0.08)", color: "inherit", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                  style={{ width: 36, border: "none", borderLeft: "1px solid rgba(255,255,255,0.24)", background: "rgba(255,255,255,0.08)", color: "inherit", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                                >
                                   <Plus style={{ width: 14, height: 14 }} />
                                 </button>
                               )}
@@ -3124,6 +3151,7 @@ export function NewReportTab({
                     }
                   }
                   if (sectionCollapsed) return;
+                  const isLastInDeskSection = materials[i + 1]?.section !== sec;
                   const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
                   const imgUrl: string = linkedItem?.imageUrl ?? "";
                   const isExtra = row.scopeItemId === null && row.description.trim() !== "";
@@ -3206,6 +3234,31 @@ export function NewReportTab({
                     </td>
                   </tr>
                   );
+                  if (sec && isLastInDeskSection && !isSubmitted) {
+                    deskRows.push(
+                      <tr key={`add-${sec}-${row.id}`}>
+                        <td colSpan={6} style={{ padding: "5px 0 8px" }}>
+                          <button
+                            type="button"
+                            data-testid={`add-material-section-${sec}`}
+                            aria-label={`${t.newReportAddMaterial}: ${sec}`}
+                            title={`${t.newReportAddMaterial}: ${sec}`}
+                            onClick={() => addMaterialToSection(sec)}
+                            style={{
+                              minHeight: 32, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                              border: `1.5px dashed ${FT.RULE}`, borderRadius: 6, background: FT.PAPER_MUTED,
+                              color: FT.TEXT_MUTED, cursor: "pointer", fontFamily: FT.FONT, fontSize: 11, fontWeight: 700,
+                              letterSpacing: "0.02em",
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = FT.TEXT_MUTED; e.currentTarget.style.color = FT.INK; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = FT.RULE; e.currentTarget.style.color = FT.TEXT_MUTED; }}
+                          >
+                            <Plus style={{ width: 13, height: 13 }} /> {t.newReportAddMaterial}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  }
                 });
                 return deskRows;
               })()}

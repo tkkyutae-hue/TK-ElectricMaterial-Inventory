@@ -234,6 +234,15 @@ input[type="number"] {
   .mode-header .mode-header-controls > * {
     flex-shrink: 0;
   }
+
+  /* App and project headers provide a short language code for compact phones. */
+  .mode-header-controls .language-switcher-full-label {
+    display: none;
+  }
+
+  .mode-header-controls .language-switcher-short-label {
+    display: inline;
+  }
 }
 
 @media (max-width: 340px) {
@@ -244,6 +253,16 @@ input[type="number"] {
   .mode-header .tk-header-detail {
     font-size: 8px;
     letter-spacing: 0;
+  }
+
+  .mode-header-controls {
+    gap: 2px !important;
+    padding: 3px !important;
+  }
+
+  .mode-header-controls .tk-header-control {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
   }
 }
 

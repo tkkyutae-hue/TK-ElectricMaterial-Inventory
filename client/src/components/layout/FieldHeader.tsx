@@ -68,17 +68,13 @@ export function FieldHeader() {
                 </span>
               </span>
               <span
-                className="tk-header-detail flex sm:hidden items-center gap-1 mt-1 whitespace-nowrap"
+                className="tk-header-detail field-header-mobile-detail hidden items-center gap-1 mt-1 whitespace-nowrap"
                 style={{
                   color: F.accent,
                 }}
               >
                 <HardHat style={{ width: 9, height: 9 }} />
                 <span>{t.inventoryMode}</span>
-                <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
-                <span className="tk-header-detail-date" style={{ color: F.textDim }}>{dateStrShort}</span>
-                <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
-                <span className="tk-header-detail-date" style={{ color: F.textDim }}>{timeStr}</span>
               </span>
             </>
           }

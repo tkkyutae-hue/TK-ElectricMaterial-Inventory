@@ -86,14 +86,9 @@ function DailyReportLayout({
     return () => clearInterval(timer);
   }, []);
   const locale = lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US";
-  const headerDate = now.toLocaleDateString(
-    locale,
-    { weekday: "short", month: "long", day: "numeric", year: "numeric" },
-  );
-  const headerDateShort = now.toLocaleDateString(
-    locale,
-    { weekday: "short", month: "short", day: "numeric" },
-  );
+  const headerDate = now.toLocaleDateString(locale, {
+    weekday: "short", month: "long", day: "numeric", year: "numeric",
+  });
   const headerTime = now.toLocaleTimeString(locale, {
     hour: "numeric", minute: "2-digit", hour12: true,
   });
@@ -121,13 +116,9 @@ function DailyReportLayout({
                   <span className="text-slate-400 font-normal">·</span>
                   <span className="tk-header-detail-date text-slate-500">{headerTime}</span>
                 </span>
-                <span className="tk-header-detail flex sm:hidden text-amber-600 mt-1 items-center gap-1 whitespace-nowrap">
+                <span className="tk-header-detail project-header-mobile-detail hidden text-amber-600 mt-1 items-center gap-1 whitespace-nowrap">
                   <span>●</span>
                   <span>{t.projectOpsMode}</span>
-                  <span className="text-slate-400 font-normal">·</span>
-                  <span className="tk-header-detail-date text-slate-500">{headerDateShort}</span>
-                  <span className="text-slate-400 font-normal">·</span>
-                  <span className="tk-header-detail-date text-slate-500">{headerTime}</span>
                 </span>
               </>
             }

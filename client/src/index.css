@@ -193,18 +193,23 @@ input[type="number"] {
 
 @media (max-width: 639px) {
   .mode-header {
-    height: auto !important;
-    min-height: 104px !important;
-    flex-wrap: wrap;
+    height: 80px !important;
+    min-height: 80px !important;
+    flex-wrap: nowrap;
     align-content: center;
-    row-gap: 8px;
-    padding: 8px 12px !important;
+    row-gap: 0;
+    padding: 12px 14px !important;
   }
 
   .mode-header-brand {
-    flex: 0 0 100%;
+    flex: 1 1 auto;
     min-width: 0;
-    max-width: 100%;
+    max-width: none;
+    gap: 10px !important;
+  }
+
+  .mode-header-brand img {
+    height: 36px !important;
   }
 
   .mode-header-controls {
@@ -217,13 +222,17 @@ input[type="number"] {
   .mode-header .tk-header-detail {
     font-size: 9px;
     letter-spacing: 0.35px;
-    white-space: normal !important;
-    flex-wrap: wrap;
-    row-gap: 1px;
+    white-space: nowrap !important;
   }
 
-  .mode-header .tk-header-detail > span {
-    min-width: 0;
+  .mode-header .field-header-mobile-detail,
+  .mode-header .app-header-mobile-detail,
+  .mode-header .project-header-mobile-detail {
+    display: flex !important;
+  }
+
+  .mode-header .mode-header-controls > * {
+    flex-shrink: 0;
   }
 }
 
@@ -238,19 +247,13 @@ input[type="number"] {
   }
 }
 
-/* Mode Select uses a single compact mobile toolbar; other mode headers keep their existing layout. */
+/* All mode headers use one compact mobile toolbar. */
 .language-switcher-short-label {
   display: none;
 }
 
 @media (max-width: 639px) {
   .home-mode-header {
-    min-height: 80px !important;
-    height: 80px !important;
-    flex-wrap: nowrap !important;
-    align-content: center !important;
-    row-gap: 0 !important;
-    padding: 12px 14px !important;
     gap: 12px !important;
   }
 

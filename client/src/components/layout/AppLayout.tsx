@@ -8,7 +8,6 @@ import {
   ShoppingCart,
   BarChart3,
   LogOut,
-  Bell,
   Menu,
   Home,
   Shield,
@@ -33,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import { TkElectricBrand } from "@/components/layout/TkElectricBrand";
+import { FieldThemeSwitcher } from "@/hooks/use-field-theme";
 
 const SIDEBAR_HIDDEN_KEY = "admin.sidebarHidden.v1";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -48,18 +48,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return () => clearInterval(timer);
   }, []);
   const locale = lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US";
-  const headerDate = now.toLocaleDateString(
-    locale,
-    { weekday: "short", month: "long", day: "numeric", year: "numeric" },
-  );
-  const headerDateShort = now.toLocaleDateString(
-    locale,
-    { weekday: "short", month: "short", day: "numeric" },
-  );
-  const headerTime = now.toLocaleTimeString(
-    locale,
-    { hour: "numeric", minute: "2-digit", hour12: true },
-  );
+  const headerDate = now.toLocaleDateString(locale, {
+    weekday: "short", month: "long", day: "numeric", year: "numeric",
+  });
+  const headerTime = now.toLocaleTimeString(locale, {
+    hour: "numeric", minute: "2-digit", hour12: true,
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -235,13 +229,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <span className="text-slate-400 font-normal">·</span>
                     <span className="tk-header-detail-date text-slate-500">{headerTime}</span>
                   </span>
-                  <span className="tk-header-detail flex sm:hidden text-amber-600 mt-1 items-center gap-1 whitespace-nowrap">
+                  <span className="tk-header-detail app-header-mobile-detail hidden text-amber-600 mt-1 items-center gap-1 whitespace-nowrap">
                     <Shield className="w-2.5 h-2.5 flex-shrink-0" />
                     <span>{t.adminModeChip}</span>
-                    <span className="text-slate-400 font-normal">·</span>
-                    <span className="tk-header-detail-date text-slate-500">{headerDateShort}</span>
-                    <span className="text-slate-400 font-normal">·</span>
-                    <span className="tk-header-detail-date text-slate-500">{headerTime}</span>
                   </span>
                 </>
               }
@@ -261,7 +251,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="hidden sm:inline">{t.back}</span>
               </Button>
             )}
-            <LanguageSwitcher theme="light" compact={true} />
+            <FieldThemeSwitcher compact={true} />
+            <LanguageSwitcher theme="light" compact={true} mobileShortLabel />
             <Link href="/home">
               <Button
                 variant="ghost"
@@ -273,9 +264,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="hidden sm:inline">{t.modeSelect}</span>
               </Button>
             </Link>
-            <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-brand-50 relative w-9 h-9">
-              <Bell className="w-4 h-4" />
-            </Button>
           </div>
         </header>
 

@@ -198,10 +198,6 @@ function flexMatch(name: string, query: string): boolean {
   return words.length > 1 && words.every(w => n.includes(w));
 }
 
-function fmtTime(d: Date) {
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-}
-
 // ─── Mobile breakpoint hook ───────────────────────────────────────────────────
 function useIsMobile(breakpoint = 640) {
   const [isMob, setIsMob] = useState(() => typeof window !== "undefined" && window.innerWidth < breakpoint);
@@ -1742,7 +1738,6 @@ export function NewReportTab({
 
   // ── Save state ──
   const [savedStatus, setSavedStatus] = useState<string | null>(initialData?.status ?? null);
-  const [lastSaved,   setLastSaved]   = useState<Date | null>(null);
 
   // ── Most recent previous report (for "Copy Previous" feature) ──
   const prevReport = useMemo(() => {
@@ -1922,7 +1917,6 @@ export function NewReportTab({
     onSuccess: async (res: any, status) => {
       const saved = await res.json();
       setSavedStatus(status);
-      setLastSaved(new Date());
       queryClient.invalidateQueries({ queryKey: ["/api/daily-reports", projectId] });
       queryClient.invalidateQueries({ queryKey: ["/api/daily-reports-summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
@@ -2026,96 +2020,6 @@ export function NewReportTab({
           </div>
         </div>
       )}
-
-      {/* ── Top action bar ── */}
-      <div className="rounded-xl px-5 py-3" style={{ background: FT.PAPER_MUTED, border: `1px solid ${FT.RULE}` }}>
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-
-          {/* Left: actions */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <button data-testid="btn-save-draft"
-              disabled={saveMutation.isPending || isSubmitted}
-              onClick={() => saveMutation.mutate("draft")}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 7,
-                padding: "0 20px", height: 48, borderRadius: 8, fontSize: 13,
-                fontWeight: 700, fontFamily: FT.FONT, letterSpacing: "0.03em",
-                textTransform: "uppercase", cursor: (saveMutation.isPending || isSubmitted) ? "not-allowed" : "pointer",
-                border: `2px solid ${FT.INK}`, background: "transparent", color: FT.INK,
-                transition: "all 0.15s", opacity: (saveMutation.isPending || isSubmitted) ? 0.45 : 1,
-              }}
-              onMouseEnter={e => { if (!saveMutation.isPending && !isSubmitted) { (e.currentTarget as HTMLElement).style.background = FT.INK; (e.currentTarget as HTMLElement).style.color = FT.PAPER; } }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = FT.INK; }}>
-              {saveMutation.isPending ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> : <Save style={{ width: 14, height: 14 }} />}
-              {t.newReportSaveDraft}
-            </button>
-
-            <button data-testid="btn-submit-report"
-              disabled={saveMutation.isPending || isSubmitted || !canSubmit}
-              onClick={() => saveMutation.mutate("submitted")}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 7,
-                padding: "0 24px", height: 48, borderRadius: 8, fontSize: 14,
-                fontWeight: 700, fontFamily: FT.FONT, letterSpacing: "0.03em",
-                textTransform: "uppercase", transition: "all 0.15s",
-                cursor: (!canSubmit && !isSubmitted) ? "not-allowed" : "pointer",
-                border: (isSubmitted || canSubmit) ? `1px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`,
-                background: (isSubmitted || canSubmit) ? FT.ACCENT : FT.RULE,
-                color: (isSubmitted || canSubmit) ? "#ffffff" : FT.TEXT_MUTED,
-                boxShadow: (canSubmit || isSubmitted) ? `0 2px 8px rgba(232,93,4,0.3)` : "none",
-                opacity: 1,
-              }}
-              onMouseEnter={e => { if (canSubmit || isSubmitted) { (e.currentTarget as HTMLElement).style.background = "#c44e00"; (e.currentTarget as HTMLElement).style.boxShadow = "0 3px 12px rgba(232,93,4,0.45)"; } }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = (isSubmitted || canSubmit) ? FT.ACCENT : FT.RULE; (e.currentTarget as HTMLElement).style.boxShadow = (canSubmit || isSubmitted) ? `0 2px 8px rgba(232,93,4,0.3)` : "none"; }}
-              onMouseDown={e => { if (canSubmit || isSubmitted) (e.currentTarget as HTMLElement).style.transform = "scale(0.98)"; }}
-              onMouseUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}>
-              {saveMutation.isPending
-                ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" />
-                : isSubmitted
-                ? <CheckCircle2 style={{ width: 14, height: 14 }} />
-                : canSubmit
-                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><polyline points="20 6 9 17 4 12"/></svg>
-                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              }
-              {isSubmitted ? t.newReportSubmitted : t.newReportSubmit}
-            </button>
-
-            {isManagerOrAbove && reportId && (
-              <Button data-testid="btn-delete-report"
-                variant="outline" size="sm"
-                className="gap-2 h-9 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-                disabled={deleteMutation.isPending}
-                onClick={() => setShowDeleteConfirm(true)}>
-                <Trash2 className="w-3.5 h-3.5" />
-                {t.newReportDeleteReport}
-              </Button>
-            )}
-          </div>
-
-          {/* Right: status */}
-          <div className="flex items-center gap-3">
-            {submitHelper && (
-              <span style={{ fontSize: 13, color: FT.TEXT_MUTED, fontStyle: "italic" }}>{submitHelper}</span>
-            )}
-            <div style={{ width: 1, height: 20, background: FT.RULE }} />
-            <div className="flex flex-col items-end">
-              <span style={{
-                fontSize: 11, fontWeight: 700, fontFamily: FT.FONT, letterSpacing: "0.04em",
-                textTransform: "uppercase", padding: "2px 10px", borderRadius: 4,
-                background: isSubmitted ? FT.SUCCESS : savedStatus === "draft" ? FT.ACCENT : "transparent",
-                color: (isSubmitted || savedStatus === "draft") ? "#fff" : FT.TEXT_MUTED,
-                border: (isSubmitted || savedStatus === "draft") ? "none" : `1px solid ${FT.RULE}`,
-              }}>
-                {isSubmitted ? t.newReportSubmittedTag : savedStatus === "draft" ? t.newReportDraft : t.newReportUnsaved}
-              </span>
-              {lastSaved && (
-                <span style={{ fontSize: 12, color: FT.TEXT_MUTED, marginTop: 2 }}>{t.newReportLastSaved} {fmtTime(lastSaved)}</span>
-              )}
-            </div>
-          </div>
-
-        </div>
-      </div>
 
       {/* Quick mode toggle removed — mobile always uses quick mode by default */}
       {/* ── Section navigator / Quick step indicator ── */}

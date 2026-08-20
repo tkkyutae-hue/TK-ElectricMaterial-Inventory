@@ -52,9 +52,11 @@ interface SwitcherProps {
   theme?: "dark" | "light";
   /** compact = reduce trigger height to match adjacent icon-button controls */
   compact?: boolean;
+  /** Show the language code at mobile widths while preserving the full label on desktop. */
+  mobileShortLabel?: boolean;
 }
 
-export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherProps) {
+export function LanguageSwitcher({ theme = "dark", compact = false, mobileShortLabel = false }: SwitcherProps) {
   const { lang, setLang } = useLanguage();
   const isDark = theme === "dark";
 
@@ -108,7 +110,10 @@ export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherPr
             (e.currentTarget as HTMLButtonElement).style.borderColor = triggerBorder;
           }}
         >
-          <span>{current.label}</span>
+          <span className={mobileShortLabel ? "language-switcher-full-label" : undefined}>{current.label}</span>
+          {mobileShortLabel && (
+            <span className="language-switcher-short-label">{current.code.toUpperCase()}</span>
+          )}
           <ChevronDown
             style={{ width: 11, height: 11, color: chevronColor, flexShrink: 0 }}
             aria-hidden="true"

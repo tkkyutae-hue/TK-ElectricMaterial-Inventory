@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { LogOut, Lock } from "lucide-react";
@@ -240,15 +240,8 @@ function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
 export default function Home() {
   const [, navigate] = useLocation();
   const { user, logout, isAdminRole, canAccessAdminMode, canAccessProjectOperations } = useAuth();
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const { F, theme: fieldTheme } = useFieldTheme();
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   const gridLineColor = fieldTheme === "light" ? "rgba(22,163,74,0.022)" : F.accentBg;
   const hoverShadow   = fieldTheme === "light" ? "0 8px 28px rgba(15,23,42,0.10)" : "0 8px 28px rgba(0,0,0,0.45)";
   const restShadow    = fieldTheme === "light" ? "0 2px 12px rgba(15,23,42,0.07)" : "none";
@@ -258,23 +251,6 @@ export default function Home() {
   const timeKey = getTimeKey();
   const emoji = EMOJI_MAP[timeKey];
   const label = t[timeKey];
-  const locale = lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US";
-  const headerDate = now.toLocaleDateString(locale, {
-    weekday: "short",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const headerDateShort = now.toLocaleDateString(locale, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-  const headerTime = now.toLocaleTimeString(locale, {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
   const greeting = (
     timeKey === "morning" ? t.goodMorning
     : timeKey === "afternoon" ? t.goodAfternoon
@@ -320,7 +296,7 @@ export default function Home() {
       <div style={gridStyle} />
 
       {/* Header */}
-      <header className="mode-header" style={{
+      <header className="mode-header home-mode-header" style={{
         position: "relative", zIndex: 50,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         minHeight: 68,
@@ -334,37 +310,12 @@ export default function Home() {
       }}>
         <TkElectricBrand
           compact
-          className="mode-header-brand"
+          className="mode-header-brand home-mode-header-brand"
           textColor={F.text}
-          detail={
-            <>
-              <span
-                className="tk-header-detail hidden sm:flex items-center gap-1.5 mt-1 whitespace-nowrap"
-                style={{ color: F.textMuted }}
-              >
-                <span style={{ color: F.accent }}>●</span>
-                <span>{t.modeSelect}</span>
-                <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
-                <span className="tk-header-detail-date">{headerDate}</span>
-                <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
-                <span className="tk-header-detail-date">{headerTime}</span>
-              </span>
-              <span
-                className="tk-header-detail flex sm:hidden items-center gap-1 mt-1 whitespace-nowrap"
-                style={{ color: F.textMuted }}
-              >
-                <span style={{ color: F.accent }}>●</span>
-                <span>{t.modeSelect}</span>
-                <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
-                <span className="tk-header-detail-date">{headerDateShort}</span>
-                <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
-                <span className="tk-header-detail-date">{headerTime}</span>
-              </span>
-            </>
-          }
+          detail={<span className="home-mode-header-operations" style={{ color: F.textDim }}>Operations</span>}
         />
 
-        <div className="mode-header-controls" style={{
+        <div className="mode-header-controls home-mode-header-controls" style={{
           display: "flex", alignItems: "center", justifyContent: "flex-end",
           gap: 6, flexWrap: "wrap", padding: 4,
           background: F.surface,
@@ -373,7 +324,11 @@ export default function Home() {
           boxShadow: fieldTheme === "light" ? "0 4px 14px rgba(15,31,23,0.06)" : "0 8px 18px rgba(0,0,0,0.18)",
         }}>
           <FieldThemeSwitcher compact={true} />
-          <LanguageSwitcher theme={fieldTheme === "light" ? "light" : "dark"} compact={true} />
+          <LanguageSwitcher
+            theme={fieldTheme === "light" ? "light" : "dark"}
+            compact={true}
+            mobileShortLabel
+          />
 
           <button
             onClick={() => logout()}

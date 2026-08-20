@@ -2168,75 +2168,142 @@ export function NewReportTab({
         <div style={{ padding: isMobile ? "16px 12px" : "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
 
           {/* Project context is kept here so the editor does not need a separate header card. */}
-          <div
-            data-testid="general-project-summary"
-            style={{ padding: isMobile ? "10px 11px" : "11px 14px", border: `1px solid ${FT.RULE}`, borderRadius: 9, background: FT.PAPER }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-              <FileText style={{ width: 16, height: 16, flexShrink: 0, color: FT.TEXT_MUTED }} />
-              <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: 7, flexWrap: isMobile ? "nowrap" : "wrap" }}>
-                <span data-testid="field-project-name" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: isMobile ? 13 : 14, fontWeight: 800, color: FT.INK }}>
-                  {project?.name || "—"}
-                </span>
-                <span data-testid="field-project-po" style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED }}>
-                  {projectNumber ? `${t.dailyWorkspacePoPrefix} ${projectNumber}` : t.dailyWorkspaceNoPo}
-                </span>
+          {isMobile ? (
+            <div
+              data-testid="general-project-summary"
+              style={{ padding: "0 0 13px", borderBottom: `1px solid ${FT.RULE}`, background: "transparent", minWidth: 0, maxWidth: "100%", boxSizing: "border-box" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8, minWidth: 0 }}>
+                <FileText style={{ width: 16, height: 16, marginTop: 2, flexShrink: 0, color: FT.TEXT_MUTED }} />
+                <div style={{ flex: "1 1 0", minWidth: 0 }}>
+                  <span style={{ display: "block", marginBottom: 5, color: FT.TEXT_MUTED, fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase" }}>{t.newReportProjectSummary}</span>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 7, minWidth: 0 }}>
+                    <span
+                      data-testid="field-project-name"
+                      style={{ flex: "1 1 0", minWidth: 0, display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden", overflowWrap: "anywhere", fontSize: 15, fontWeight: 800, lineHeight: 1.25, color: FT.INK }}>
+                      {project?.name || "—"}
+                    </span>
+                    {projectStatus && (
+                      <span
+                        data-testid="field-project-status"
+                        style={{ flexShrink: 0, maxWidth: "45%", padding: "2px 6px", borderRadius: 999, border: `1px solid ${projectStatus.border}`, background: projectStatus.bg, color: projectStatus.color, fontSize: 10, fontWeight: 800, lineHeight: 1.25, textAlign: "center", whiteSpace: "normal", overflowWrap: "anywhere" }}>
+                        {projectStatus.label}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px 12px", marginTop: 12, minWidth: 0 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <span style={{ display: "block", marginBottom: 2, color: FT.TEXT_MUTED, fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase" }}>{t.newReportPONumber}</span>
+                      <span data-testid="field-project-po" style={{ display: "block", minWidth: 0, color: FT.INK, fontSize: 12, fontWeight: 700, overflowWrap: "anywhere" }}>
+                        {projectNumber || t.dailyWorkspaceNoPo}
+                      </span>
+                    </div>
+                    {project?.startDate && (
+                      <div style={{ minWidth: 0 }}>
+                        <span style={{ display: "block", marginBottom: 2, color: FT.TEXT_MUTED, fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase" }}>{t.dailyWorkspaceStarted}</span>
+                        <span data-testid="field-project-start-date" title={`${t.dailyWorkspaceStarted} ${project.startDate}`} style={{ display: "block", minWidth: 0, color: FT.INK, fontSize: 12, fontWeight: 700, overflowWrap: "anywhere" }}>
+                          {new Date(project.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </span>
+                      </div>
+                    )}
+                    {project?.customerName && project?.customerName !== projectContact && (
+                      <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
+                        <span style={{ display: "block", marginBottom: 2, color: FT.TEXT_MUTED, fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase" }}>{t.excelHeaderClient}</span>
+                        <span data-testid="field-project-client" style={{ display: "block", minWidth: 0, color: FT.INK, fontSize: 12, fontWeight: 700, overflowWrap: "anywhere" }}>{project.customerName}</span>
+                      </div>
+                    )}
+                    {projectContact && (
+                      <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
+                        <span style={{ display: "block", marginBottom: 2, color: FT.TEXT_MUTED, fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase" }}>{project?.ownerName ? t.newReportProjectManager : t.excelHeaderClient}</span>
+                        <span data-testid="field-project-owner" title={projectContact} style={{ display: "block", minWidth: 0, color: FT.INK, fontSize: 12, fontWeight: 700, overflowWrap: "anywhere" }}>{projectContact}</span>
+                      </div>
+                    )}
+                    <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
+                      <span style={{ display: "block", marginBottom: 2, color: FT.TEXT_MUTED, fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase" }}>{t.newReportProjectLocation}</span>
+                      <span data-testid="field-project-location" title={projectLocation} style={{ display: "block", minWidth: 0, color: FT.INK, fontSize: 12, lineHeight: 1.35, overflowWrap: "anywhere" }}>{projectLocation}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              {projectStatus && (
-                <span
-                  data-testid="field-project-status"
-                  style={{ flexShrink: 0, padding: "2px 6px", borderRadius: 999, border: `1px solid ${projectStatus.border}`, background: projectStatus.bg, color: projectStatus.color, fontSize: 10, fontWeight: 800, whiteSpace: "nowrap" }}>
-                  {projectStatus.label}
-                </span>
-              )}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 12, marginTop: 5, minWidth: 0, overflow: "hidden", color: FT.TEXT_MUTED, fontSize: 11, lineHeight: 1.35, flexWrap: isMobile ? "nowrap" : "wrap" }}>
-              <span data-testid="field-project-location" title={projectLocation} style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: isMobile ? "1 1 0" : "1 1 180px" }}>
-                {projectLocation}
-              </span>
-              {projectContact && (
-                <span data-testid="field-project-owner" title={projectContact} style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: isMobile ? "1 1 0" : "1 1 110px" }}>
-                  {projectContact}
+          ) : (
+            <div
+              data-testid="general-project-summary"
+              style={{ padding: "11px 14px", border: `1px solid ${FT.RULE}`, borderRadius: 9, background: FT.PAPER }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <FileText style={{ width: 16, height: 16, flexShrink: 0, color: FT.TEXT_MUTED }} />
+                <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: 7, flexWrap: "wrap" }}>
+                  <span data-testid="field-project-name" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 14, fontWeight: 800, color: FT.INK }}>
+                    {project?.name || "—"}
+                  </span>
+                  <span data-testid="field-project-po" style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED }}>
+                    {projectNumber ? `${t.dailyWorkspacePoPrefix} ${projectNumber}` : t.dailyWorkspaceNoPo}
+                  </span>
+                </div>
+                {projectStatus && (
+                  <span
+                    data-testid="field-project-status"
+                    style={{ flexShrink: 0, padding: "2px 6px", borderRadius: 999, border: `1px solid ${projectStatus.border}`, background: projectStatus.bg, color: projectStatus.color, fontSize: 10, fontWeight: 800, whiteSpace: "nowrap" }}>
+                    {projectStatus.label}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 5, minWidth: 0, overflow: "hidden", color: FT.TEXT_MUTED, fontSize: 11, lineHeight: 1.35, flexWrap: "wrap" }}>
+                <span data-testid="field-project-location" title={projectLocation} style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: "1 1 180px" }}>
+                  {projectLocation}
                 </span>
-              )}
-              {project?.startDate && (
-                <span data-testid="field-project-start-date" title={`${t.dailyWorkspaceStarted} ${project.startDate}`} style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", flex: "0 1 auto", whiteSpace: "nowrap" }}>
-                  {t.dailyWorkspaceStarted} {new Date(project.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                </span>
-              )}
+                {projectContact && (
+                  <span data-testid="field-project-owner" title={projectContact} style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: "1 1 110px" }}>
+                    {projectContact}
+                  </span>
+                )}
+                {project?.startDate && (
+                  <span data-testid="field-project-start-date" title={`${t.dailyWorkspaceStarted} ${project.startDate}`} style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", flex: "0 1 auto", whiteSpace: "nowrap" }}>
+                    {t.dailyWorkspaceStarted} {new Date(project.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* General info header — mobile puts Report No on its own row, then Shift + Date */}
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "72px 130px 1fr 148px", gap: 10, alignItems: "end" }}>
+          {/* General info header — mobile pairs Report No and Date, then keeps Shift full width. */}
+          {isMobile && (
+            <div style={{ color: FT.TEXT_MUTED, fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+              {t.newReportReportDetails}
+            </div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : "72px 130px 1fr 148px", gap: 10, alignItems: "end", minWidth: 0, maxWidth: "100%" }}>
 
             {/* Col 1: Report No */}
-            <div style={isMobile ? { gridColumn: "1 / -1", width: 72 } : undefined}>
+            <div style={{ minWidth: 0 }}>
               <FL>{t.newReportReportNo}</FL>
-              <div style={{ width: 72, height: 36, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 16, fontWeight: 700, letterSpacing: "0.06em", textAlign: "center", background: "#f9fafb", color: "#374151", fontFamily: "monospace" }}>
+              <div style={{ width: isMobile ? "100%" : 72, maxWidth: "100%", boxSizing: "border-box", height: 36, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 16, fontWeight: 700, letterSpacing: "0.06em", textAlign: "center", background: "#f9fafb", color: "#374151", fontFamily: "monospace" }}>
                 {reportNumber || <span style={{ fontSize: 11, color: "#d1d5db", fontWeight: 400, fontStyle: "italic", fontFamily: "sans-serif" }}>auto…</span>}
               </div>
             </div>
 
-            {/* Col 2: Shift */}
-            <div>
+            {/* Mobile Col 2: Report Date */}
+            {isMobile ? (
+              <div style={{ minWidth: 0 }}>
+                <FL>{t.newReportReportDate}</FL>
+                <input data-testid="input-report-date" type="date" value={reportDate}
+                  onChange={e => setReportDate(e.target.value)}
+                  style={{ width: "100%", minWidth: 0, maxWidth: "100%", boxSizing: "border-box", height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 8px", fontSize: 13, color: "#111", background: "#fff", outline: "none" }} />
+              </div>
+            ) : null}
+
+            {/* Col 2 desktop / full-width mobile: Shift */}
+            <div style={isMobile ? { gridColumn: "1 / -1", minWidth: 0 } : { minWidth: 0 }}>
               <FL>{t.newReportShift}</FL>
               <select data-testid="select-shift" value={shift} onChange={e => setShift(e.target.value)}
-                style={{ width: "100%", height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none", cursor: "pointer" }}>
+                style={{ width: "100%", minWidth: 0, maxWidth: "100%", boxSizing: "border-box", height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none", cursor: "pointer" }}>
                 <option value="day">{t.newReportDayShift}</option>
                 <option value="night">{t.newReportNightShift}</option>
                 <option value="both">{t.newReportBothShifts}</option>
               </select>
             </div>
 
-            {/* Col 3 mobile: Report Date — Col 3 desktop: Weather+Temp */}
-            {isMobile ? (
-              <div>
-                <FL>{t.newReportReportDate}</FL>
-                <input data-testid="input-report-date" type="date" value={reportDate}
-                  onChange={e => setReportDate(e.target.value)}
-                  style={{ width: "100%", height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none" }} />
-              </div>
-            ) : (
+            {/* Col 3 desktop: Weather + Temperature */}
+            {!isMobile && (
               <div>
                 <FL>{t.newReportWeatherTemp}</FL>
                 <div style={{ display: "flex", border: "1px solid #d1d5db", borderRadius: 8, overflow: "hidden", height: 36, background: "#fff" }}>
@@ -2271,24 +2338,24 @@ export function NewReportTab({
               </div>
             )}
 
-            {/* Col 4 desktop only: Report Date */}
+            {/* Col 4 desktop: Report Date */}
             {!isMobile && (
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <FL>{t.newReportReportDate}</FL>
                 <input data-testid="input-report-date" type="date" value={reportDate}
                   onChange={e => setReportDate(e.target.value)}
-                  style={{ width: "100%", height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none" }} />
+                  style={{ width: "100%", minWidth: 0, maxWidth: "100%", boxSizing: "border-box", height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none" }} />
               </div>
             )}
           </div>
 
           {/* ROW 1b — Weather + Temperature on mobile (full row) */}
           {isMobile && (
-            <div>
+            <div style={{ minWidth: 0, maxWidth: "100%" }}>
               <FL>{t.newReportWeatherTemp}</FL>
-              <div style={{ display: "flex", border: "1px solid #d1d5db", borderRadius: 8, overflow: "hidden", height: 40, background: "#fff" }}>
+              <div style={{ display: "flex", minWidth: 0, maxWidth: "100%", boxSizing: "border-box", border: "1px solid #d1d5db", borderRadius: 8, overflow: "hidden", height: 40, background: "#fff" }}>
                 <select data-testid="select-weather" value={weather} onChange={e => setWeather(e.target.value)}
-                  style={{ flex: 1, minWidth: 0, border: "none", padding: "0 8px", fontSize: 13, color: "#111", background: "transparent", outline: "none", cursor: "pointer" }}>
+                  style={{ flex: "1 1 0", minWidth: 0, maxWidth: "100%", boxSizing: "border-box", border: "none", padding: "0 8px", fontSize: 13, color: "#111", background: "transparent", outline: "none", cursor: "pointer" }}>
                   <option value="clear">{t.newReportWClear}</option>
                   <option value="partly-cloudy">{t.newReportWPartlyCloudy}</option>
                   <option value="overcast">{t.newReportWOvercast}</option>
@@ -2297,7 +2364,7 @@ export function NewReportTab({
                   <option value="heat">{t.newReportWHeat}</option>
                 </select>
                 <div style={{ width: 1, background: "#e8e8e8", margin: "6px 0", flexShrink: 0 }} />
-                <div style={{ display: "flex", alignItems: "center", gap: 3, padding: "0 6px", flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 3, minWidth: 0, padding: "0 6px", flexShrink: 0 }}>
                   <span style={{ color: "#f87171", fontSize: 10, fontWeight: 700 }}>H</span>
                   <input data-testid="input-temp-high" type="number" value={temperatureHigh} onChange={e => setTemperatureHigh(e.target.value)}
                     style={{ width: 36, textAlign: "center", border: "none", outline: "none", fontSize: 13, background: "transparent", color: "#111" }} />
@@ -2319,8 +2386,13 @@ export function NewReportTab({
           )}
 
           {/* ROW 2 — Reporter | Project Manager */}
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
-            <div>
+          {isMobile && (
+            <div style={{ paddingTop: 12, borderTop: `1px solid ${FT.RULE}`, color: FT.TEXT_MUTED, fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+              {t.newReportReporterValidation}
+            </div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : "1fr 1fr", gap: 10, minWidth: 0, maxWidth: "100%" }}>
+            <div style={{ minWidth: 0, maxWidth: "100%" }}>
               <FL>
                 {t.newReportReporter}
                 <span style={{ fontSize: 9, color: "#dc2626", fontWeight: 500, marginLeft: 6, textTransform: "none", letterSpacing: 0 }}>* {t.newReportRequired}</span>
@@ -2334,7 +2406,7 @@ export function NewReportTab({
                 onChange={(name, id, trade) => { setPreparedBy(name); setPreparedById(id); setPreparedByTrade(trade ?? ""); }}
               />
             </div>
-            <div>
+            <div style={{ minWidth: 0, maxWidth: "100%" }}>
               <FL>{t.newReportProjectManager}</FL>
               <PersonCardCombobox
                 variant="pm"
@@ -2348,14 +2420,14 @@ export function NewReportTab({
           </div>
 
           {/* ROW 3 — Submit status bar */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderRadius: 10, background: preparedBy.trim() ? "#ecfdf5" : "#fffbeb", border: preparedBy.trim() ? "1.5px solid #6ee7b7" : "1.5px solid #fde68a" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, minWidth: 0, maxWidth: "100%", boxSizing: "border-box", padding: "10px 16px", borderRadius: 10, background: preparedBy.trim() ? "#ecfdf5" : "#fffbeb", border: preparedBy.trim() ? "1.5px solid #6ee7b7" : "1.5px solid #fde68a" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: preparedBy.trim() ? "#10b981" : "#f59e0b", flexShrink: 0 }} />
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: preparedBy.trim() ? "#065f46" : "#92400e" }}>
                   {preparedBy.trim() ? t.newReportReadyToSubmit : t.newReportNotReady}
                 </div>
-                <div style={{ fontSize: 10, color: preparedBy.trim() ? "#6ee7b7" : "#fbbf24" }}>
+                <div style={{ fontSize: 10, color: preparedBy.trim() ? "#6ee7b7" : "#fbbf24", overflowWrap: "anywhere" }}>
                   {preparedBy.trim()
                     ? `${preparedBy}${preparedByTrade ? ` · ${preparedByTrade}` : ""}`
                     : t.newReportAddReporterHint}

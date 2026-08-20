@@ -37,9 +37,9 @@ type Tab = "new-report" | "history" | "progress";
 function useTabs(): { id: Tab; label: string; icon: React.ReactNode }[] {
   const { t } = useLanguage();
   return [
-    { id: "new-report", label: t.dailyWorkspaceTabNew,      icon: <PlusCircle className="w-4 h-4" /> },
-    { id: "history",    label: t.dailyWorkspaceTabHistory,  icon: <ClipboardList className="w-4 h-4" /> },
-    { id: "progress",   label: t.dailyWorkspaceTabProgress, icon: <BarChart3 className="w-4 h-4" /> },
+    { id: "new-report", label: t.dailyWorkspaceTabNew,      icon: <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> },
+    { id: "history",    label: t.dailyWorkspaceTabHistory,  icon: <ClipboardList className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> },
+    { id: "progress",   label: t.dailyWorkspaceTabProgress, icon: <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> },
   ];
 }
 
@@ -884,7 +884,7 @@ export default function DailyReportWorkspace() {
 
       {/* ── Tab bar ── */}
       <div
-        className="flex border-b border-slate-200"
+        className="grid w-full grid-cols-3 border-b border-slate-200 sm:flex"
         data-testid="tab-bar-workspace"
         role="tablist"
       >
@@ -898,7 +898,7 @@ export default function DailyReportWorkspace() {
               aria-selected={isActive}
               onClick={() => setActiveTab(tab.id)}
               className={[
-                "flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+                "flex w-full min-w-0 max-w-full flex-col items-center justify-center gap-1 border-b-2 px-1.5 py-2.5 text-center text-[11px] font-medium leading-tight transition-colors whitespace-normal break-words sm:w-auto sm:flex-row sm:justify-start sm:gap-2 sm:px-5 sm:py-3 sm:text-sm sm:leading-normal sm:whitespace-nowrap",
                 isActive
                   ? "border-blue-600 text-blue-700"
                   : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300",

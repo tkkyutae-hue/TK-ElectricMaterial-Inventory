@@ -179,7 +179,7 @@ function ProjectCard({ project, summary, assignedCount, onOpen }: {
                 style={{ backgroundColor: "transparent", color: FT.INK, border: `1px solid ${FT.INK}` }}
               >
                 <Users className="w-2.5 h-2.5" />
-                {assignedCount}명
+                {t.dailyReportAssignedCount.replace("{n}", String(assignedCount))}
               </span>
             )}
             {/* Monday-style status chip */}
@@ -258,6 +258,7 @@ function CustomerGroup({ groupKey, displayName, projects, summaryMap, assignedCo
   assignedCountMap: Map<number, number>;
   collapsed: boolean; onToggle: () => void; onOpen: (id: number) => void;
 }) {
+  const { t } = useLanguage();
   const isNone = groupKey === "__none__";
   const color  = groupAccentColor(groupKey);
 
@@ -278,7 +279,7 @@ function CustomerGroup({ groupKey, displayName, projects, summaryMap, assignedCo
         <div className="flex items-center gap-2 flex-1 min-w-0 pr-3">
           <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
           <span className="font-semibold text-[13px] truncate" style={{ color: FT.INK }}>
-            {isNone ? "고객사 미지정" : displayName}
+            {isNone ? t.dailyReportUnassignedCustomer : displayName}
           </span>
           <span className="text-[11px] text-slate-400 font-medium ml-1 shrink-0">{projects.length}</span>
         </div>
@@ -612,20 +613,20 @@ export default function DailyReport() {
               >
                 <Filter className="w-3.5 h-3.5" />
                 {allStatusOptions.length === 0
-                  ? "Status"
+                  ? t.dailyReportStatusFilter
                   : `${visibleStatusCount} / ${allStatusOptions.length}`}
                 <ChevronDown className="w-3 h-3 ml-0.5" />
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-56 p-2" align="start">
               <div className="mb-1.5 flex items-center justify-between px-1">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</span>
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{t.dailyReportStatusFilter}</span>
                 {hiddenStatuses.size > 0 && (
                   <button
                     className="text-[11px] text-blue-600 hover:text-blue-800 font-medium"
                     onClick={() => setHiddenStatuses(new Set())}
                   >
-                    모두 보기
+                    {t.dailyReportShowAll}
                   </button>
                 )}
               </div>
@@ -675,16 +676,16 @@ export default function DailyReport() {
               <div className="text-center">
                 {staffNeedsWorkerLink ? (
                   <>
-                    <p className="text-sm font-medium text-slate-600">작업자 계정 연결이 필요합니다</p>
+                    <p className="text-sm font-medium text-slate-600">{t.dailyReportWorkerLinkRequired}</p>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      관리자에게 작업자 관리에서 현재 로그인 계정을 본인 작업자 정보에 연결해 달라고 요청하세요.
+                      {t.dailyReportWorkerLinkHint}
                     </p>
                   </>
                 ) : staffHasNoTodayAssignment ? (
                   <>
-                    <p className="text-sm font-medium text-amber-800">오늘 배정된 프로젝트가 없습니다</p>
+                    <p className="text-sm font-medium text-amber-800">{t.dailyReportNoTodayAssignments}</p>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Crew Dispatch에서 오늘 프로젝트에 배정되면 이 목록에 자동으로 표시됩니다.
+                      {t.dailyReportNoTodayAssignmentsHint}
                     </p>
                   </>
                 ) : (
@@ -706,24 +707,24 @@ export default function DailyReport() {
               <div className="text-center">
                 {staffNeedsWorkerLink ? (
                   <>
-                    <p className="text-sm font-medium text-slate-600">작업자 계정 연결이 필요합니다</p>
+                    <p className="text-sm font-medium text-slate-600">{t.dailyReportWorkerLinkRequired}</p>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      관리자에게 작업자 관리에서 현재 로그인 계정을 본인 작업자 정보에 연결해 달라고 요청하세요.
+                      {t.dailyReportWorkerLinkHint}
                     </p>
                   </>
                 ) : staffHasNoTodayAssignment ? (
                   <>
-                    <p className="text-sm font-medium text-amber-800">오늘 배정된 프로젝트가 없습니다</p>
+                    <p className="text-sm font-medium text-amber-800">{t.dailyReportNoTodayAssignments}</p>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Crew Dispatch에서 오늘 프로젝트에 배정되면 이 목록에 자동으로 표시됩니다.
+                      {t.dailyReportNoTodayAssignmentsHint}
                     </p>
                     <p className="text-xs text-slate-400 mt-3">{t.dailyReportNoProjectsFound}</p>
                     <p className="text-xs text-slate-400 mt-0.5">{t.dailyReportTryAdjusting}</p>
                   </>
                 ) : isStaff && staffIdSet !== null && staffIdSet.size === 0 && !staffIdsLoading ? (
                   <>
-                    <p className="text-sm font-medium text-slate-600">배치된 프로젝트가 없습니다</p>
-                    <p className="text-xs text-slate-400 mt-0.5">프로젝트에 배치되면 여기에 표시됩니다. 계정이 작업자와 연결되지 않았다면 관리자에게 문의하세요.</p>
+                    <p className="text-sm font-medium text-slate-600">{t.dailyReportNoAssignedProjects}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{t.dailyReportNoAssignedProjectsHint}</p>
                   </>
                 ) : (
                   <>
@@ -738,7 +739,7 @@ export default function DailyReport() {
         ) : hasAssigned ? (
           <div className="space-y-4">
 
-            {/* ── 오늘 배치된 프로젝트 ── */}
+            {/* ── Today's assigned projects ── */}
             <div className="space-y-1">
               <div className="flex items-center gap-2 px-1 mb-2">
                 <span className="flex items-center justify-center w-6 h-6 rounded-md shrink-0" style={{ backgroundColor: FT.INK }}>
@@ -762,7 +763,7 @@ export default function DailyReport() {
               </div>
             </div>
 
-            {/* ── 나머지 프로젝트 (접힘) ── */}
+            {/* ── Other projects (collapsed) ── */}
             {otherProjects.length > 0 && (
               <div>
                 <button
@@ -812,9 +813,9 @@ export default function DailyReport() {
                 <CardContent className="flex items-start gap-3 px-4 py-3">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
                   <div>
-                    <p className="text-sm font-medium text-amber-900">오늘 배정된 프로젝트가 없습니다</p>
+                    <p className="text-sm font-medium text-amber-900">{t.dailyReportNoTodayAssignments}</p>
                     <p className="text-xs text-amber-800 mt-0.5">
-                      Crew Dispatch에서 오늘 프로젝트에 배정되면 이 목록에 자동으로 표시됩니다.
+                      {t.dailyReportNoTodayAssignmentsHint}
                     </p>
                   </div>
                 </CardContent>

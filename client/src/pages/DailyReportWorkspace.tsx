@@ -377,8 +377,8 @@ function HistoryTab({
             <ClipboardList className="w-7 h-7 text-slate-400" />
           </div>
           <div className="text-center">
-            <p className="text-sm font-medium text-slate-600">배치되지 않은 프로젝트입니다</p>
-            <p className="text-xs text-slate-400 mt-0.5">본인이 배치된 프로젝트의 일일 보고서만 볼 수 있습니다.</p>
+            <p className="text-sm font-medium text-slate-600">{t.dailyWorkspaceProjectNotAssigned}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{t.dailyWorkspaceProjectNotAssignedHint}</p>
           </div>
         </CardContent>
       </Card>

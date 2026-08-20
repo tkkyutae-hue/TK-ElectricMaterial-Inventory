@@ -9,6 +9,7 @@
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "test:boq-extraction": "node --max-old-space-size=256 --test --import tsx tests/boqXlsxExtraction.test.ts",
+    "test:daily-report-assignments": "tsx tests/dailyReportAssignments.test.ts",
     "test:staff-permissions": "tsx tests/staffPermissionRoutes.test.ts",
     "test:manpower-summary": "playwright install chromium && tsx tests/manpowerSummaryLayout.test.tsx",
     "db:push": "drizzle-kit push"

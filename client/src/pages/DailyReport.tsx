@@ -14,6 +14,10 @@ import type { Project, Worker } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
 import { FT } from "@/pages/daily-report/fieldTicketTheme";
+import {
+  filterVisibleDailyReportProjects,
+  groupRecentAssignedProjects,
+} from "@/pages/daily-report/projectAssignmentGrouping";
 
 // ─── localStorage keys (v2 — new defaults) ────────────────────────────────────
 const LS_HIDDEN   = "voltstock_dr_hidden_statuses_v2";
@@ -85,8 +89,9 @@ interface CrewAssignment {
   projectId: number | null;
 }
 
-function todayDateStr(): string {
+function localDateStr(dayOffset = 0): string {
   const d = new Date();
+  d.setDate(d.getDate() + dayOffset);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
@@ -336,12 +341,23 @@ export default function DailyReport() {
     refetchInterval: 30_000,
   });
 
-  // Today's crew dispatch assignments — used to surface assigned projects at the top
-  const todayStr = useMemo(() => todayDateStr(), []);
+  // Recent crew dispatch assignments — used to surface the current user's
+  // today and yesterday projects before the rest of their accessible projects.
+  const todayStr = useMemo(() => localDateStr(), []);
+  const yesterdayStr = useMemo(() => localDateStr(-1), []);
   const { data: crewAssignments = [], isLoading: crewAssignmentsLoading } = useQuery<CrewAssignment[]>({
     queryKey: ["/api/crew-dispatch/assignments", todayStr],
     queryFn: async () => {
       const res = await fetch(`/api/crew-dispatch/assignments?date=${todayStr}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    refetchInterval: 30_000,
+  });
+  const { data: yesterdayCrewAssignments = [] } = useQuery<CrewAssignment[]>({
+    queryKey: ["/api/crew-dispatch/assignments", yesterdayStr],
+    queryFn: async () => {
+      const res = await fetch(`/api/crew-dispatch/assignments?date=${yesterdayStr}`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -369,9 +385,9 @@ export default function DailyReport() {
     return m;
   }, [crewAssignments]);
 
-  // Set of projectIds where the linked worker (if any) is assigned today.
-  // Used to personalise the "오늘 배치된 프로젝트" section for non-admin managers.
-  const myWorkerProjectIds = useMemo(() => {
+  // Sets of projectIds where the linked worker (if any) was assigned on each
+  // recent day. Staff API responses already include only their own assignments.
+  const myWorkerTodayProjectIds = useMemo(() => {
     if (!linkedWorker) return null; // no linked worker → no filtering
     const ids = new Set<number>();
     crewAssignments.forEach((a) => {
@@ -379,6 +395,14 @@ export default function DailyReport() {
     });
     return ids;
   }, [linkedWorker, crewAssignments]);
+  const myWorkerYesterdayProjectIds = useMemo(() => {
+    if (!linkedWorker) return null;
+    const ids = new Set<number>();
+    yesterdayCrewAssignments.forEach((a) => {
+      if (a.workerId === linkedWorker.id && a.projectId != null) ids.add(a.projectId);
+    });
+    return ids;
+  }, [linkedWorker, yesterdayCrewAssignments]);
 
   // Whether to show only the current user's assigned projects in the highlighted section.
   // DailyReport is accessible to "manager", "staff" and "admin" roles (see useAuth/App.tsx).
@@ -388,7 +412,7 @@ export default function DailyReport() {
   // - manager without a linked worker: falls back to seeing all (existing behaviour).
   // - staff: restricted to their own assigned projects only (see staffProjectIds below).
   const isStaff = user?.role === "staff";
-  const isSelfFilterActive = (user?.role === "manager" || isStaff) && myWorkerProjectIds !== null;
+  const isSelfFilterActive = (user?.role === "manager" || isStaff) && myWorkerTodayProjectIds !== null;
 
   // Staff-only: distinct projectIds (across all dates) where this user's linked worker
   // was dispatched. null → no linked worker (staff sees nothing until an admin links one).
@@ -432,41 +456,52 @@ export default function DailyReport() {
   const staffHasNoTodayAssignment = isStaff
     && !crewAssignmentsLoading
     && linkedWorker !== null
-    && myWorkerProjectIds?.size === 0;
+    && myWorkerTodayProjectIds?.size === 0;
 
-  const filtered = useMemo(() => allProjects.filter((p) => {
-    if (staffIdSet && !staffIdSet.has(p.id)) return false;
-    if (hiddenStatuses.has((p.status ?? "").toLowerCase())) return false;
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      p.name.toLowerCase().includes(q) ||
-      (p.poNumber ?? "").toLowerCase().includes(q) ||
-      projectLocation(p).toLowerCase().includes(q) ||
-      (p.customerName ?? "").toLowerCase().includes(q) ||
-      (p.ownerName ?? "").toLowerCase().includes(q)
-    );
+  const { todayProjectIds, yesterdayProjectIds } = useMemo(() => ({
+    todayProjectIds: new Set<number>(
+      isSelfFilterActive
+        ? myWorkerTodayProjectIds ?? []
+        : assignedCountMap.keys(),
+    ),
+    yesterdayProjectIds: new Set<number>(
+      isSelfFilterActive
+        ? myWorkerYesterdayProjectIds ?? []
+        : yesterdayCrewAssignments
+            .map((assignment) => assignment.projectId)
+            .filter((id): id is number => id != null),
+    ),
+  }), [
+    assignedCountMap,
+    isSelfFilterActive,
+    myWorkerTodayProjectIds,
+    myWorkerYesterdayProjectIds,
+    yesterdayCrewAssignments,
+  ]);
+
+  const filtered = useMemo(() => filterVisibleDailyReportProjects(allProjects, {
+    staffProjectIds: staffIdSet,
+    hiddenStatuses,
+    search,
+    matchesSearch: (project, query) => (
+      project.name.toLowerCase().includes(query) ||
+      (project.poNumber ?? "").toLowerCase().includes(query) ||
+      projectLocation(project).toLowerCase().includes(query) ||
+      (project.customerName ?? "").toLowerCase().includes(query) ||
+      (project.ownerName ?? "").toLowerCase().includes(query)
+    ),
   }), [allProjects, hiddenStatuses, search, staffIdSet]);
 
-  // Split into assigned-today vs rest.
-  // When isSelfFilterActive, "assigned" means ONLY projects where the current user's own
-  // worker is dispatched (personalised view). Admins / users without a linked worker
-  // see the full set of projects that have any crew assigned (original behaviour).
-  const { assignedProjects, otherProjects } = useMemo(() => {
-    const assigned: Project[] = [];
-    const other:    Project[] = [];
-    filtered.forEach((p) => {
-      if (isSelfFilterActive) {
-        // myWorkerProjectIds is non-null when isSelfFilterActive is true
-        (myWorkerProjectIds!.has(p.id) ? assigned : other).push(p);
-      } else {
-        (assignedCountMap.has(p.id) ? assigned : other).push(p);
-      }
-    });
-    return { assignedProjects: assigned, otherProjects: other };
-  }, [filtered, assignedCountMap, isSelfFilterActive, myWorkerProjectIds]);
+  // Split projects into today, yesterday, and remaining accessible projects.
+  // When personalised, the first two groups only contain the linked worker's
+  // dispatches. For admins and managers without a worker link, they contain
+  // projects that have any crew dispatched on that day.
+  const { todayAssignedProjects, yesterdayAssignedProjects, otherProjects } = useMemo(
+    () => groupRecentAssignedProjects(filtered, todayProjectIds, yesterdayProjectIds),
+    [filtered, todayProjectIds, yesterdayProjectIds],
+  );
 
-  const hasAssigned = assignedProjects.length > 0;
+  const hasRecentAssignments = todayAssignedProjects.length > 0 || yesterdayAssignedProjects.length > 0;
 
   // Group the "other" projects by customer (same logic as before)
   const otherGroups = useMemo(() => {
@@ -736,32 +771,59 @@ export default function DailyReport() {
             </CardContent>
           </Card>
 
-        ) : hasAssigned ? (
+        ) : hasRecentAssignments ? (
           <div className="space-y-4">
 
             {/* ── Today's assigned projects ── */}
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 px-1 mb-2">
-                <span className="flex items-center justify-center w-6 h-6 rounded-md shrink-0" style={{ backgroundColor: FT.INK }}>
-                  <Users className="w-3.5 h-3.5" style={{ color: FT.ACCENT }} />
-                </span>
-                <span className="text-sm font-semibold" style={{ color: FT.INK }}>
-                  {isSelfFilterActive ? t.dailyReportMyProjects : t.dailyReportTodayProjects}
-                </span>
-                <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: FT.ACCENT, color: "#fff" }}>{assignedProjects.length}</span>
+            {todayAssignedProjects.length > 0 && (
+              <div className="space-y-1" data-testid="section-today-assigned-projects">
+                <div className="flex items-center gap-2 px-1 mb-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-md shrink-0" style={{ backgroundColor: FT.INK }}>
+                    <Users className="w-3.5 h-3.5" style={{ color: FT.ACCENT }} />
+                  </span>
+                  <span className="text-sm font-semibold" style={{ color: FT.INK }}>
+                    {isSelfFilterActive ? t.dailyReportMyProjects : t.dailyReportTodayProjects}
+                  </span>
+                  <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: FT.ACCENT, color: "#fff" }}>{todayAssignedProjects.length}</span>
+                </div>
+                <div className="space-y-2">
+                  {todayAssignedProjects.map((p) => (
+                    <ProjectCard
+                      key={p.id}
+                      project={p}
+                      summary={summaryMap[p.id] ?? { total: 0, draft: 0, submitted: 0, lastDate: null }}
+                      assignedCount={assignedCountMap.get(p.id)}
+                      onOpen={() => navigate(`/daily-report/${p.id}`)}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="space-y-2">
-                {assignedProjects.map((p) => (
-                  <ProjectCard
-                    key={p.id}
-                    project={p}
-                    summary={summaryMap[p.id] ?? { total: 0, draft: 0, submitted: 0, lastDate: null }}
-                    assignedCount={assignedCountMap.get(p.id)}
-                    onOpen={() => navigate(`/daily-report/${p.id}`)}
-                  />
-                ))}
+            )}
+
+            {/* ── Yesterday's assigned projects ── */}
+            {yesterdayAssignedProjects.length > 0 && (
+              <div className="space-y-1" data-testid="section-yesterday-assigned-projects">
+                <div className="flex items-center gap-2 px-1 mb-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-md shrink-0" style={{ backgroundColor: FT.PAPER_MUTED, border: `1px solid ${FT.RULE}` }}>
+                    <Calendar className="w-3.5 h-3.5" style={{ color: FT.INK }} />
+                  </span>
+                  <span className="text-sm font-semibold" style={{ color: FT.INK }}>
+                    {isSelfFilterActive ? t.dailyReportMyYesterdayProjects : t.dailyReportYesterdayProjects}
+                  </span>
+                  <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: FT.RULE, color: FT.INK }}>{yesterdayAssignedProjects.length}</span>
+                </div>
+                <div className="space-y-2">
+                  {yesterdayAssignedProjects.map((p) => (
+                    <ProjectCard
+                      key={p.id}
+                      project={p}
+                      summary={summaryMap[p.id] ?? { total: 0, draft: 0, submitted: 0, lastDate: null }}
+                      onOpen={() => navigate(`/daily-report/${p.id}`)}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* ── Other projects (collapsed) ── */}
             {otherProjects.length > 0 && (

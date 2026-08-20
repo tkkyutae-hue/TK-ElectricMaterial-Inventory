@@ -22,7 +22,7 @@ export function TkElectricBrand({
       <img
         src={tkLogo}
         alt="TK Electric"
-        className="w-auto object-contain flex-shrink-0"
+        className="w-auto object-contain flex-shrink-0 pl-[2px] pr-[2px] pt-[0px] pb-[0px] mt-[0px] mb-[0px] ml-[0px] mr-[0px] rounded-tl-[0px] rounded-tr-[0px] rounded-br-[0px] rounded-bl-[0px] border-t-[color:var(--field-surface)] border-r-[color:var(--field-surface)] border-b-[color:var(--field-surface)] border-l-[color:var(--field-surface)]"
         style={{
           height: compact ? 32 : 38,
         }}

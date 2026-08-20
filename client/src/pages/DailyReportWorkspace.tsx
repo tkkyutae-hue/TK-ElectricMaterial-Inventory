@@ -836,49 +836,51 @@ export default function DailyReportWorkspace() {
   return (
     <div className="space-y-5">
 
-      {/* ── Project header card ── */}
-      <Card>
-        <CardContent className="flex items-center gap-4 px-5 py-4">
-          <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-blue-50 shrink-0">
-            <FileText className="w-6 h-6 text-blue-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1
-                data-testid="text-workspace-project-name"
-                className="text-lg font-bold text-slate-900 leading-tight"
-              >
-                {project.name}
-              </h1>
-              <span
-                data-testid="text-workspace-project-po"
-                className="flex items-center gap-0.5 text-xs text-slate-400 font-medium shrink-0"
-              >
-                <Hash className="w-3 h-3" />
-                {project.poNumber ? `${t.dailyWorkspacePoPrefix} ${project.poNumber}` : t.dailyWorkspaceNoPo}
-              </span>
-              <ProjectStatusBadge status={project.status} />
+      {/* The New Report tab folds project context into General Info to keep the editor near the top. */}
+      {activeTab !== "new-report" && (
+        <Card>
+          <CardContent className="flex items-center gap-4 px-5 py-4">
+            <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-blue-50 shrink-0">
+              <FileText className="w-6 h-6 text-blue-600" />
             </div>
-            <div className="flex items-center gap-4 mt-1 flex-wrap">
-              <span className="flex items-center gap-1 text-xs text-slate-500">
-                <MapPin className="w-3 h-3" />{projectLocation(project)}
-              </span>
-              {(project.ownerName || project.customerName) && (
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1
+                  data-testid="text-workspace-project-name"
+                  className="text-lg font-bold text-slate-900 leading-tight"
+                >
+                  {project.name}
+                </h1>
+                <span
+                  data-testid="text-workspace-project-po"
+                  className="flex items-center gap-0.5 text-xs text-slate-400 font-medium shrink-0"
+                >
+                  <Hash className="w-3 h-3" />
+                  {project.poNumber ? `${t.dailyWorkspacePoPrefix} ${project.poNumber}` : t.dailyWorkspaceNoPo}
+                </span>
+                <ProjectStatusBadge status={project.status} />
+              </div>
+              <div className="flex items-center gap-4 mt-1 flex-wrap">
                 <span className="flex items-center gap-1 text-xs text-slate-500">
-                  <Users className="w-3 h-3" />
-                  {project.ownerName || project.customerName}
+                  <MapPin className="w-3 h-3" />{projectLocation(project)}
                 </span>
-              )}
-              {project.startDate && (
-                <span className="flex items-center gap-1 text-xs text-slate-400">
-                  <Calendar className="w-3 h-3" />
-                  {t.dailyWorkspaceStarted} {new Date(project.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                </span>
-              )}
+                {(project.ownerName || project.customerName) && (
+                  <span className="flex items-center gap-1 text-xs text-slate-500">
+                    <Users className="w-3 h-3" />
+                    {project.ownerName || project.customerName}
+                  </span>
+                )}
+                {project.startDate && (
+                  <span className="flex items-center gap-1 text-xs text-slate-400">
+                    <Calendar className="w-3 h-3" />
+                    {t.dailyWorkspaceStarted} {new Date(project.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Tab bar ── */}
       <div

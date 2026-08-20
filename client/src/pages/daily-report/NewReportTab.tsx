@@ -119,6 +119,13 @@ const EQ_STATUS_CFG = {
   broken:      { label: "✕  Broken Down",   border: FT.DANGER, bg: FT.PAPER, color: FT.DANGER  },
 } as const;
 
+const PROJECT_STATUS_SUMMARY: Record<string, { label: string; bg: string; border: string; color: string }> = {
+  active:    { label: "Active",    bg: "#dcfce7", border: "#bbf7d0", color: "#15803d" },
+  completed: { label: "Completed", bg: "#f1f5f9", border: "#e2e8f0", color: "#64748b" },
+  on_hold:   { label: "On Hold",   bg: "#fef3c7", border: "#fde68a", color: "#b45309" },
+  cancelled: { label: "Cancelled", bg: "#ffe4e6", border: "#fecdd3", color: "#e11d48" },
+};
+
 function normalizeEquipmentStatus(status: string | null | undefined): "operational" | "broken" {
   return status === "operational" ? "operational" : "broken";
 }
@@ -1353,6 +1360,15 @@ export function NewReportTab({
     enabled: !!projectId,
   });
   const activeWorkers                 = workers.filter((w) => w.isActive);
+  const projectLocation = project?.jobLocation || [project?.city, project?.state].filter(Boolean).join(", ") || "—";
+  const projectContact = project?.ownerName || project?.customerName || "";
+  const projectNumber = project?.poNumber || project?.code || "";
+  const projectStatus = project?.status ? (PROJECT_STATUS_SUMMARY[project.status] ?? {
+    label: String(project.status).replace(/_/g, " "),
+    bg: FT.PAPER_MUTED,
+    border: FT.RULE,
+    color: FT.TEXT_MUTED,
+  }) : null;
 
   // ── Existing reports for auto report number ──
   const { data: existingReports = [] } = useQuery<any[]>({
@@ -2151,6 +2167,45 @@ export function NewReportTab({
         ) : undefined}>
         <div style={{ padding: isMobile ? "16px 12px" : "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
 
+          {/* Project context is kept here so the editor does not need a separate header card. */}
+          <div
+            data-testid="general-project-summary"
+            style={{ padding: isMobile ? "10px 11px" : "11px 14px", border: `1px solid ${FT.RULE}`, borderRadius: 9, background: FT.PAPER }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+              <FileText style={{ width: 16, height: 16, flexShrink: 0, color: FT.TEXT_MUTED }} />
+              <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: 7, flexWrap: isMobile ? "nowrap" : "wrap" }}>
+                <span data-testid="field-project-name" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: isMobile ? 13 : 14, fontWeight: 800, color: FT.INK }}>
+                  {project?.name || "—"}
+                </span>
+                <span data-testid="field-project-po" style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED }}>
+                  {projectNumber ? `${t.dailyWorkspacePoPrefix} ${projectNumber}` : t.dailyWorkspaceNoPo}
+                </span>
+              </div>
+              {projectStatus && (
+                <span
+                  data-testid="field-project-status"
+                  style={{ flexShrink: 0, padding: "2px 6px", borderRadius: 999, border: `1px solid ${projectStatus.border}`, background: projectStatus.bg, color: projectStatus.color, fontSize: 10, fontWeight: 800, whiteSpace: "nowrap" }}>
+                  {projectStatus.label}
+                </span>
+              )}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 12, marginTop: 5, minWidth: 0, overflow: "hidden", color: FT.TEXT_MUTED, fontSize: 11, lineHeight: 1.35, flexWrap: isMobile ? "nowrap" : "wrap" }}>
+              <span data-testid="field-project-location" title={projectLocation} style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: isMobile ? "1 1 0" : "1 1 180px" }}>
+                {projectLocation}
+              </span>
+              {projectContact && (
+                <span data-testid="field-project-owner" title={projectContact} style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: isMobile ? "1 1 0" : "1 1 110px" }}>
+                  {projectContact}
+                </span>
+              )}
+              {project?.startDate && (
+                <span data-testid="field-project-start-date" title={`${t.dailyWorkspaceStarted} ${project.startDate}`} style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", flex: "0 1 auto", whiteSpace: "nowrap" }}>
+                  {t.dailyWorkspaceStarted} {new Date(project.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </span>
+              )}
+            </div>
+          </div>
+
           {/* General info header — mobile puts Report No on its own row, then Shift + Date */}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "72px 130px 1fr 148px", gap: 10, alignItems: "end" }}>
 
@@ -2292,45 +2347,7 @@ export function NewReportTab({
             </div>
           </div>
 
-          {/* ROW 3 — Auto-filled strip */}
-          <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", border: `1px solid ${FT.RULE}`, borderRadius: 10, background: FT.PAPER, overflow: "hidden" }}>
-            <div style={{ flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderRight: isMobile ? "none" : `1px solid ${FT.RULE}`, borderBottom: isMobile ? `1px solid ${FT.RULE}` : "none" }}>
-              <div style={{ width: 30, height: 30, borderRadius: 7, background: FT.PAPER_MUTED, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={FT.TEXT_MUTED} strokeWidth={2}>
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-                </svg>
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 3, fontFamily: FT.FONT }}>{t.newReportProjectLocation}</div>
-                <div data-testid="field-project-location" style={{ fontSize: 14, fontWeight: 600, color: FT.INK, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.jobLocation || "—"}</div>
-              </div>
-            </div>
-            <div style={{ flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderRight: isMobile ? "none" : `1px solid ${FT.RULE}`, borderBottom: isMobile ? `1px solid ${FT.RULE}` : "none" }}>
-              <div style={{ width: 30, height: 30, borderRadius: 7, background: FT.PAPER_MUTED, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={FT.TEXT_MUTED} strokeWidth={2}>
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                </svg>
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 3, fontFamily: FT.FONT }}>{t.newReportOwnerManager}</div>
-                <div data-testid="field-project-owner" style={{ fontSize: 14, fontWeight: 600, color: FT.INK, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.ownerName || "—"}</div>
-              </div>
-            </div>
-            <div style={{ flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 30, height: 30, borderRadius: 7, background: FT.PAPER_MUTED, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={FT.TEXT_MUTED} strokeWidth={2}>
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-                </svg>
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 3, fontFamily: FT.FONT }}>{t.newReportPONumber}</div>
-                <div data-testid="field-project-po" style={{ fontSize: 14, fontWeight: 600, color: FT.INK, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.poNumber || "—"}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* ROW 4 — Submit status bar */}
+          {/* ROW 3 — Submit status bar */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderRadius: 10, background: preparedBy.trim() ? "#ecfdf5" : "#fffbeb", border: preparedBy.trim() ? "1.5px solid #6ee7b7" : "1.5px solid #fde68a" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: preparedBy.trim() ? "#10b981" : "#f59e0b", flexShrink: 0 }} />

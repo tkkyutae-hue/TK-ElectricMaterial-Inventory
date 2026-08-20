@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./VoltStockFieldQuickLog.css";
+import "./VoltStockFieldQuickLog.mobile.css";
 
 type Action = "use" | "receive" | "move";
 

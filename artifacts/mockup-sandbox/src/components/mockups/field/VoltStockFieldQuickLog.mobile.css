@@ -1,0 +1,62 @@
+@media (max-width: 520px) {
+  .vq-top {
+    height: 56px;
+    padding: 0 14px;
+    gap: 10px;
+  }
+
+  .vq-brand {
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .vq-mark {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
+    box-shadow: 3px 3px 0 #43552c;
+  }
+
+  .vq-brand strong {
+    font-size: 14px;
+  }
+
+  .vq-brand span {
+    font-size: 7px;
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+  }
+
+  .vq-status {
+    flex: 0 0 auto;
+    gap: 6px;
+    padding: 7px 8px;
+    border: 1px solid rgba(216, 255, 62, 0.22);
+    border-radius: 999px;
+    background: rgba(216, 255, 62, 0.06);
+    font-size: 8px;
+    letter-spacing: 0.04em;
+  }
+
+  .vq-dot {
+    width: 6px;
+    height: 6px;
+    box-shadow: 0 0 0 3px rgba(216, 255, 62, 0.1);
+  }
+
+  .vq-hero {
+    padding: 26px 18px 22px;
+  }
+
+  .vq-hero h1 {
+    margin: 10px 0 13px;
+    font-size: 42px;
+    line-height: 0.9;
+    letter-spacing: -0.08em;
+  }
+
+  .vq-hero p {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+}

@@ -1,0 +1,490 @@
+Please improve the **mobile Daily Report / New Report screen UI** shown in the attached reference.
+
+This task has two main goals:
+
+1. Fix the horizontal overflow caused by the 3 navigation tabs.
+2. Reorganize the **General Info** section using the existing information so it is easier to read and more space-efficient on mobile.
+
+Do not change business logic, data logic, routes, or submission behavior.
+
+---
+
+# 1. Fix the 3 Mobile Navigation Tabs
+
+The horizontal page scrolling is currently caused by these 3 tabs directly below the header:
+
+* New Report
+* Report History
+* Project Progress / Progress
+
+English and Spanish labels are longer than Korean and are increasing the intrinsic width of the tab container.
+
+Korean works because the labels are shorter.
+
+## Required mobile behavior
+
+All 3 tabs must always fit within the mobile viewport.
+
+Use a true responsive 3-column layout:
+
+```css
+grid-template-columns: repeat(3, minmax(0, 1fr));
+width: 100%;
+```
+
+Each tab must have:
+
+```css
+min-width: 0;
+max-width: 100%;
+```
+
+Long translated labels must be allowed to wrap.
+
+Do not use `white-space: nowrap` on the mobile labels.
+
+Do not shorten or modify translations just to make them fit.
+
+Example:
+
+```text
+┌────────────┬────────────┬────────────┐
+│     +      │     ▣      │     ▥      │
+│ New Report │ Report     │ Project    │
+│            │ History    │ Progress   │
+└────────────┴────────────┴────────────┘
+```
+
+Maximum 2 lines for the label is preferred.
+
+The icon may be slightly smaller on narrow mobile screens.
+
+Reduce unnecessary horizontal padding and gap between icon/text if needed.
+
+### Important
+
+Do not solve the issue only with:
+
+```css
+overflow-x: hidden;
+```
+
+Fix the actual layout width.
+
+There must be:
+
+* No horizontal page scrollbar
+* No clipped tabs
+* No tab extending outside the viewport
+* All 3 tabs visible simultaneously
+* Correct behavior in Korean, English, and Spanish
+
+Test at:
+
+* 320px
+* 360px
+* 375px
+* 390px
+
+---
+
+# 2. Reorganize General Info
+
+The current General Info screen contains the right information, but the layout is inefficient.
+
+The top project summary currently compresses too much information into one small horizontal row:
+
+```text
+PODI...   PO: TKM101026   Working on it
+HMGMA                      Hyungjoon Jang
+```
+
+This causes:
+
+* Project name truncation
+* PO number being difficult to see
+* Poor information hierarchy
+* Excess empty/uneven space
+* Localization issues with English/Spanish
+
+Reorganize the existing information into three visual groups:
+
+1. Project Summary
+2. Report Details
+3. Reporter / Project Manager / Validation
+
+---
+
+# 3. Recommended General Info Layout
+
+Use this general structure on mobile:
+
+```text
+┌──────────────────────────────────┐
+│ 1   GENERAL INFO                 │
+├──────────────────────────────────┤
+│                                  │
+│ PROJECT NAME                     │
+│ PODIUM ELECTRICAL WORK           │
+│                         [Working]│
+│ HMGMA                            │
+│                                  │
+│ PO NO.            PROJECT NO.    │
+│ TKM101026         XXXXXXXX       │
+│                                  │
+│ PROJECT MANAGER                  │
+│ Hyungjoon Jang                   │
+│                                  │
+├──────────────────────────────────┤
+│ REPORT DETAILS                   │
+│                                  │
+│ REPORT NO.        REPORT DATE    │
+│ [ 001 ]           [08/20/2026]  │
+│                                  │
+│ SHIFT                            │
+│ [ Day Shift ▼ ]                  │
+│                                  │
+│ WEATHER & TEMPERATURE            │
+│ [ ☀ Clear     H 72  L 62 °F ]   │
+│                                  │
+├──────────────────────────────────┤
+│ REPORTER *                       │
+│ [ Select reporter...           ] │
+│                                  │
+│ PROJECT MANAGER                  │
+│ [ Select project manager...    ] │
+│                                  │
+│ ⚠ Not Ready to Submit            │
+│   Add Reporter to enable...      │
+└──────────────────────────────────┘
+```
+
+This does not need to be pixel-for-pixel identical, but the hierarchy should follow this structure.
+
+---
+
+# 4. Project Summary
+
+The project name should become the primary information.
+
+Do not truncate it to something like:
+
+```text
+PODI...
+```
+
+Allow the project name to display up to 2 lines on mobile.
+
+Example:
+
+```text
+PODIUM ELECTRICAL WORK
+```
+
+Keep the status badge such as:
+
+```text
+Working on it
+```
+
+but place it where it does not compete with the project name.
+
+For example:
+
+```text
+PODIUM ELECTRICAL WORK          [Working on it]
+HMGMA
+```
+
+or move the status underneath if the screen is narrow.
+
+---
+
+# 5. PO No. and Project No.
+
+Make these clearly visible as actual information fields instead of tiny inline metadata.
+
+Preferred:
+
+```text
+PO NO.                 PROJECT NO.
+TKM101026              XXXXXXXX
+```
+
+Use the existing database values.
+
+**Do not create or guess a Project No.**
+
+If the application already has a Project Number field, connect and display that existing value.
+
+If no Project Number exists in the current project record/data model, do not invent one. Leave the field out and report that it was unavailable.
+
+---
+
+# 6. Client and Project Manager
+
+Do not force long text such as `PROJECT MANAGER` into a narrow two-column structure if it creates localization problems.
+
+Preferred mobile layout:
+
+```text
+CLIENT
+HMGMA
+
+PROJECT MANAGER
+Hyungjoon Jang
+```
+
+This gives names enough width and works better in English and Spanish.
+
+Use compact spacing so it does not make the card unnecessarily tall.
+
+---
+
+# 7. Report Details Layout
+
+Keep short fields in a 2-column grid where it is useful.
+
+Example:
+
+```text
+REPORT NO.           REPORT DATE
+[ 001 ]              [08/20/2026]
+```
+
+Use:
+
+```css
+grid-template-columns: repeat(2, minmax(0, 1fr));
+```
+
+Do not allow input intrinsic width to expand the grid.
+
+---
+
+# 8. Shift
+
+Shift may remain beside another short field if it fits reliably.
+
+However, because localization is being supported, prefer a simple full-width field if necessary:
+
+```text
+SHIFT
+[ Day Shift ▼ ]
+```
+
+Do not force a 2-column layout if the translated label causes overflow.
+
+---
+
+# 9. Weather & Temperature
+
+`WEATHER & TEMPERATURE` is a long English label and will be even longer in some Spanish translations.
+
+Make this a full-width field on mobile.
+
+Example:
+
+```text
+WEATHER & TEMPERATURE
+┌──────────────────────────────┐
+│ ☀ Clear      H 72  L 62  °F │
+└──────────────────────────────┘
+```
+
+The control itself must fit completely inside the available width.
+
+Do not allow the temperature information to create horizontal overflow.
+
+Use flexible internal spacing.
+
+---
+
+# 10. Reporter
+
+Reporter remains full width:
+
+```text
+REPORTER * Required
+
+[ Select reporter...            ]
+```
+
+Long translated placeholder text must remain inside the field.
+
+Allow truncation inside the input/select if necessary, but the field itself must never exceed its parent width.
+
+---
+
+# 11. Project Manager Selector
+
+Keep it full width:
+
+```text
+PROJECT MANAGER
+
+[ Select project manager...     ]
+```
+
+This is intentionally not a narrow 2-column field because person names and translated labels may be long.
+
+---
+
+# 12. Submission Validation
+
+Keep the existing validation message:
+
+```text
+⚠ Not Ready to Submit
+Add Reporter to enable submission
+```
+
+Do not change the validation logic.
+
+Only improve spacing/alignment if necessary.
+
+---
+
+# 13. Reduce Nested Card Appearance
+
+Currently the General Info card contains another strong bordered project summary card inside it.
+
+This creates a "card inside a card" effect.
+
+Reduce the visual weight of the inner project summary.
+
+Preferred options:
+
+* no strong border
+* very light background
+* subtle divider
+* minimal radius
+* section spacing instead of another large card
+
+The main General Info panel should remain the primary container.
+
+---
+
+# 14. Mobile Width Safety
+
+The entire General Info page must work with long English and Spanish text.
+
+Check:
+
+* grid containers
+* flex containers
+* selects
+* inputs
+* badges
+* buttons
+* project summary
+* labels
+* placeholders
+* tab navigation
+
+Use as appropriate:
+
+```css
+min-width: 0;
+max-width: 100%;
+box-sizing: border-box;
+```
+
+For grids:
+
+```css
+minmax(0, 1fr)
+```
+
+For long labels:
+
+```css
+white-space: normal;
+overflow-wrap: anywhere;
+```
+
+Do not globally break words unnecessarily.
+
+---
+
+# 15. No Horizontal Scroll
+
+After the changes, the mobile screen must have **zero horizontal page scrolling**.
+
+Test the entire page in:
+
+* Korean
+* English
+* Spanish
+
+at:
+
+* 320px
+* 360px
+* 375px
+* 390px
+
+The bottom horizontal scrollbar currently visible in the screenshot must disappear because the actual layout fits correctly.
+
+Again, do not hide the bug using only `overflow-x: hidden`.
+
+Find and fix the element causing the overflow.
+
+---
+
+# 16. Keep Existing Functionality
+
+Do not change:
+
+* New Report logic
+* Report History logic
+* Project Progress logic
+* Project selection/data
+* Reporter selection logic
+* Project Manager selection logic
+* Report No. generation
+* Date behavior
+* Shift values
+* Weather logic
+* Draft logic
+* Submit logic
+* Validation logic
+* Existing routes
+
+This task is primarily a **mobile UI/layout refinement**.
+
+---
+
+# 17. Desktop
+
+Do not unintentionally modify the desktop experience.
+
+Use the existing mobile responsive breakpoint or introduce a safe mobile breakpoint if necessary.
+
+Desktop behavior should remain unchanged unless a shared CSS bug absolutely requires correction.
+
+---
+
+# 18. Final Goal
+
+The mobile screen should feel like a professional field-report application:
+
+* Clear project identity
+* Important information visible immediately
+* Better use of vertical space
+* No crowded micro-text
+* No unnecessary nested cards
+* Stable with Korean / English / Spanish
+* No horizontal scrolling
+* Clean visual hierarchy
+* Existing TK Electric design language preserved
+
+After implementation, briefly report:
+
+1. What caused the tab overflow
+2. How the 3 tabs were made responsive
+3. How General Info was reorganized
+4. Whether an existing Project No. field was found and used
+5. Which files/components were changed
+6. Confirmation that Korean, English, and Spanish mobile layouts were tested
+7. Confirmation that desktop behavior was not affected

@@ -2953,18 +2953,6 @@ export function NewReportTab({
                             {materialSectionCounts[sec] ?? 0}
                           </span>
                         </button>
-                        {sectionCollapsed && !isSubmitted && (
-                          <button
-                            type="button"
-                            data-testid={`add-material-section-${sec}`}
-                            aria-label={`${t.newReportAddMaterial}: ${sec}`}
-                            title={`${t.newReportAddMaterial}: ${sec}`}
-                            onClick={() => addMaterialToSection(sec)}
-                            style={{ width: 40, border: "none", borderLeft: "1px solid rgba(255,255,255,0.24)", background: "rgba(255,255,255,0.08)", color: "inherit", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-                          >
-                            <Plus style={{ width: 15, height: 15 }} />
-                          </button>
-                        )}
                       </div>
                     );
                   }
@@ -3132,18 +3120,6 @@ export function NewReportTab({
                                   {materialSectionCounts[sec] ?? 0}
                                 </span>
                               </button>
-                              {sectionCollapsed && !isSubmitted && (
-                                <button
-                                  type="button"
-                                  data-testid={`add-material-section-${sec}`}
-                                  aria-label={`${t.newReportAddMaterial}: ${sec}`}
-                                  title={`${t.newReportAddMaterial}: ${sec}`}
-                                  onClick={() => addMaterialToSection(sec)}
-                                  style={{ width: 36, border: "none", borderLeft: "1px solid rgba(255,255,255,0.24)", background: "rgba(255,255,255,0.08)", color: "inherit", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-                                >
-                                  <Plus style={{ width: 14, height: 14 }} />
-                                </button>
-                              )}
                             </div>
                           </td>
                         </tr>

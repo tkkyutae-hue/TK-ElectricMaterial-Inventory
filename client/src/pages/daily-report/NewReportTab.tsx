@@ -41,6 +41,7 @@ import type { Worker } from "@shared/schema";
 import { PdfViewer } from "./PdfViewer";
 import { FT } from "./fieldTicketTheme";
 import { ManpowerSummaryBar } from "./ManpowerSummaryBar";
+import { MobileMaterialSectionNavigator } from "./MobileMaterialSectionNavigator";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TASK_STATUS_CFG: Record<string, {
@@ -1306,6 +1307,10 @@ export function NewReportTab({
   // ── Section navigator ──
   const sectionRefs     = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null, null]);
   const navRef          = useRef<HTMLDivElement>(null);
+  const getMaterialSectionAnchor = useCallback(
+    () => Math.max(navRef.current?.getBoundingClientRect().bottom ?? 0, 64) + 18,
+    [],
+  );
   const [activeSection, setActiveSection] = useState(0);
   const visibleSections = useRef<boolean[]>([true, false, false, false, false, false]);
   useEffect(() => {
@@ -1655,6 +1660,16 @@ export function NewReportTab({
     () => Array.from(new Set(materials.map((row) => row.section).filter((section): section is string => Boolean(section)))),
     [materials],
   );
+  const materialSectionHeaderRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [activeMaterialSection, setActiveMaterialSection] = useState<string | null>(null);
+  const materialSectionNavigationItems = useMemo(
+    () => materialSections.map((section) => ({
+      id: section,
+      name: section,
+      itemCount: materialSectionCounts[section] ?? 0,
+    })),
+    [materialSections, materialSectionCounts],
+  );
   const [materialSectionState, setMaterialSectionState] = useState<{
     storageKey: string | undefined;
     collapsed: Record<string, boolean>;
@@ -1690,6 +1705,56 @@ export function NewReportTab({
     if (!materialSectionStorageKey || materialSectionState.storageKey !== materialSectionStorageKey) return;
     writeCollapsedMaterialSections(materialSectionStorageKey, materialSectionState.collapsed);
   }, [materialSectionStorageKey, materialSectionState]);
+
+  useEffect(() => {
+    if (!isMobile || materialSections.length === 0) {
+      setActiveMaterialSection(null);
+      return;
+    }
+    let frameId = 0;
+    const updateActiveSection = () => {
+      frameId = 0;
+      const sectionTop = getMaterialSectionAnchor();
+      const headers = materialSections.flatMap((section) => {
+        const header = materialSectionHeaderRefs.current[section];
+        return header ? [{ section, top: header.getBoundingClientRect().top }] : [];
+      });
+      const passedHeader = [...headers].reverse().find(({ top }) => top <= sectionTop);
+      const currentSection = passedHeader?.section ?? headers[0]?.section ?? null;
+      setActiveMaterialSection((previous) => previous === currentSection ? previous : currentSection);
+    };
+    const queueUpdate = () => {
+      if (!frameId) frameId = window.requestAnimationFrame(updateActiveSection);
+    };
+    queueUpdate();
+    window.addEventListener("scroll", queueUpdate, { passive: true });
+    window.addEventListener("resize", queueUpdate, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", queueUpdate);
+      window.removeEventListener("resize", queueUpdate);
+      if (frameId) window.cancelAnimationFrame(frameId);
+    };
+  }, [getMaterialSectionAnchor, isMobile, materialSections]);
+
+  const jumpToMaterialSection = useCallback((section: string) => {
+    const header = materialSectionHeaderRefs.current[section];
+    if (!header) return;
+    const scrollToHeader = () => {
+      const top = header.getBoundingClientRect().top + window.scrollY - getMaterialSectionAnchor() + 16;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+      setActiveMaterialSection(section);
+    };
+    if (!collapsedMaterialSections[section]) {
+      scrollToHeader();
+      return;
+    }
+    setMaterialSectionState((previous) => {
+      const collapsed = previous.storageKey === materialSectionStorageKey ? previous.collapsed : {};
+      const { [section]: _expandedSection, ...expandedSections } = collapsed;
+      return { storageKey: materialSectionStorageKey, collapsed: expandedSections };
+    });
+    window.requestAnimationFrame(() => window.requestAnimationFrame(scrollToHeader));
+  }, [collapsedMaterialSections, getMaterialSectionAnchor, materialSectionStorageKey]);
 
   function createEmptyMaterial(section: string | null = null): MaterialRow {
     return {
@@ -2931,7 +2996,9 @@ export function NewReportTab({
                   lastMobileSection = sec;
                   if (sec) {
                     mobileNodes.push(
-                      <div key={`sec-${sec}`}
+                      <div
+                        key={`sec-${sec}`}
+                        ref={(el) => { materialSectionHeaderRefs.current[sec] = el; }}
                         style={{ display: "flex", alignItems: "stretch", background: materialSectionColor(sec), borderRadius: 6, color: "#fff", marginTop: 4, overflow: "hidden" }}>
                         <button type="button"
                           data-testid={`toggle-material-section-${sec}`}
@@ -3245,6 +3312,16 @@ export function NewReportTab({
               <> · {t.newReportScopeAutoFill}</>
             )}
           </p>
+        )}
+        {isMobile && materialSectionNavigationItems.length > 1 && (
+          <div aria-hidden="true" style={{ height: "max(64px, calc(100dvh - 64px))" }} />
+        )}
+        {isMobile && (
+          <MobileMaterialSectionNavigator
+            sections={materialSectionNavigationItems}
+            activeSectionId={activeMaterialSection}
+            onSelect={jumpToMaterialSection}
+          />
         )}
       </Section>
       </div>{/* end §4 */}

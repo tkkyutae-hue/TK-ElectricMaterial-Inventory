@@ -309,13 +309,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const workerId = parseIntParam(req.params.id, "id", res);
       if (workerId === null) return;
       const { userId } = req.body as { userId: string | null };
+      const shouldClearLink = userId === null || userId === undefined;
 
-      if (userId !== null && userId !== undefined && typeof userId !== "string") {
+      if (!shouldClearLink && (typeof userId !== "string" || userId.trim().length === 0)) {
         return res.status(400).json({ message: "userId must be a string or null" });
       }
 
       // If linking (not clearing), verify the user isn't already linked to another worker.
-      if (userId) {
+      if (!shouldClearLink) {
+        const selectedUser = await authStorage.getUser(userId);
+        if (!selectedUser || selectedUser.status !== "active") {
+          return res.status(400).json({ message: "선택한 앱 계정이 활성 상태가 아닙니다." });
+        }
         const conflict = await db.select({ id: workers.id })
           .from(workers)
           .where(eq(workers.linkedUserId, userId))
@@ -325,7 +330,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
       }
 
-      const updated = await storage.updateWorker(workerId, { linkedUserId: userId ?? null } as any);
+      const updated = await storage.updateWorker(workerId, { linkedUserId: shouldClearLink ? null : userId } as any);
       res.json(updated);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -380,6 +385,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           trade: worker.trade,
           linkedUserId: worker.linkedUserId ?? null,
           linkedUser: worker.linkedUserId ? safeUsers.get(worker.linkedUserId) ?? null : null,
+          accountLinkStatus: !worker.linkedUserId
+            ? "unlinked"
+            : safeUsers.has(worker.linkedUserId)
+              ? "linked"
+              : "unavailable",
           todayProjectIds: Array.from(todayByWorker.get(worker.id) ?? []),
           yesterdayProjectIds: Array.from(yesterdayByWorker.get(worker.id) ?? []),
         }));

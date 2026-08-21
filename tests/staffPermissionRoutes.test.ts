@@ -22,7 +22,7 @@ interface TestRequest {
 interface TestUser {
   id: string;
   role: "admin" | "manager" | "staff";
-  status: "active";
+  status: "active" | "inactive";
   name: string;
 }
 
@@ -102,11 +102,13 @@ const UNASSIGNED_PROJECT_ID = 202;
 const STAFF_USER_ID = "staff-user";
 const MANAGER_USER_ID = "manager-user";
 const ADMIN_USER_ID = "admin-user";
+const INACTIVE_USER_ID = "inactive-user";
 
 const usersById = new Map<string, TestUser>([
   [STAFF_USER_ID, { id: STAFF_USER_ID, role: "staff", status: "active", name: "Staff Tester" }],
   [MANAGER_USER_ID, { id: MANAGER_USER_ID, role: "manager", status: "active", name: "Manager Tester" }],
   [ADMIN_USER_ID, { id: ADMIN_USER_ID, role: "admin", status: "active", name: "Admin Tester" }],
+  [INACTIVE_USER_ID, { id: INACTIVE_USER_ID, role: "staff", status: "inactive", name: "Inactive Tester" }],
 ]);
 
 async function main() {
@@ -117,6 +119,9 @@ async function main() {
   const originalDbSelect = (db as any).select;
   const restoreStorage: Array<() => void> = [];
   let mutationCount = 0;
+    let workerLinkUpdates = 0;
+    let linkedWorkerRows: Array<{ id: number; linkedUserId: string }> = [{ id: 1, linkedUserId: STAFF_USER_ID }];
+    let assignedProjectRows: Array<{ projectId: number }> = [{ projectId: ASSIGNED_PROJECT_ID }];
 
   function stubStorage(name: string, implementation: (...args: any[]) => unknown) {
     const target = storage as any;
@@ -131,14 +136,15 @@ async function main() {
 
   try {
     authStorage.getUser = async (id: string) => usersById.get(id) as any;
-    authStorage.listUsers = async () => Array.from(usersById.values()) as any;
+    authStorage.listUsers = async (status?: string) => Array.from(usersById.values())
+      .filter((user) => !status || user.status === status) as any;
     (db as any).select = () => ({
       from: (table: unknown) => {
         if (table === workers) {
-          return { where: () => ({ limit: async () => [{ id: 1, linkedUserId: STAFF_USER_ID }] }) };
+          return { where: () => ({ limit: async () => linkedWorkerRows }) };
         }
         if (table === dailyWorkerAssignments) {
-          return { where: async () => [{ projectId: ASSIGNED_PROJECT_ID }] };
+          return { where: async () => assignedProjectRows };
         }
         throw new Error("Unexpected database read in staff permission test");
       },
@@ -171,7 +177,12 @@ async function main() {
     stubStorage("getWorkers", async () => [
       { id: 1, linkedUserId: STAFF_USER_ID, fullName: "Staff Tester", trade: "Foreman", isActive: true },
       { id: 2, linkedUserId: null, fullName: "Other Worker", trade: "Foreman", isActive: true },
+      { id: 3, linkedUserId: INACTIVE_USER_ID, fullName: "Unavailable Account", trade: "Foreman", isActive: true },
     ]);
+    stubStorage("updateWorker", async () => {
+      workerLinkUpdates++;
+      return { id: 2, linkedUserId: STAFF_USER_ID };
+    });
     stubStorage("upsertAssignment", async () => { mutationCount++; return { id: 1 }; });
     stubStorage("setAppSetting", async () => { mutationCount++; });
     stubStorage("upsertKoreanAttendance", async () => { mutationCount++; return { id: 1 }; });
@@ -299,14 +310,64 @@ async function main() {
     });
     assert.equal(managerAudit.statusCode, 200, "Manager should access the foreman account-link audit");
     assert.deepEqual(
-      (managerAudit.body as { foremen: Array<{ id: number; linkedUserId: string | null; todayProjectIds: number[] }> }).foremen
-        .map((foreman) => ({ id: foreman.id, linkedUserId: foreman.linkedUserId, todayProjectIds: foreman.todayProjectIds })),
+      (managerAudit.body as { foremen: Array<{ id: number; linkedUserId: string | null; accountLinkStatus: string; todayProjectIds: number[] }> }).foremen
+        .map((foreman) => ({
+          id: foreman.id,
+          linkedUserId: foreman.linkedUserId,
+          accountLinkStatus: foreman.accountLinkStatus,
+          todayProjectIds: foreman.todayProjectIds,
+        })),
       [
-        { id: 1, linkedUserId: STAFF_USER_ID, todayProjectIds: [ASSIGNED_PROJECT_ID] },
-        { id: 2, linkedUserId: null, todayProjectIds: [UNASSIGNED_PROJECT_ID] },
+        { id: 1, linkedUserId: STAFF_USER_ID, accountLinkStatus: "linked", todayProjectIds: [ASSIGNED_PROJECT_ID] },
+        { id: 2, linkedUserId: null, accountLinkStatus: "unlinked", todayProjectIds: [UNASSIGNED_PROJECT_ID] },
+        { id: 3, linkedUserId: INACTIVE_USER_ID, accountLinkStatus: "unavailable", todayProjectIds: [] },
       ],
-      "Manager audit must expose each active foreman's explicit link and recent assignment count",
+      "Manager audit must expose each active foreman's usable account-link status and recent assignment count",
     );
+
+    const linkConflict = await request(
+      "patch", "/api/workers/:id/linked-user", MANAGER_USER_ID, { id: "2" }, {}, { userId: STAFF_USER_ID },
+    );
+    assert.equal(linkConflict.statusCode, 409, "Managers must not link an account already used by another worker");
+    assert.equal(workerLinkUpdates, 0, "A conflicting account link must not update the worker record");
+
+    const unavailableAccountLink = await request(
+      "patch", "/api/workers/:id/linked-user", MANAGER_USER_ID, { id: "2" }, {}, { userId: INACTIVE_USER_ID },
+    );
+    assert.equal(unavailableAccountLink.statusCode, 400, "Managers must not link a worker to an inactive account");
+    assert.equal(workerLinkUpdates, 0, "An inactive account link must not update the worker record");
+
+    const emptyAccountLink = await request(
+      "patch", "/api/workers/:id/linked-user", MANAGER_USER_ID, { id: "2" }, {}, { userId: "" },
+    );
+    assert.equal(emptyAccountLink.statusCode, 400, "Managers must not save an empty account ID as a worker link");
+    assert.equal(workerLinkUpdates, 0, "An empty account ID must not update the worker record");
+
+    linkedWorkerRows = [];
+    assignedProjectRows = [];
+    const missingLinkProjectList = await request("get", "/api/daily-report-projects", STAFF_USER_ID, {});
+    assert.deepEqual(
+      missingLinkProjectList.body,
+      [],
+      "A staff account without a worker link must not receive Daily Report projects",
+    );
+    const missingLinkProject = await request(
+      "get", "/api/daily-report-projects/:id", STAFF_USER_ID, { id: String(ASSIGNED_PROJECT_ID) },
+    );
+    assert.equal(missingLinkProject.statusCode, 403, "A missing worker link must not allow direct project access");
+
+    linkedWorkerRows = [{ id: 2, linkedUserId: STAFF_USER_ID }];
+    assignedProjectRows = [{ projectId: UNASSIGNED_PROJECT_ID }];
+    const wrongLinkProjectList = await request("get", "/api/daily-report-projects", STAFF_USER_ID, {});
+    assert.deepEqual(
+      (wrongLinkProjectList.body as Array<{ id: number }>).map((project) => project.id),
+      [UNASSIGNED_PROJECT_ID],
+      "A wrongly linked staff account may only receive the projects assigned to its linked worker",
+    );
+    const wrongLinkProject = await request(
+      "get", "/api/daily-report-projects/:id", STAFF_USER_ID, { id: String(ASSIGNED_PROJECT_ID) },
+    );
+    assert.equal(wrongLinkProject.statusCode, 403, "A wrong worker link must never reveal another worker's project");
 
     const protectedMutations: Array<{
       path: string;

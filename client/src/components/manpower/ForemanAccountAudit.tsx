@@ -24,6 +24,7 @@ interface ForemanAuditRow {
   trade: string | null;
   linkedUserId: string | null;
   linkedUser: LinkableUser | null;
+  accountLinkStatus: "linked" | "unlinked" | "unavailable";
   todayProjectIds: number[];
   yesterdayProjectIds: number[];
 }
@@ -83,14 +84,18 @@ export function ForemanAccountAudit() {
 
   const foremen = audit?.foremen ?? [];
   const linkedUserIds = useMemo(
-    () => new Set(foremen.map((foreman) => foreman.linkedUserId).filter((id): id is string => Boolean(id))),
+    () => new Set(foremen
+      .filter((foreman) => foreman.accountLinkStatus === "linked")
+      .map((foreman) => foreman.linkedUserId)
+      .filter((id): id is string => Boolean(id))),
     [foremen],
   );
   const sortedForemen = useMemo(() => [...foremen].sort((a, b) => {
     const priority = (foreman: ForemanAuditRow) => {
       const hasRecentDispatch = foreman.todayProjectIds.length + foreman.yesterdayProjectIds.length > 0;
-      if (!foreman.linkedUserId && hasRecentDispatch) return 0;
-      if (!foreman.linkedUserId) return 1;
+      const needsAccountReview = foreman.accountLinkStatus !== "linked";
+      if (needsAccountReview && hasRecentDispatch) return 0;
+      if (needsAccountReview) return 1;
       return 2;
     };
     return priority(a) - priority(b) || a.fullName.localeCompare(b.fullName);
@@ -127,9 +132,10 @@ export function ForemanAccountAudit() {
     },
   });
 
-  const unlinkedCount = foremen.filter((foreman) => !foreman.linkedUserId).length;
-  const recentUnlinkedCount = foremen.filter(
-    (foreman) => !foreman.linkedUserId && foreman.todayProjectIds.length + foreman.yesterdayProjectIds.length > 0,
+  const needsAccountReviewCount = foremen.filter((foreman) => foreman.accountLinkStatus !== "linked").length;
+  const recentNeedsAccountReviewCount = foremen.filter(
+    (foreman) => foreman.accountLinkStatus !== "linked"
+      && foreman.todayProjectIds.length + foreman.yesterdayProjectIds.length > 0,
   ).length;
 
   return (
@@ -144,7 +150,7 @@ export function ForemanAccountAudit() {
             <p className="mt-1 text-xs text-slate-500">{t.mpForemanAccountLinksHelp}</p>
           </div>
           <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
-            {recentUnlinkedCount} {t.mpRecentUnlinkedForemen}
+            {recentNeedsAccountReviewCount} {t.mpRecentForemanAccountReviews}
           </Badge>
         </div>
       </CardHeader>
@@ -152,8 +158,8 @@ export function ForemanAccountAudit() {
         <div className="grid gap-2 sm:grid-cols-3">
           {[
             { label: t.mpForemanTotal, value: foremen.length, className: "border-slate-200 bg-slate-50 text-slate-700" },
-            { label: t.mpForemanUnlinked, value: unlinkedCount, className: "border-amber-200 bg-amber-50 text-amber-700" },
-            { label: t.mpRecentUnlinkedForemen, value: recentUnlinkedCount, className: "border-rose-200 bg-rose-50 text-rose-700" },
+            { label: t.mpForemanAccountReview, value: needsAccountReviewCount, className: "border-amber-200 bg-amber-50 text-amber-700" },
+            { label: t.mpRecentForemanAccountReviews, value: recentNeedsAccountReviewCount, className: "border-rose-200 bg-rose-50 text-rose-700" },
           ].map(({ label, value, className }) => (
             <div key={label} className={`rounded-lg border px-3 py-2 ${className}`}>
               <p className="text-xs font-medium">{label}</p>
@@ -175,7 +181,8 @@ export function ForemanAccountAudit() {
           <div className="divide-y divide-slate-100 rounded-lg border border-slate-200">
             {sortedForemen.map((foreman) => {
               const recentAssignmentCount = foreman.todayProjectIds.length + foreman.yesterdayProjectIds.length;
-              const selectedUserId = selectedUserByWorker[foreman.id] ?? foreman.linkedUserId ?? "";
+              const selectedUserId = selectedUserByWorker[foreman.id]
+                ?? (foreman.accountLinkStatus === "linked" ? foreman.linkedUserId : "");
               const availableUsers = users.filter(
                 (user) => !linkedUserIds.has(user.id) || user.id === foreman.linkedUserId,
               );
@@ -193,9 +200,13 @@ export function ForemanAccountAudit() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {foreman.linkedUserId ? (
+                    {foreman.accountLinkStatus === "linked" ? (
                       <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
                         {t.mpAccountLinked}
+                      </Badge>
+                    ) : foreman.accountLinkStatus === "unavailable" ? (
+                      <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
+                        {t.mpLinkedAccountUnavailable}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
@@ -233,7 +244,7 @@ export function ForemanAccountAudit() {
                         ))}
                       </SelectContent>
                     </Select>
-                    {foreman.linkedUserId && !foreman.linkedUser && (
+                    {foreman.accountLinkStatus === "unavailable" && (
                       <p className="mt-1 text-xs text-amber-700">{t.mpLinkedAccountUnavailable}</p>
                     )}
                   </div>

@@ -4,14 +4,14 @@
  */
 
 export const FT = {
-  INK:         "#1C1C1E",   // primary text / emphasis borders
-  PAPER:       "#F7F5EF",   // page / card background
-  PAPER_MUTED: "#EFEBDF",   // nav bar + action bar background
-  RULE:        "#D8D3C4",   // default hairline borders
-  TEXT_MUTED:  "#6B675C",   // secondary / label text
-  ACCENT:      "#E85D04",   // safety-orange — active nav, section rule, CTA
-  SUCCESS:     "#3D8B37",   // completed / attend / operational
-  DANGER:      "#A3321C",   // blocked / delayed / broken
+  INK:         "var(--daily-report-ink, #1C1C1E)",   // primary text / emphasis borders
+  PAPER:       "var(--daily-report-paper, #F7F5EF)",   // page / card background
+  PAPER_MUTED: "var(--daily-report-paper-muted, #EFEBDF)",   // nav bar + action bar background
+  RULE:        "var(--daily-report-rule, #D8D3C4)",   // default hairline borders
+  TEXT_MUTED:  "var(--daily-report-text-muted, #6B675C)",   // secondary / label text
+  ACCENT:      "var(--daily-report-accent, #E85D04)",   // safety-orange — active nav, section rule, CTA
+  SUCCESS:     "var(--daily-report-success, #3D8B37)",   // completed / attend / operational
+  DANGER:      "var(--daily-report-danger, #A3321C)",   // blocked / delayed / broken
   FONT:        "'Barlow Condensed', sans-serif",
 } as const;
 

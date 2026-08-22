@@ -653,7 +653,7 @@ export default function DailyReport() {
                 <ChevronDown className="w-3 h-3 ml-0.5" />
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-56 p-2" align="start">
+            <PopoverContent className="project-operations-popover w-56 p-2" align="start">
               <div className="mb-1.5 flex items-center justify-between px-1">
                 <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{t.dailyReportStatusFilter}</span>
                 {hiddenStatuses.size > 0 && (

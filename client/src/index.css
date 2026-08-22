@@ -191,6 +191,93 @@ input[type="number"] {
   letter-spacing: 0.4px;
 }
 
+/* ── Project Operations theme bridge ─────────────────────────────────────────
+   Project Operations shares Field Mode's preference but uses its own Field
+   Ticket visual language. These scoped overrides keep the report list and
+   workspace readable without changing the admin application's color scheme. */
+.project-operations-shell {
+  --background: 132 20% 97%;
+  --foreground: 145 34% 9%;
+  --card: 0 0% 100%;
+  --card-foreground: 145 34% 9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 145 34% 9%;
+  --border: 130 19% 87%;
+  --input: 130 19% 87%;
+}
+
+.project-operations-shell[data-project-theme="dark"] {
+  --background: 145 12% 7%;
+  --foreground: 132 40% 90%;
+  --card: 140 15% 11%;
+  --card-foreground: 132 40% 90%;
+  --popover: 140 15% 11%;
+  --popover-foreground: 132 40% 90%;
+  --border: 140 20% 20%;
+  --input: 140 20% 20%;
+  color-scheme: dark;
+}
+
+.project-operations-shell[data-project-theme="dark"] .bg-white,
+.project-operations-shell[data-project-theme="dark"] .bg-slate-50,
+.project-operations-shell[data-project-theme="dark"] .bg-slate-100 {
+  background-color: var(--daily-report-paper) !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] .bg-slate-200 {
+  background-color: var(--daily-report-paper-muted) !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] .text-slate-900,
+.project-operations-shell[data-project-theme="dark"] .text-slate-800,
+.project-operations-shell[data-project-theme="dark"] .text-slate-700 {
+  color: var(--daily-report-ink) !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] .text-slate-600,
+.project-operations-shell[data-project-theme="dark"] .text-slate-500 {
+  color: var(--daily-report-text-muted) !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] .text-slate-400,
+.project-operations-shell[data-project-theme="dark"] .text-slate-300 {
+  color: #86a08d !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] .border-slate-50,
+.project-operations-shell[data-project-theme="dark"] .border-slate-100,
+.project-operations-shell[data-project-theme="dark"] .border-slate-200,
+.project-operations-shell[data-project-theme="dark"] .border-slate-300 {
+  border-color: var(--daily-report-rule) !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] input,
+.project-operations-shell[data-project-theme="dark"] textarea {
+  background-color: var(--daily-report-paper) !important;
+  border-color: var(--daily-report-rule) !important;
+  color: var(--daily-report-ink) !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] input::placeholder,
+.project-operations-shell[data-project-theme="dark"] textarea::placeholder {
+  color: #86a08d !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] .hover\:bg-slate-50:hover,
+.project-operations-shell[data-project-theme="dark"] .hover\:bg-slate-100:hover {
+  background-color: var(--daily-report-paper-muted) !important;
+}
+
+body[data-field-theme="dark"] .project-operations-popover {
+  background: #162019 !important;
+  border-color: #2a4030 !important;
+  color: #e2f0e5 !important;
+}
+
+body[data-field-theme="dark"] .project-operations-popover .hover\:bg-slate-50:hover {
+  background-color: #1c2b1f !important;
+}
+
 @media (max-width: 639px) {
   .mode-header {
     height: 80px !important;

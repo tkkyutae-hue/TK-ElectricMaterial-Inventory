@@ -268,6 +268,17 @@ input[type="number"] {
   background-color: var(--daily-report-paper-muted) !important;
 }
 
+@media (max-width: 639px) {
+  .project-operations-tiles {
+    gap: 12px !important;
+  }
+
+  .project-operations-tile {
+    min-height: 270px !important;
+    padding: 22px 14px !important;
+  }
+}
+
 body[data-field-theme="dark"] .project-operations-popover {
   background: #162019 !important;
   border-color: #2a4030 !important;

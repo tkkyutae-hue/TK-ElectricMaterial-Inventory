@@ -27,16 +27,17 @@ function Tile({ icon: Icon, title, subtitle, accentColor, onClick, F, isDark }: 
       onMouseLeave={() => { setHovered(false); setPressed(false); }}
       onMouseDown={() => setPressed(true)}
       onMouseUp={() => setPressed(false)}
+      className="project-operations-tile"
       style={{
         flex: 1,
-        minHeight: 200,
+        minHeight: 260,
         background: hovered ? F.surface : F.surface2,
         borderRight: `1px solid ${hovered ? accentColor : F.borderStrong}`,
         borderBottom: `1px solid ${hovered ? accentColor : F.borderStrong}`,
         borderLeft: `1px solid ${hovered ? accentColor : F.borderStrong}`,
         borderTop: `3px solid ${accentColor}`,
         borderRadius: 14,
-        padding: "32px 24px 28px",
+        padding: "24px 24px",
         cursor: "pointer",
         transform: hovered && !pressed ? "translateY(-3px)" : pressed ? "scale(0.99)" : "none",
         boxShadow: hovered
@@ -46,6 +47,7 @@ function Tile({ icon: Icon, title, subtitle, accentColor, onClick, F, isDark }: 
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        justifyContent: "center",
         gap: 14,
         textAlign: "center",
       }}
@@ -120,7 +122,7 @@ export default function CrewDispatch() {
         </p>
       </div>
 
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+      <div className="project-operations-tiles" style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
         {isManagerOrAbove && (
           <Tile
             icon={HardHat}

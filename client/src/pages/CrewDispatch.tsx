@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { ClipboardList, HardHat, type LucideIcon } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
 import { useFieldTheme } from "@/hooks/use-field-theme";
 import type { FieldToken } from "@/lib/fieldTokens";
 
 interface TileProps {
-  emoji: string;
+  icon: LucideIcon;
   title: string;
   subtitle: string;
   accentColor: string;
@@ -15,7 +16,7 @@ interface TileProps {
   isDark: boolean;
 }
 
-function Tile({ emoji, title, subtitle, accentColor, onClick, F, isDark }: TileProps) {
+function Tile({ icon: Icon, title, subtitle, accentColor, onClick, F, isDark }: TileProps) {
   const [hovered, setHovered] = useState(false);
   const [pressed,  setPressed]  = useState(false);
 
@@ -45,22 +46,34 @@ function Tile({ emoji, title, subtitle, accentColor, onClick, F, isDark }: TileP
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 12,
+        gap: 14,
         textAlign: "center",
       }}
     >
       <div style={{
-        width: 64, height: 64, borderRadius: 16,
-        background: `${accentColor}15`,
+        width: 84, height: 84, borderRadius: 24,
+        background: `linear-gradient(145deg, ${accentColor}2b, ${accentColor}0d)`,
+        border: `1px solid ${accentColor}55`,
+        boxShadow: `0 0 0 6px ${accentColor}0d, 0 10px 24px ${accentColor}18`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 30,
+        position: "relative",
+        transition: "transform 0.15s, box-shadow 0.15s",
+        transform: hovered ? "translateY(-2px) scale(1.03)" : "none",
       }}>
-        {emoji}
+        <span style={{
+          width: 58, height: 58, borderRadius: 18,
+          background: isDark ? `${F.surface}e8` : `${F.surface}f2`,
+          border: `1px solid ${accentColor}35`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 10px rgba(0,0,0,0.14)",
+        }}>
+          <Icon size={35} strokeWidth={1.8} color={accentColor} />
+        </span>
       </div>
       <div>
         <p style={{
           fontFamily: "'Barlow Condensed', sans-serif",
-          fontSize: 20, fontWeight: 700,
+          fontSize: 21, fontWeight: 700,
           color: F.text, margin: "0 0 4px",
           letterSpacing: 0.3,
         }}>{title}</p>
@@ -110,7 +123,7 @@ export default function CrewDispatch() {
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
         {isManagerOrAbove && (
           <Tile
-            emoji="👷"
+            icon={HardHat}
             title={t.crewDispatchWorkerTitle}
             subtitle={t.crewDispatchWorkerSubtitle}
             accentColor="#f59e0b"
@@ -120,7 +133,7 @@ export default function CrewDispatch() {
           />
         )}
         <Tile
-          emoji="📋"
+          icon={ClipboardList}
           title={t.crewDispatchDailyTitle}
           subtitle={t.crewDispatchDailySubtitle}
           accentColor="#60a5fa"

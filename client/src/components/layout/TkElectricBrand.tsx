@@ -6,6 +6,7 @@ interface TkElectricBrandProps {
   textClassName?: string;
   detailClassName?: string;
   textColor?: string;
+  brandLabel?: string;
   detail?: React.ReactNode;
 }
 
@@ -15,6 +16,7 @@ export function TkElectricBrand({
   textClassName = "",
   detailClassName = "",
   textColor = "#0f1f17",
+  brandLabel = "TK ELECTRIC",
   detail,
 }: TkElectricBrandProps) {
   return (
@@ -38,7 +40,7 @@ export function TkElectricBrand({
             letterSpacing: 1.4,
           }}
         >
-          TK ELECTRIC
+          {brandLabel}
         </p>
         {detail && <div className={detailClassName}>{detail}</div>}
       </div>

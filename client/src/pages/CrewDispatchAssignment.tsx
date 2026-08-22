@@ -1702,11 +1702,23 @@ export default function CrewDispatchAssignment() {
   return (
     <div className="crew-dispatch-assignment space-y-5">
 
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">{t.cdPageTitle}</h1>
-          <p className="text-slate-500 mt-1 text-sm">{t.cdPageSubtitle}</p>
+      {/* ── Date navigator ── */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <button onClick={() => changeDate(-1)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500 transition-colors shrink-0">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm font-semibold text-slate-800 truncate">{fmtDate(dateStr)}</span>
+            {isToday && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 uppercase tracking-wide shrink-0">{t.cdTodayBadge}</span>
+            )}
+          </div>
+          <button onClick={() => changeDate(1)} disabled={isToday}
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
         <div className="shrink-0 pt-1">
           <SaveStatusChip
@@ -1715,24 +1727,6 @@ export default function CrewDispatchAssignment() {
             onRetry={handleRetry}
           />
         </div>
-      </div>
-
-      {/* ── Date navigator ── */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => changeDate(-1)}
-          className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500 transition-colors">
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-slate-800">{fmtDate(dateStr)}</span>
-          {isToday && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 uppercase tracking-wide">{t.cdTodayBadge}</span>
-          )}
-        </div>
-        <button onClick={() => changeDate(1)} disabled={isToday}
-          className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-          <ChevronRight className="w-4 h-4" />
-        </button>
       </div>
 
       {/* ── KPI cards ── */}

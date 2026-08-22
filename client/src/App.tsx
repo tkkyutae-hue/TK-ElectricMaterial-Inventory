@@ -74,10 +74,12 @@ function DailyReportLayout({
   children,
   backTo = "/home",
   backLabel,
+  brandLabel,
 }: {
   children: React.ReactNode;
   backTo?: string;
   backLabel?: string;
+  brandLabel?: string;
 }) {
   const [, navigate] = useLocation();
   const { t, lang } = useLanguage();
@@ -134,6 +136,7 @@ function DailyReportLayout({
           <TkElectricBrand
             compact
             textColor={F.text}
+            brandLabel={brandLabel}
             textClassName="block"
             detail={
               <>
@@ -223,7 +226,7 @@ function CrewDispatchAssignmentRouter() {
   const { t } = useLanguage();
   return (
     <CrewDispatchGuard>
-      <DailyReportLayout backTo="/crew-dispatch" backLabel={t.projectOpsMode}>
+      <DailyReportLayout backTo="/crew-dispatch" backLabel={t.projectOpsMode} brandLabel={t.cdPageTitle}>
         <CrewDispatchAssignment />
       </DailyReportLayout>
     </CrewDispatchGuard>

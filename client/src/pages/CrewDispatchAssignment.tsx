@@ -1737,28 +1737,38 @@ export default function CrewDispatchAssignment() {
 
       {/* ── KPI cards ── */}
       <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="flex items-center gap-4 pt-4 pb-4">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-50 shrink-0">
-              <Users className="w-5 h-5 text-emerald-600" />
+        <Card className="border-slate-200 bg-white shadow-none rounded-lg overflow-hidden">
+          <CardContent className="border-l-[3px] border-emerald-500 px-3.5 py-3.5">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              <p className="text-[10px] text-slate-500 uppercase tracking-[0.12em] font-bold leading-none">
+                {t.cdKpiOnSite}
+              </p>
             </div>
-            <div>
-              <p className="text-[11px] text-slate-400 uppercase tracking-wide font-semibold">{t.cdKpiOnSite}</p>
-              <p className="text-2xl font-bold text-slate-800 leading-tight">{onSiteCount}{t.cdPersonUnit}</p>
-            </div>
+            <p className="mt-2 text-[28px] font-bold text-slate-900 leading-none tabular-nums">
+              {onSiteCount}
+              <span className="text-xs text-slate-500 ml-1 font-semibold">{t.cdPersonUnit}</span>
+            </p>
+            <p className="mt-2 text-[10px] text-slate-400 leading-none">{t.cdStatusOnSite}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 pt-4 pb-4">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-50 shrink-0">
-              <CheckCircle2 className="w-5 h-5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-[11px] text-slate-400 uppercase tracking-wide font-semibold">{t.cdKpiAssigned}</p>
-              <p className="text-2xl font-bold text-slate-800 leading-tight">
-                {assignedCount}
-                <span className="text-sm text-slate-400 ml-1 font-normal">/ {workerList.length}</span>
+        <Card className="border-slate-200 bg-white shadow-none rounded-lg overflow-hidden">
+          <CardContent className="border-l-[3px] border-amber-400 px-3.5 py-3.5">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+              <p className="text-[10px] text-slate-500 uppercase tracking-[0.12em] font-bold leading-none">
+                {t.cdKpiAssigned}
               </p>
+            </div>
+            <p className="mt-2 text-[28px] font-bold text-slate-900 leading-none tabular-nums">
+              {assignedCount}
+              <span className="text-xs text-slate-500 ml-1 font-semibold">/ {workerList.length}</span>
+            </p>
+            <div className="mt-2 h-1 w-full rounded-full bg-slate-100 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-amber-400 transition-[width] duration-300"
+                style={{ width: `${workerList.length > 0 ? Math.min(100, (assignedCount / workerList.length) * 100) : 0}%` }}
+              />
             </div>
           </CardContent>
         </Card>

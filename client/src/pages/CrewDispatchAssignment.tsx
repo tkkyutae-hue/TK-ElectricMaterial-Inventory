@@ -573,14 +573,26 @@ function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign, korea
     <div
       ref={setNodeRef}
       style={{ opacity: isDragging ? 0.35 : 1 }}
-      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all select-none ${
+      className={`flex items-center gap-1.5 px-2 py-2 rounded-lg border transition-all select-none ${
         assignedProject
           ? "border-amber-300 bg-amber-50 hover:border-amber-400 hover:shadow-sm"
           : "border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm"
       }`}
     >
-      {/* Drag handle area */}
-      <div {...attributes} {...listeners} className="flex items-center gap-1.5 lg:gap-2.5 flex-1 min-w-0 cursor-grab active:cursor-grabbing touch-none">
+      {/* An explicit handle keeps vertical swipes on the compact mobile list from
+          starting a drag. The row remains draggable through this handle at every size. */}
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="w-4 h-8 flex items-center justify-center shrink-0 rounded text-slate-300 hover:text-blue-500 hover:bg-blue-50 cursor-grab active:cursor-grabbing touch-none"
+        aria-label={`${worker.fullName} ${t.cdPanelDragHint}`}
+        title={t.cdPanelDragHint}
+        data-testid={`worker-drag-handle-${worker.id}`}
+      >
+        <GripVertical className="w-3.5 h-3.5" />
+      </button>
+      <div className="flex items-center gap-1.5 lg:gap-2.5 flex-1 min-w-0">
         <div className="relative shrink-0">
           <WorkerAvatar photoUrl={worker.photoUrl} name={worker.fullName} small />
           <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
@@ -1678,8 +1690,17 @@ export default function CrewDispatchAssignment() {
     });
   }, [sortedWorkers, workerSearch, workerFilter, jibbleMap, localOverride, assignmentMap, localAttOverride, koreanAttendanceServerMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    document.body.classList.add("crew-dispatch-assignment-active");
+    document.documentElement.classList.add("crew-dispatch-assignment-active");
+    return () => {
+      document.body.classList.remove("crew-dispatch-assignment-active");
+      document.documentElement.classList.remove("crew-dispatch-assignment-active");
+    };
+  }, []);
+
   return (
-    <div className="space-y-5">
+    <div className="crew-dispatch-assignment space-y-5">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-3">
@@ -1753,6 +1774,7 @@ export default function CrewDispatchAssignment() {
         }
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onDragCancel={() => setActiveWorker(null)}
       >
         {isLoading ? (
           <div className="flex items-center justify-center py-16 gap-3">
@@ -1762,10 +1784,10 @@ export default function CrewDispatchAssignment() {
         ) : (
           <>
             {/* ── Unified split pane — always side-by-side at all breakpoints ── */}
-            <div className="flex gap-0 items-stretch border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+            <div className="crew-dispatch-split flex gap-0 items-stretch border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
 
               {/* Left: worker panel — narrow on mobile, full on lg+ */}
-              <div className="w-[150px] sm:w-[200px] lg:w-[300px] xl:w-[340px] shrink-0 flex flex-col border-r border-slate-200">
+              <div className="crew-dispatch-worker-panel w-[136px] sm:w-[200px] lg:w-[300px] xl:w-[340px] shrink-0 flex flex-col border-r border-slate-200">
 
                 {/* Panel header */}
                 <div className="px-2 lg:px-4 pt-3 lg:pt-4 pb-2 lg:pb-3 border-b border-slate-100 bg-slate-50 space-y-2 lg:space-y-2.5">
@@ -1822,7 +1844,7 @@ export default function CrewDispatchAssignment() {
                 </div>
 
                 {/* Worker list — draggable cards on all screen sizes */}
-                <div className="flex-1 overflow-y-auto no-scrollbar min-h-0 p-2 lg:p-3 space-y-1.5" style={{ maxHeight: "calc(100vh - 380px)" }}>
+                <div className="crew-dispatch-scroll-panel flex-1 overflow-y-auto overflow-x-hidden no-scrollbar min-h-0 p-2 lg:p-3 space-y-1.5">
                   {filteredWorkers.length === 0 ? (
                     <p className="text-xs text-slate-400 text-center py-10">{t.cdNoWorkersFiltered}</p>
                   ) : (
@@ -1849,7 +1871,7 @@ export default function CrewDispatchAssignment() {
               </div>
 
               {/* Right: project cards */}
-              <div className="flex-1 min-w-0 overflow-y-auto no-scrollbar p-2 lg:p-4" style={{ maxHeight: "calc(100vh - 380px)" }}>
+              <div className="crew-dispatch-scroll-panel crew-dispatch-project-panel flex-1 min-w-0 overflow-y-auto overflow-x-hidden no-scrollbar p-2 lg:p-4">
                 <ProjectCardView
                   allProjects={displayedProjects}
                   workerList={workerList}

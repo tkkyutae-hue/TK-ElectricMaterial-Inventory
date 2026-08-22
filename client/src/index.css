@@ -487,6 +487,56 @@ body[data-field-mode] [data-toast-viewport] li:not(.destructive) button:not([toa
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
+/* Crew Dispatch keeps the mobile split pane usable without exposing browser
+   chrome. Each column remains independently touch-scrollable. */
+html.crew-dispatch-assignment-active,
+body.crew-dispatch-assignment-active {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+html.crew-dispatch-assignment-active::-webkit-scrollbar,
+body.crew-dispatch-assignment-active::-webkit-scrollbar {
+  display: none;
+}
+
+.crew-dispatch-split {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.crew-dispatch-scroll-panel {
+  max-height: calc(100vh - 380px);
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 639px) {
+  .crew-dispatch-assignment {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .crew-dispatch-split {
+    min-height: 0;
+  }
+
+  .crew-dispatch-worker-panel {
+    width: 136px;
+  }
+
+  .crew-dispatch-scroll-panel {
+    max-height: calc(100dvh - 340px);
+    min-height: 240px;
+    padding-bottom: 1rem;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
+  .crew-dispatch-project-panel {
+    scroll-padding-bottom: 1rem;
+  }
+}
+
 /* Field Inventory — category strip scrollbar:
    Mobile → hidden completely (swipe still works)
    Desktop → very thin and subtle so it's not loud */

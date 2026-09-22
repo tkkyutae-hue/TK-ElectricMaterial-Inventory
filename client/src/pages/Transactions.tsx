@@ -18,6 +18,7 @@ import { format, startOfDay, endOfDay, subDays, startOfMonth, formatDistanceToNo
 import { ko as dfKo, es as dfEs } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
+import { getTransactionLoadState } from "@/lib/transaction-load-state";
 import type { Lang } from "@/lib/i18n";
 
 const DATE_FNS_LOCALE: Record<Lang, any> = { en: undefined, ko: dfKo, es: dfEs };
@@ -80,7 +81,13 @@ export default function Transactions() {
   const bulkDelete = useBulkDeleteMovements();
   const updateMovement = useUpdateMovement();
 
-  const { data: movements, isLoading } = useMovements(
+  const {
+    data: movements,
+    isLoading,
+    isError: movementsError,
+    isFetching: movementsFetching,
+    refetch: refetchMovements,
+  } = useMovements(
     typeFilter !== "all" ? { movementType: typeFilter } : {}
   );
   const { data: projects } = useProjects();
@@ -100,6 +107,12 @@ export default function Transactions() {
   const totalPages = Math.max(1, Math.ceil((filtered?.length ?? 0) / pageSize));
   const safePage   = Math.min(Math.max(1, currentPage), totalPages);
   const paginated  = (filtered ?? []).slice((safePage - 1) * pageSize, safePage * pageSize);
+  const transactionLoadState = getTransactionLoadState({
+    isLoading,
+    isError: movementsError,
+    hasLoadedData: movements !== undefined,
+    visibleCount: filtered?.length ?? 0,
+  });
 
   const filteredIds = useMemo(() => paginated.map((tx: any) => tx.id as number), [paginated]);
   const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
@@ -533,7 +546,7 @@ export default function Transactions() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {transactionLoadState === "loading" ? (
                 [...Array(5)].map((_, i) => (
                   <TableRow key={i}>
                     {[...Array(12)].map((__, j) => (
@@ -542,7 +555,26 @@ export default function Transactions() {
                   </TableRow>
                 ))
 
-              ) : !filtered?.length ? (
+              ) : transactionLoadState === "error" ? (
+                <TableRow>
+                  <TableCell colSpan={12} className="text-center py-12 text-slate-500">
+                    <AlertTriangle className="w-10 h-10 mx-auto text-amber-500 mb-3" />
+                    <p className="font-medium text-slate-900">{t.txAdminLoadError}</p>
+                    <p className="text-sm mt-1">{t.txAdminLoadErrorDesc}</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-4"
+                      disabled={movementsFetching}
+                      onClick={() => void refetchMovements()}
+                      data-testid="button-retry-transactions"
+                    >
+                      {movementsFetching ? t.txAdminRetrying : t.txAdminRetry}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ) : transactionLoadState === "empty" ? (
                 <TableRow>
                   <TableCell colSpan={12} className="text-center py-12 text-slate-500">
                     <ArrowRightLeft className="w-10 h-10 mx-auto text-slate-300 mb-3" />

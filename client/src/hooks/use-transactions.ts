@@ -3,8 +3,11 @@ import { api } from "@shared/routes";
 import type { InventoryMovementWithRelations } from "@shared/schema";
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) throw new Error(`Failed to fetch ${url}`);
+  const res = await fetch(url, {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch ${url} (${res.status})`);
   return res.json() as Promise<T>;
 }
 

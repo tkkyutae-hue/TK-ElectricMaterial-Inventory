@@ -35,7 +35,7 @@ createRoot(document.getElementById("root")!).render(
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("/sw.js")
+      .register("/sw.js", { updateViaCache: "none" })
       .then((registration) => {
         console.log("VoltStock Service Worker registered:", registration.scope);
       })

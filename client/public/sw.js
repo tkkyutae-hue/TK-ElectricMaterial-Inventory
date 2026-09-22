@@ -1,6 +1,4 @@
-const CACHE_NAME = "voltstock-v1";
-const STATIC_CACHE = "voltstock-static-v1";
-const API_CACHE = "voltstock-api-v1";
+const STATIC_CACHE = "voltstock-static-v2";
 
 const STATIC_ASSETS = [
   "/",
@@ -25,7 +23,7 @@ self.addEventListener("activate", (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== STATIC_CACHE && name !== API_CACHE)
+          .filter((name) => name.startsWith("voltstock-") && name !== STATIC_CACHE)
           .map((name) => caches.delete(name))
       );
     })
@@ -39,8 +37,10 @@ self.addEventListener("fetch", (event) => {
 
   if (request.method !== "GET") return;
 
-  if (url.pathname.startsWith("/api/")) {
-    event.respondWith(networkFirstWithFallback(request, API_CACHE));
+  if (url.origin === self.location.origin && url.pathname.startsWith("/api/")) {
+    // Authenticated API responses must never be shared through Cache Storage.
+    // Always ask the live server and bypass the browser's HTTP cache as well.
+    event.respondWith(fetch(request, { cache: "no-store" }));
     return;
   }
 

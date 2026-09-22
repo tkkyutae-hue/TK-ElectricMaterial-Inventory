@@ -924,14 +924,12 @@ export class DatabaseStorage implements IStorage {
   }): Promise<InventoryMovementWithRelations[]> {
     const srcLoc = alias(locations, "src_loc");
     const dstLoc = alias(locations, "dst_loc");
-    const firstImg = alias(itemImages, "first_img");
     const movSup = alias(suppliers, "mov_sup");
     const createdByUser = alias(users, "created_by_user");
 
     const rows = await db.select({
       movement: inventoryMovements,
       item: items,
-      itemImageUrl: firstImg.imageUrl,
       project: projects,
       sourceLocation: srcLoc,
       destinationLocation: dstLoc,
@@ -943,19 +941,18 @@ export class DatabaseStorage implements IStorage {
     })
     .from(inventoryMovements)
     .leftJoin(items, eq(inventoryMovements.itemId, items.id))
-    .leftJoin(firstImg, eq(items.id, firstImg.itemId))
     .leftJoin(projects, eq(inventoryMovements.projectId, projects.id))
     .leftJoin(srcLoc, eq(inventoryMovements.sourceLocationId, srcLoc.id))
     .leftJoin(dstLoc, eq(inventoryMovements.destinationLocationId, dstLoc.id))
     .leftJoin(movSup, eq(inventoryMovements.supplierId, movSup.id))
     .leftJoin(createdByUser, eq(inventoryMovements.createdBy, createdByUser.id))
-    .orderBy(desc(inventoryMovements.createdAt), asc(firstImg.sortOrder));
+    .orderBy(desc(inventoryMovements.createdAt));
 
-    let result = rows.map(r => {
+    let result: InventoryMovementWithRelations[] = rows.map(r => {
       const u = r.userName || (r.userFirstName && r.userLastName ? `${r.userFirstName} ${r.userLastName}` : null) || r.userEmail || null;
       return {
         ...r.movement,
-        item: r.item ? { ...r.item, imageUrl: r.itemImageUrl || null } : null,
+        item: r.item ? { ...r.item, imageUrl: null } : null,
         project: r.project,
         sourceLocation: r.sourceLocation,
         destinationLocation: r.destinationLocation,
@@ -967,6 +964,29 @@ export class DatabaseStorage implements IStorage {
     if (filters?.itemId) result = result.filter(r => r.itemId === filters.itemId);
     if (filters?.projectId) result = result.filter(r => r.projectId === filters.projectId);
     if (filters?.movementType) result = result.filter(r => r.movementType === filters.movementType);
+
+    // The history response must stay lightweight. Select only which items have
+    // images and expose a short authenticated URL; never repeat stored data URIs
+    // in every movement row.
+    const itemIds = [...new Set(result.map(r => r.itemId))];
+    const itemIdsWithImages = new Set<number>();
+    if (itemIds.length > 0) {
+      const imageRows = await db.selectDistinct({ itemId: itemImages.itemId })
+        .from(itemImages)
+        .where(inArray(itemImages.itemId, itemIds));
+      imageRows.forEach(row => itemIdsWithImages.add(row.itemId));
+    }
+    result = result.map(r => ({
+      ...r,
+      item: r.item
+        ? {
+            ...r.item,
+            imageUrl: itemIdsWithImages.has(r.itemId)
+              ? `/api/inventory/${r.itemId}/primary-image`
+              : null,
+          }
+        : null,
+    }));
 
     // Batch-fetch wire reel movement lines for all returned movements
     const movementIds = result.map(r => r.id);

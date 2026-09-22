@@ -25,6 +25,7 @@ import sharp from "sharp";
 import crypto from "crypto";
 import { uploadBuffer, downloadBuffer } from "./services/objectStorageUpload";
 import { extractBoqRowsFromXlsx, extractXlsxTextPreview } from "./services/boqXlsx";
+import { decodeStoredInlineImage, isRedirectableStoredImageUrl } from "./services/itemImageContent";
 // ─── Upload magic-bytes validator ─────────────────────────────────────────────
 // Verifies that file content matches the declared MIME type's signature.
 function isImageMagicBytes(buf: Buffer, mimetype: string): boolean {
@@ -2479,6 +2480,33 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (isNaN(id)) return res.status(400).json({ message: "Invalid item id" });
       const images = await storage.getItemImages(id);
       res.json(images);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/inventory/:id/primary-image", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseRouteInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid item id" });
+
+      const [primaryImage] = await storage.getItemImages(id);
+      if (!primaryImage) return res.status(404).json({ message: "Image not found" });
+
+      const inlineImage = decodeStoredInlineImage(primaryImage.imageUrl);
+      if (inlineImage) {
+        res.setHeader("Content-Type", inlineImage.contentType);
+        res.setHeader("Content-Length", String(inlineImage.buffer.length));
+        res.setHeader("Cache-Control", "private, max-age=3600");
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        return res.send(inlineImage.buffer);
+      }
+
+      if (isRedirectableStoredImageUrl(primaryImage.imageUrl)) {
+        return res.redirect(302, primaryImage.imageUrl);
+      }
+
+      return res.status(415).json({ message: "Unsupported image format" });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }

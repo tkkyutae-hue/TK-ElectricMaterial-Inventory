@@ -2,6 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Classic script runs before deferred dev-overlay/app modules. -->
+    <script id="dev-resize-observer-guard">
+      (function () {
+        if ("%MODE%" !== "development") return;
+        window.addEventListener("error", function (event) {
+          var isDeliveryNotice =
+            event.message === "ResizeObserver loop completed with undelivered notifications." ||
+            event.message === "ResizeObserver loop limit exceeded";
+          // Native delivery notices have no Error object. Never hide a thrown
+          // application Error, even if it happens to have the same message.
+          if (event.error == null && isDeliveryNotice) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <link rel="icon" type="image/png" href="/favicon.png" />
 

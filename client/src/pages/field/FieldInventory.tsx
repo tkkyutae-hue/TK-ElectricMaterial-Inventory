@@ -719,9 +719,9 @@ function FieldCartBar({ onReviewCart }: { onReviewCart: () => void }) {
   const { F } = useFieldTheme();
   const { t } = useLanguage();
   const { canDoMovements } = useAuth();
-  const { totalItems, totalQty } = useFieldCart();
+  const { totalItems, totalQty, hasDraft, editingRequestId, editingRequestNumber } = useFieldCart();
 
-  if (!canDoMovements || totalItems === 0) return null;
+  if (!canDoMovements || !hasDraft) return null;
 
   return createPortal(
     <div
@@ -737,7 +737,7 @@ function FieldCartBar({ onReviewCart }: { onReviewCart: () => void }) {
       }}
     >
       {/* Left: cart summary */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
         <div style={{
           width: 32, height: 32, borderRadius: 8,
           background: "rgba(45,219,111,0.12)",
@@ -746,7 +746,12 @@ function FieldCartBar({ onReviewCart }: { onReviewCart: () => void }) {
         }}>
           <ShoppingCart style={{ width: 15, height: 15, color: F.accent }} />
         </div>
-        <div>
+        <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: F.accent, margin: "0 0 3px" }}>
+            {editingRequestId !== null
+              ? `${t.editingRequestLabel} · ${editingRequestNumber ?? `#${editingRequestId}`}`
+              : t.cartNewRequest}
+          </p>
           <p style={{
             fontSize: 13, fontWeight: 700, color: F.text,
             fontFamily: "'Barlow Condensed', sans-serif", margin: 0, lineHeight: 1.1,

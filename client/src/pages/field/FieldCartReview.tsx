@@ -5,7 +5,7 @@
  * "Submit Request" POSTs to /api/field/requests and clears the cart.
  * No inventory quantities change here.
  */
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   ShoppingCart, Trash2, Minus, Plus, Send,
   ChevronDown, Check, ImageOff, Undo2, ClipboardList,
@@ -13,6 +13,7 @@ import {
 import { PersonPicker } from "@/components/shared/PersonPicker";
 import { useFieldCart } from "@/lib/fieldCart";
 import type { CartItem } from "@/lib/fieldCart";
+import { needsDraftReplacementConfirmation } from "@/lib/fieldCartDraft";
 import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -129,8 +130,9 @@ function QtyInput({ value, onChange }: { value: number; onChange: (n: number) =>
 export default function FieldCartReview({ onClose }: { onClose?: () => void } = {}) {
   const { F } = useFieldTheme();
   const {
-    cartItems, updateQty, removeFromCart, clearCart, restoreCart, totalItems,
-    editingRequestId, editingRequestNumber, editingMeta, clearEditingRequest, setEditingRequest,
+    cartItems, updateQty, removeFromCart, clearCart, totalItems,
+    editingRequestId, editingRequestNumber, draft, updateMeta,
+    getDraft, replaceDraft, resetDraft, clearSubmittedDraft,
   } = useFieldCart();
   const { t }          = useLanguage();
   const { toast }      = useToast();
@@ -138,31 +140,16 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
   const { user }       = useAuth();
   const [, navigate]   = useLocation();
 
-  const [notes,       setNotes]       = useState("");
   const [submitting,  setSubmitting]  = useState(false);
   const [undoing,     setUndoing]     = useState(false);
-  const [projectId,   setProjectId]   = useState<number | null>(null);
-  const [requester,   setRequester]   = useState<{ name: string; role?: string } | null>(null);
-  const [requestType, setRequestType] = useState<"issue" | "transfer">("issue");
-
-  // ── Pre-populate form from editingMeta when entering edit-request mode ────
-  const populatedRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (editingRequestId !== null && editingMeta && populatedRef.current !== editingRequestId) {
-      populatedRef.current = editingRequestId;
-      setRequestType(editingMeta.requestType);
-      setProjectId(editingMeta.projectId);
-      setNotes(editingMeta.notes);
-      setRequester(
-        editingMeta.requesterName
-          ? { name: editingMeta.requesterName, role: editingMeta.requesterRole || undefined }
-          : null
-      );
-    }
-    if (editingRequestId === null) {
-      populatedRef.current = null;
-    }
-  }, [editingRequestId, editingMeta]);
+  // All form fields live with the items, not in this disposable panel.
+  const { notes, projectId, requestType, requesterName, requesterRole } = draft.meta;
+  const requester = requesterName ? { name: requesterName, role: requesterRole || undefined } : null;
+  const setNotes = (value: string) => updateMeta({ notes: value });
+  const setProjectId = (value: number | null) => updateMeta({ projectId: value });
+  const setRequestType = (value: "issue" | "transfer") => updateMeta({ requestType: value });
+  const setRequester = (value: { name: string; role?: string } | null) =>
+    updateMeta({ requesterName: value?.name ?? "", requesterRole: value?.role ?? "" });
 
   // ── Data fetches ──
   const { data: workers = [] } = useQuery<Worker[]>({ queryKey: ["/api/workers"] });
@@ -180,13 +167,13 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
     if (cartItems.length === 0) return;
 
     // Snapshot form state before clearing (for Undo restoration)
+    const draftSnapshot = getDraft();
     const cartSnapshot: CartItem[] = cartItems.map(i => ({ ...i }));
     const notesSnapshot       = notes;
     const projectIdSnapshot   = projectId;
     const requesterSnapshot   = requester;
     const requestTypeSnapshot = requestType;
     const editingIdSnapshot   = editingRequestId;
-    const editingNumSnapshot  = editingRequestNumber;
 
     setSubmitting(true);
     try {
@@ -218,23 +205,22 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
         submittedId = submitted?.id ?? null;
       }
 
-      // Clear cart, edit session, and form state
-      clearCart();
-      clearEditingRequest();
-      setNotes("");
-      setProjectId(null);
-      setRequester(null);
-      setRequestType("issue");
+      // Do not clear newer work entered while the request was in flight.
+      clearSubmittedDraft(draftSnapshot);
       queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
 
       // ── Undo handler ─────────────────────────────────────────────────────────
       async function performUndo(dismissToast: () => void) {
         if (!submittedId) return;
+        const approvedDraft = getDraft();
+        if (needsDraftReplacementConfirmation(approvedDraft, draftSnapshot) &&
+            !window.confirm(t.cartReplaceDraftConfirm)) return;
         setUndoing(true);
         dismissToast();
         try {
           if (isEditMode && editingIdSnapshot !== null) {
-            // Restore original items by re-patching with snapshot
+            // Existing server Undo behavior is unchanged in this stage.
+            // This is the submission snapshot, NOT a pre-edit server version.
             await apiRequest("PATCH", `/api/field/requests/${editingIdSnapshot}`, {
               itemsJson:     JSON.stringify(cartSnapshot),
               notes:         notesSnapshot.trim() || null,
@@ -243,31 +229,13 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
               requesterRole: requesterSnapshot?.role ?? null,
               requestType:   requestTypeSnapshot,
             });
-            // Re-enter edit mode so the user can keep editing
-            restoreCart(cartSnapshot);
-            setNotes(notesSnapshot);
-            setProjectId(projectIdSnapshot);
-            setRequester(requesterSnapshot);
-            setRequestType(requestTypeSnapshot);
-            if (editingNumSnapshot) {
-              // Re-activate edit session context so banner + PATCH path stay active
-              setEditingRequest(editingIdSnapshot, editingNumSnapshot, {
-                requestType:   requestTypeSnapshot,
-                projectId:     projectIdSnapshot,
-                notes:         notesSnapshot,
-                requesterName: requesterSnapshot?.name ?? "",
-                requesterRole: requesterSnapshot?.role ?? "",
-              });
-            }
           } else {
             await apiRequest("PATCH", `/api/field/requests/${submittedId}/status`, { status: "cancelled" });
-            // Restore full form state
-            restoreCart(cartSnapshot);
-            setNotes(notesSnapshot);
-            setProjectId(projectIdSnapshot);
-            setRequester(requesterSnapshot);
-            setRequestType(requestTypeSnapshot);
           }
+          // Use the current provider state, even if this toast outlives the panel.
+          // Ask again only if another draft changed during the async operation.
+          replaceDraft(draftSnapshot, () =>
+            getDraft() === approvedDraft || window.confirm(t.cartReplaceDraftConfirm));
           queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
           toast({ title: t.undoDone });
         } catch (err: any) {
@@ -353,41 +321,43 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
   }
 
 
-  if (totalItems === 0) {
-    return (
-      <div style={{
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        minHeight: 260, gap: 12, padding: "32px 16px",
-      }}>
-        <ShoppingCart style={{ width: 40, height: 40, color: F.textDim, opacity: 0.5 }} />
-        <p style={{ fontSize: 15, fontWeight: 700, color: F.textMuted, fontFamily: FONT_BEBAS, letterSpacing: "0.06em" }}>
-          {t.noCartItems}
-        </p>
-        <p style={{ fontSize: 12, color: F.textDim, textAlign: "center", maxWidth: 260, fontFamily: FONT_COND }}>
-          {t.noCartItemsHint}
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
 
-      {/* ── Edit-request mode banner ── */}
-      {isEditMode && editingRequestNumber && (
+      {/* Mode and local-only edit exit stay visible even with no items. */}
         <div
-          data-testid="edit-mode-banner"
+          data-testid={isEditMode ? "edit-mode-banner" : "new-request-banner"}
           style={{
             padding: "7px 16px",
             background: `${F.accentBg}`,
             borderBottom: `1px solid ${F.accent}`,
-            display: "flex", alignItems: "center", gap: 8,
+            display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
           }}
         >
           <Check style={{ width: 12, height: 12, color: F.accent, flexShrink: 0 }} />
           <span style={{ fontSize: 11, fontWeight: 700, color: F.accent, fontFamily: FONT_COND, letterSpacing: "0.06em" }}>
-            {(t as any).editingRequestLabel?.toUpperCase() ?? "EDITING"} · {editingRequestNumber}
+            {isEditMode
+              ? `${t.editingRequestLabel} · ${editingRequestNumber ?? `#${editingRequestId}`}`
+              : t.cartNewRequest}
           </span>
+          {isEditMode && (
+            <button type="button" data-testid="btn-end-request-edit"
+              disabled={submitting || undoing}
+              onClick={() => { if (window.confirm(t.cartEndEditingConfirm)) resetDraft(); }}
+              style={{
+                marginLeft: "auto", padding: "5px 8px", borderRadius: 6,
+                background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text,
+                fontSize: 11, fontFamily: FONT_COND, cursor: "pointer",
+              }}>
+              {t.cartEndEditing}
+            </button>
+          )}
+        </div>
+      {totalItems === 0 && (
+        <div style={{ padding: "24px 16px", textAlign: "center", color: F.textMuted }}>
+          <ShoppingCart style={{ width: 32, height: 32, margin: "0 auto 8px", color: F.textDim }} />
+          <p>{t.noCartItems}</p>
+          <p style={{ fontSize: 12, color: F.textDim }}>{t.noCartItemsHint}</p>
         </div>
       )}
 
@@ -630,7 +600,7 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
               transition: "all 0.15s",
             }}
           >
-            {t.cancel}
+            {t.cartCloseKeepDraft}
           </button>
         )}
       </div>

@@ -6,26 +6,10 @@
  * create movements or change inventory quantities.
  * Actual transaction creation happens in a separate pickup/complete flow.
  */
-import { createContext, useContext, useState, useCallback } from "react";
-
-export interface CartItem {
-  itemId: number;
-  itemName: string;
-  sizeLabel: string | null;
-  sku: string;
-  requestedQty: number;
-  unit: string;
-  locationName: string | null;
-  imageUrl?: string | null;
-}
-
-export interface EditingRequestMeta {
-  requestType: "issue" | "transfer";
-  projectId: number | null;
-  notes: string;
-  requesterName: string;
-  requesterRole: string;
-}
+import { createContext, useContext, useState, useCallback, useSyncExternalStore } from "react";
+import { createFieldDraftStore, hasFieldDraft } from "./fieldCartDraft";
+import type { CartItem, EditingRequestMeta, FieldCartDraft } from "./fieldCartDraft";
+export type { CartItem, EditingRequestMeta, FieldCartDraft } from "./fieldCartDraft";
 
 interface FieldCartContextValue {
   cartItems: CartItem[];
@@ -33,30 +17,31 @@ interface FieldCartContextValue {
   updateQty: (itemId: number, qty: number) => void;
   removeFromCart: (itemId: number) => void;
   clearCart: () => void;
-  restoreCart: (items: CartItem[]) => void;
+  draft: FieldCartDraft;
+  hasDraft: boolean;
+  updateMeta: (patch: Partial<EditingRequestMeta>) => void;
+  getDraft: () => FieldCartDraft;
+  replaceDraft: (draft: FieldCartDraft, confirmDiscard: () => boolean) => boolean;
+  resetDraft: () => void;
+  clearSubmittedDraft: (draft: FieldCartDraft) => boolean;
   getCartItem: (itemId: number) => CartItem | undefined;
   totalItems: number;
   totalQty: number;
   // ── Edit-request session ─────────────────────────────────────────────────
   editingRequestId: number | null;
   editingRequestNumber: string | null;
-  editingMeta: EditingRequestMeta | null;
-  setEditingRequest: (id: number, requestNumber: string, meta: EditingRequestMeta) => void;
-  clearEditingRequest: () => void;
 }
 
 const FieldCartContext = createContext<FieldCartContextValue | null>(null);
 
 export function FieldCartProvider({ children }: { children: React.ReactNode }) {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-
-  // ── Edit-request session state ──────────────────────────────────────────
-  const [editingRequestId,     setEditingRequestId]     = useState<number | null>(null);
-  const [editingRequestNumber, setEditingRequestNumber] = useState<string | null>(null);
-  const [editingMeta,          setEditingMeta]          = useState<EditingRequestMeta | null>(null);
+  const [store] = useState(createFieldDraftStore);
+  const draft = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+  const cartItems = draft.items;
+  const { editingRequestId, editingRequestNumber } = draft;
 
   const addToCart = useCallback((item: Omit<CartItem, "requestedQty">, qty: number) => {
-    setCartItems(prev => {
+    store.updateItems(prev => {
       const existing = prev.find(c => c.itemId === item.itemId);
       if (existing) {
         return prev.map(c =>
@@ -65,38 +50,24 @@ export function FieldCartProvider({ children }: { children: React.ReactNode }) {
       }
       return [...prev, { ...item, requestedQty: qty }];
     });
-  }, []);
+  }, [store]);
 
   const updateQty = useCallback((itemId: number, qty: number) => {
-    setCartItems(prev =>
+    store.updateItems(prev =>
       prev.map(c => c.itemId === itemId ? { ...c, requestedQty: qty } : c)
     );
-  }, []);
+  }, [store]);
 
   const removeFromCart = useCallback((itemId: number) => {
-    setCartItems(prev => prev.filter(c => c.itemId !== itemId));
-  }, []);
+    store.updateItems(prev => prev.filter(c => c.itemId !== itemId));
+  }, [store]);
 
-  const clearCart = useCallback(() => setCartItems([]), []);
-
-  const restoreCart = useCallback((items: CartItem[]) => setCartItems([...items]), []);
+  const clearCart = useCallback(() => store.updateItems(() => []), [store]);
 
   const getCartItem = useCallback(
     (itemId: number) => cartItems.find(c => c.itemId === itemId),
     [cartItems]
   );
-
-  const setEditingRequest = useCallback((id: number, requestNumber: string, meta: EditingRequestMeta) => {
-    setEditingRequestId(id);
-    setEditingRequestNumber(requestNumber);
-    setEditingMeta(meta);
-  }, []);
-
-  const clearEditingRequest = useCallback(() => {
-    setEditingRequestId(null);
-    setEditingRequestNumber(null);
-    setEditingMeta(null);
-  }, []);
 
   const totalItems = cartItems.length;
   const totalQty = cartItems.reduce((sum, c) => sum + c.requestedQty, 0);
@@ -104,9 +75,11 @@ export function FieldCartProvider({ children }: { children: React.ReactNode }) {
   return (
     <FieldCartContext.Provider value={{
       cartItems, addToCart, updateQty, removeFromCart,
-      clearCart, restoreCart, getCartItem, totalItems, totalQty,
-      editingRequestId, editingRequestNumber, editingMeta,
-      setEditingRequest, clearEditingRequest,
+      clearCart, getCartItem, totalItems, totalQty,
+      editingRequestId, editingRequestNumber,
+      draft, hasDraft: hasFieldDraft(draft), updateMeta: store.patchMeta,
+      getDraft: store.getSnapshot, replaceDraft: store.replace,
+      resetDraft: store.reset, clearSubmittedDraft: store.clearIfCurrent,
     }}>
       {children}
     </FieldCartContext.Provider>

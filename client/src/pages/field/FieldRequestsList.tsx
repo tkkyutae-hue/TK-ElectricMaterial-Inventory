@@ -230,7 +230,7 @@ function EditRequestPanel({
   const { F } = useFieldTheme();
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const { restoreCart, setEditingRequest } = useFieldCart();
+  const { replaceDraft } = useFieldCart();
   const [saving, setSaving] = useState(false);
 
   let initialItems: CartItem[] = [];
@@ -520,14 +520,12 @@ function EditRequestPanel({
             type="button"
             data-testid="btn-edit-continue-inventory"
             onClick={() => {
-              restoreCart(editItems);
-              setEditingRequest(req.id, req.requestNumber, {
-                requestType,
-                projectId,
-                notes,
-                requesterName,
-                requesterRole,
-              });
+              if (!replaceDraft({
+                items: editItems,
+                editingRequestId: req.id,
+                editingRequestNumber: req.requestNumber,
+                meta: { requestType, projectId, notes, requesterName, requesterRole },
+              }, () => window.confirm(t.cartReplaceDraftConfirm))) return;
               onClose();
               navigate("/field/inventory?cart=open");
             }}

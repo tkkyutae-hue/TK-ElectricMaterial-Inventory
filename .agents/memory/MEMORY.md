@@ -6,3 +6,4 @@
 - [Field UI brand direction](field-ui-brand-direction.md) — keep Field entry headers deep green with bright green accents and a compact, grouped control area.
 - [Safe Excel scope extraction](xlsx-scope-extraction.md) — parse uploaded BOQ files selectively with caps; never load whole workbooks in deployment.
 - [Mobile material section navigation](mobile-material-section-navigation.md) — keep jump and active-section anchors aligned so selection does not revert after smooth scroll.
+- [Field draft safety](field-draft-safety.md) — distinguish local drafts from saved requests; validate with isolated mocks, not existing business databases or app startup.

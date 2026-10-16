@@ -1,0 +1,1069 @@
+{
+  "startedAt": "2026-10-16T19:59:54.269Z",
+  "equipment": {
+    "platform": "linux",
+    "arch": "x64",
+    "cpu": "INTEL(R) XEON(R) PLATINUM 8581C CPU @ 2.30GHz",
+    "logicalCPUs": 8,
+    "hostMemoryGiB": 15.64,
+    "note": "Shared container; host resources are not guaranteed container allocations"
+  },
+  "isolation": {
+    "freshCluster": true,
+    "tcpDisabled": true,
+    "applicationReadsReadOnly": true,
+    "existingDBUsed": false,
+    "existingAppStarted": false,
+    "credentialsCopied": false,
+    "privateClusterStoppedAndRemoved": true
+  },
+  "fixtureSchema": "Existing column types/defaults, PK and unique constraints; unrelated foreign keys omitted. No business schema/index changes.",
+  "checks": [
+    {
+      "name": "SQL active/category/brand selection",
+      "pass": true
+    },
+    {
+      "name": "SQL brand candidates exclude inactive and other categories",
+      "pass": true
+    },
+    {
+      "name": "SQL brand-specific subcategory and size candidates",
+      "pass": true
+    },
+    {
+      "name": "SQL search and size consistency: alpha",
+      "pass": true
+    },
+    {
+      "name": "SQL search and size consistency: SKU-NEEDLE",
+      "pass": true
+    },
+    {
+      "name": "SQL search and size consistency: 1/2\"",
+      "pass": true
+    },
+    {
+      "name": "SQL search and size consistency: cobalt",
+      "pass": true
+    },
+    {
+      "name": "SQL search and size consistency: cobalt EMT",
+      "pass": true
+    },
+    {
+      "name": "SQL search and size consistency: no-match",
+      "pass": true
+    },
+    {
+      "name": "SQL minimum stock (not reorderPoint) and live reel sums",
+      "pass": true
+    },
+    {
+      "name": "SQL zero stock, zero-length active reels, ordered and inactive-only fallback",
+      "pass": true
+    },
+    {
+      "name": "SQL combined category/family/type/brand/subcategory/search/status/size",
+      "pass": true
+    },
+    {
+      "name": "SQL pagination totals and rows; size candidates independent of page/selected size",
+      "pass": true
+    },
+    {
+      "name": "SQL global inventory semantics: warehouse-one zero is not a warehouse filter",
+      "pass": true
+    },
+    {
+      "name": "SQL image attachment and read-only session retained",
+      "pass": true
+    }
+  ],
+  "measurements": [
+    {
+      "items": 1000,
+      "reels": 0,
+      "activeReels": 0,
+      "method": "getFieldItems",
+      "samplesMs": [
+        73.53,
+        70.26,
+        83.63
+      ],
+      "sqlSamples": [
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 10.028
+          },
+          {
+            "table": "item_images",
+            "params": 1000,
+            "ok": true,
+            "ms": 1.949
+          },
+          {
+            "table": "wire_reels",
+            "params": 1001,
+            "ok": true,
+            "ms": 2.474
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 9.428
+          },
+          {
+            "table": "item_images",
+            "params": 1000,
+            "ok": true,
+            "ms": 1.295
+          },
+          {
+            "table": "wire_reels",
+            "params": 1001,
+            "ok": true,
+            "ms": 1.235
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 21.124
+          },
+          {
+            "table": "item_images",
+            "params": 1000,
+            "ok": true,
+            "ms": 1.754
+          },
+          {
+            "table": "wire_reels",
+            "params": 1001,
+            "ok": true,
+            "ms": 1.299
+          }
+        ]
+      ],
+      "warmupMs": 100.16,
+      "medianMs": 73.53,
+      "minMs": 70.26,
+      "maxMs": 83.63,
+      "meanReelQueryMs": 1.67
+    },
+    {
+      "items": 1000,
+      "reels": 0,
+      "activeReels": 0,
+      "method": "getFieldSizes",
+      "samplesMs": [
+        56.92,
+        61.34,
+        59.26
+      ],
+      "sqlSamples": [
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 9.362
+          },
+          {
+            "table": "wire_reels",
+            "params": 1001,
+            "ok": true,
+            "ms": 1.343
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 9.699
+          },
+          {
+            "table": "wire_reels",
+            "params": 1001,
+            "ok": true,
+            "ms": 1.244
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 9.915
+          },
+          {
+            "table": "wire_reels",
+            "params": 1001,
+            "ok": true,
+            "ms": 1.354
+          }
+        ]
+      ],
+      "warmupMs": 57.09,
+      "medianMs": 59.26,
+      "minMs": 56.92,
+      "maxMs": 61.34,
+      "meanReelQueryMs": 1.31
+    },
+    {
+      "items": 1000,
+      "reels": 800,
+      "activeReels": 600,
+      "method": "getFieldItems",
+      "samplesMs": [
+        68.1,
+        72.74,
+        71.91
+      ],
+      "sqlSamples": [
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 9.997
+          },
+          {
+            "table": "item_images",
+            "params": 1000,
+            "ok": true,
+            "ms": 1.162
+          },
+          {
+            "table": "wire_reels",
+            "params": 1001,
+            "ok": true,
+            "ms": 2.073
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 7.738
+          },
+          {
+            "table": "item_images",
+            "params": 1000,
+            "ok": true,
+            "ms": 1.237
+          },
+          {
+            "table": "wire_reels",
+            "params": 1001,
+            "ok": true,
+            "ms": 2.087
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 8.647
+          },
+          {
+            "table": "item_images",
+            "params": 1000,
+            "ok": true,
+            "ms": 1.612
+          },
+          {
+            "table": "wire_reels",
+            "params": 1001,
+            "ok": true,
+            "ms": 3.578
+          }
+        ]
+      ],
+      "warmupMs": 71.44,
+      "medianMs": 71.91,
+      "minMs": 68.1,
+      "maxMs": 72.74,
+      "meanReelQueryMs": 2.58
+    },
+    {
+      "items": 1000,
+      "reels": 800,
+      "activeReels": 600,
+      "method": "getFieldSizes",
+      "samplesMs": [
+        58.5,
+        55.71,
+        60.5
+      ],
+      "sqlSamples": [
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 8.593
+          },
+          {
+            "table": "wire_reels",
+            "params": 1001,
+            "ok": true,
+            "ms": 2.393
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 7.821
+          },
+          {
+            "table": "wire_reels",
+            "params": 1001,
+            "ok": true,
+            "ms": 2.333
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 8.012
+          },
+          {
+            "table": "wire_reels",
+            "params": 1001,
+            "ok": true,
+            "ms": 2.164
+          }
+        ]
+      ],
+      "warmupMs": 72.28,
+      "medianMs": 58.5,
+      "minMs": 55.71,
+      "maxMs": 60.5,
+      "meanReelQueryMs": 2.3
+    },
+    {
+      "items": 10000,
+      "reels": 0,
+      "activeReels": 0,
+      "method": "getFieldItems",
+      "samplesMs": [
+        752.05,
+        623.17,
+        682.53
+      ],
+      "sqlSamples": [
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 93.111
+          },
+          {
+            "table": "item_images",
+            "params": 10000,
+            "ok": true,
+            "ms": 9.001
+          },
+          {
+            "table": "wire_reels",
+            "params": 10001,
+            "ok": true,
+            "ms": 23.983
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 76.584
+          },
+          {
+            "table": "item_images",
+            "params": 10000,
+            "ok": true,
+            "ms": 9.293
+          },
+          {
+            "table": "wire_reels",
+            "params": 10001,
+            "ok": true,
+            "ms": 15.398
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 78.159
+          },
+          {
+            "table": "item_images",
+            "params": 10000,
+            "ok": true,
+            "ms": 9.079
+          },
+          {
+            "table": "wire_reels",
+            "params": 10001,
+            "ok": true,
+            "ms": 15.57
+          }
+        ]
+      ],
+      "warmupMs": 686.95,
+      "medianMs": 682.53,
+      "minMs": 623.17,
+      "maxMs": 752.05,
+      "meanReelQueryMs": 18.32
+    },
+    {
+      "items": 10000,
+      "reels": 0,
+      "activeReels": 0,
+      "method": "getFieldSizes",
+      "samplesMs": [
+        628.33,
+        628.8,
+        615.99
+      ],
+      "sqlSamples": [
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 76.765
+          },
+          {
+            "table": "wire_reels",
+            "params": 10001,
+            "ok": true,
+            "ms": 16.096
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 108.574
+          },
+          {
+            "table": "wire_reels",
+            "params": 10001,
+            "ok": true,
+            "ms": 17.625
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 73.409
+          },
+          {
+            "table": "wire_reels",
+            "params": 10001,
+            "ok": true,
+            "ms": 16.6
+          }
+        ]
+      ],
+      "warmupMs": 604.93,
+      "medianMs": 628.33,
+      "minMs": 615.99,
+      "maxMs": 628.8,
+      "meanReelQueryMs": 16.77
+    },
+    {
+      "items": 10000,
+      "reels": 8000,
+      "activeReels": 6000,
+      "method": "getFieldItems",
+      "samplesMs": [
+        687.94,
+        755.91,
+        694.46
+      ],
+      "sqlSamples": [
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 106.881
+          },
+          {
+            "table": "item_images",
+            "params": 10000,
+            "ok": true,
+            "ms": 11.417
+          },
+          {
+            "table": "wire_reels",
+            "params": 10001,
+            "ok": true,
+            "ms": 18.302
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 80.934
+          },
+          {
+            "table": "item_images",
+            "params": 10000,
+            "ok": true,
+            "ms": 9.584
+          },
+          {
+            "table": "wire_reels",
+            "params": 10001,
+            "ok": true,
+            "ms": 18.228
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 91.202
+          },
+          {
+            "table": "item_images",
+            "params": 10000,
+            "ok": true,
+            "ms": 9.553
+          },
+          {
+            "table": "wire_reels",
+            "params": 10001,
+            "ok": true,
+            "ms": 29.169
+          }
+        ]
+      ],
+      "warmupMs": 708.34,
+      "medianMs": 694.46,
+      "minMs": 687.94,
+      "maxMs": 755.91,
+      "meanReelQueryMs": 21.9
+    },
+    {
+      "items": 10000,
+      "reels": 8000,
+      "activeReels": 6000,
+      "method": "getFieldSizes",
+      "samplesMs": [
+        771.24,
+        597.14,
+        580.57
+      ],
+      "sqlSamples": [
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 109.43
+          },
+          {
+            "table": "wire_reels",
+            "params": 10001,
+            "ok": true,
+            "ms": 19.403
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 87.26
+          },
+          {
+            "table": "wire_reels",
+            "params": 10001,
+            "ok": true,
+            "ms": 22.417
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 75.049
+          },
+          {
+            "table": "wire_reels",
+            "params": 10001,
+            "ok": true,
+            "ms": 18.473
+          }
+        ]
+      ],
+      "warmupMs": 692.77,
+      "medianMs": 597.14,
+      "minMs": 580.57,
+      "maxMs": 771.24,
+      "meanReelQueryMs": 20.1
+    },
+    {
+      "items": 50000,
+      "reels": 0,
+      "activeReels": 0,
+      "method": "getFieldItems",
+      "samplesMs": [
+        4183.15,
+        3654.19,
+        3622.16
+      ],
+      "sqlSamples": [
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 481.436
+          },
+          {
+            "table": "item_images",
+            "params": 50000,
+            "ok": true,
+            "ms": 197.927
+          },
+          {
+            "table": "wire_reels",
+            "params": 50001,
+            "ok": true,
+            "ms": 120.748
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 376.175
+          },
+          {
+            "table": "item_images",
+            "params": 50000,
+            "ok": true,
+            "ms": 123.117
+          },
+          {
+            "table": "wire_reels",
+            "params": 50001,
+            "ok": true,
+            "ms": 88.202
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 456.12
+          },
+          {
+            "table": "item_images",
+            "params": 50000,
+            "ok": true,
+            "ms": 58.594
+          },
+          {
+            "table": "wire_reels",
+            "params": 50001,
+            "ok": true,
+            "ms": 84.525
+          }
+        ]
+      ],
+      "warmupMs": 3910.56,
+      "medianMs": 3654.19,
+      "minMs": 3622.16,
+      "maxMs": 4183.15,
+      "meanReelQueryMs": 97.83
+    },
+    {
+      "items": 50000,
+      "reels": 0,
+      "activeReels": 0,
+      "method": "getFieldSizes",
+      "samplesMs": [
+        3001.78,
+        3000.27,
+        3160.37
+      ],
+      "sqlSamples": [
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 354.187
+          },
+          {
+            "table": "wire_reels",
+            "params": 50001,
+            "ok": true,
+            "ms": 94.367
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 343.981
+          },
+          {
+            "table": "wire_reels",
+            "params": 50001,
+            "ok": true,
+            "ms": 86.737
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 440.44
+          },
+          {
+            "table": "wire_reels",
+            "params": 50001,
+            "ok": true,
+            "ms": 85.579
+          }
+        ]
+      ],
+      "warmupMs": 3356.11,
+      "medianMs": 3001.78,
+      "minMs": 3000.27,
+      "maxMs": 3160.37,
+      "meanReelQueryMs": 88.89
+    },
+    {
+      "items": 50000,
+      "reels": 40000,
+      "activeReels": 30000,
+      "method": "getFieldItems",
+      "samplesMs": [
+        3675.4,
+        3372.42,
+        3527.55
+      ],
+      "sqlSamples": [
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 355.383
+          },
+          {
+            "table": "item_images",
+            "params": 50000,
+            "ok": true,
+            "ms": 84.095
+          },
+          {
+            "table": "wire_reels",
+            "params": 50001,
+            "ok": true,
+            "ms": 61.419
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 369.55
+          },
+          {
+            "table": "item_images",
+            "params": 50000,
+            "ok": true,
+            "ms": 75.004
+          },
+          {
+            "table": "wire_reels",
+            "params": 50001,
+            "ok": true,
+            "ms": 63.11
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 430.306
+          },
+          {
+            "table": "item_images",
+            "params": 50000,
+            "ok": true,
+            "ms": 154.368
+          },
+          {
+            "table": "wire_reels",
+            "params": 50001,
+            "ok": true,
+            "ms": 60.185
+          }
+        ]
+      ],
+      "warmupMs": 3715.57,
+      "medianMs": 3527.55,
+      "minMs": 3372.42,
+      "maxMs": 3675.4,
+      "meanReelQueryMs": 61.57
+    },
+    {
+      "items": 50000,
+      "reels": 40000,
+      "activeReels": 30000,
+      "method": "getFieldSizes",
+      "samplesMs": [
+        3705.59,
+        3053.4,
+        3122.35
+      ],
+      "sqlSamples": [
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 330.419
+          },
+          {
+            "table": "wire_reels",
+            "params": 50001,
+            "ok": true,
+            "ms": 110.509
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 452.731
+          },
+          {
+            "table": "wire_reels",
+            "params": 50001,
+            "ok": true,
+            "ms": 70.157
+          }
+        ],
+        [
+          {
+            "table": "items",
+            "params": 1,
+            "ok": true,
+            "ms": 377.802
+          },
+          {
+            "table": "wire_reels",
+            "params": 50001,
+            "ok": true,
+            "ms": 68.874
+          }
+        ]
+      ],
+      "warmupMs": 3022.34,
+      "medianMs": 3122.35,
+      "minMs": 3053.4,
+      "maxMs": 3705.59,
+      "meanReelQueryMs": 83.18
+    },
+    {
+      "items": 80000,
+      "reels": 0,
+      "activeReels": 0,
+      "method": "getFieldItems",
+      "samplesMs": [],
+      "sqlSamples": [],
+      "error": {
+        "code": "08P01",
+        "message": "bind message has 14464 parameter formats but 0 parameters"
+      },
+      "failedMs": 3404.96,
+      "failedQueries": [
+        {
+          "table": "items",
+          "params": 1,
+          "ok": true,
+          "ms": 590.295
+        },
+        {
+          "table": "item_images",
+          "params": 80000,
+          "ok": false,
+          "ms": 42.766
+        }
+      ]
+    },
+    {
+      "items": 80000,
+      "reels": 0,
+      "activeReels": 0,
+      "method": "getFieldSizes",
+      "samplesMs": [],
+      "sqlSamples": [],
+      "error": {
+        "code": "08P01",
+        "message": "bind message has 14465 parameter formats but 0 parameters"
+      },
+      "failedMs": 3415.97,
+      "failedQueries": [
+        {
+          "table": "items",
+          "params": 1,
+          "ok": true,
+          "ms": 568.103
+        },
+        {
+          "table": "wire_reels",
+          "params": 80001,
+          "ok": false,
+          "ms": 52.616
+        }
+      ]
+    },
+    {
+      "items": 80000,
+      "reels": 64000,
+      "activeReels": 48000,
+      "method": "getFieldItems",
+      "samplesMs": [],
+      "sqlSamples": [],
+      "error": {
+        "code": "08P01",
+        "message": "bind message has 14464 parameter formats but 0 parameters"
+      },
+      "failedMs": 3431.79,
+      "failedQueries": [
+        {
+          "table": "items",
+          "params": 1,
+          "ok": true,
+          "ms": 577.229
+        },
+        {
+          "table": "item_images",
+          "params": 80000,
+          "ok": false,
+          "ms": 47.963
+        }
+      ]
+    },
+    {
+      "items": 80000,
+      "reels": 64000,
+      "activeReels": 48000,
+      "method": "getFieldSizes",
+      "samplesMs": [],
+      "sqlSamples": [],
+      "error": {
+        "code": "08P01",
+        "message": "bind message has 14465 parameter formats but 0 parameters"
+      },
+      "failedMs": 3844.39,
+      "failedQueries": [
+        {
+          "table": "items",
+          "params": 1,
+          "ok": true,
+          "ms": 583.651
+        },
+        {
+          "table": "wire_reels",
+          "params": 80001,
+          "ok": false,
+          "ms": 98.684
+        }
+      ]
+    }
+  ],
+  "postgresql": "16.10",
+  "correctnessFixture": {
+    "items": 10,
+    "activeItems": 9,
+    "categories": 4,
+    "warehouses": 2,
+    "brands": 2,
+    "reels": 5,
+    "activeReels": 3,
+    "images": 1,
+    "locationBalances": 2
+  },
+  "performanceFixture": {
+    "scales": [
+      1000,
+      10000,
+      50000,
+      80000
+    ],
+    "allItemsActive": true,
+    "categories": 4,
+    "brandsPerCategory": 2,
+    "sizes": 8,
+    "subcategories": 3,
+    "minimumStock": 5,
+    "storedQuantity": "g%20=0..5 => 0..5; otherwise 100. Every 1000th item ordered.",
+    "location": "10% missing; remaining split across two locations",
+    "images": 0,
+    "reels": "Each fifth item has 3 active + 1 inactive reels; half such items have active total 0, half 6.",
+    "repeats": 3,
+    "warmups": 1,
+    "concurrency": 1,
+    "filter": {
+      "categoryId": 1,
+      "brand": "A",
+      "search": "Synthetic",
+      "page": 1,
+      "perPage": 10
+    },
+    "measurement": "End-to-end actual storage method; SQL round-trip includes transfer/decode, not EXPLAIN/server-only time"
+  },
+  "finishedAt": "2026-10-16T20:01:27.618Z",
+  "summary": {
+    "passed": 15,
+    "failed": 0,
+    "successfulMeasurements": 12,
+    "failedMeasurements": 4
+  }
+}

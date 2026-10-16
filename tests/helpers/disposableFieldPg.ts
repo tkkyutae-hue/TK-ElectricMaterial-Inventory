@@ -1,0 +1,103 @@
+import assert from "node:assert/strict";
+import { mkdtemp, mkdir, rm } from "node:fs/promises";
+import { tmpdir, userInfo } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { build } from "esbuild";
+import { runInNewContext } from "node:vm";
+import pg from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { getTableConfig, PgDialect } from "drizzle-orm/pg-core";
+import * as schema from "../../shared/schema";
+
+export async function disposableFieldPg() {
+  const root = await mkdtemp(join(tmpdir(), "field-filter-pg-"));
+  const socket = join(root, "socket"), data = join(root, "data");
+  await mkdir(socket, { mode: 0o700 });
+  let started = false, setup: pg.Pool | undefined, reads: pg.Pool | undefined;
+  const trace: any[] = [];
+  function command(bin: string, args: string[]) {
+    const result = spawnSync(bin, args, {
+      env: { PATH: process.env.PATH!, HOME: root, LANG: "C", LC_ALL: "C" },
+      encoding: "utf8", timeout: 60000,
+    });
+    if (result.status !== 0) throw Error(`Private test PostgreSQL ${bin} failed; no existing DB attempted`);
+  }
+  async function close() {
+    await reads?.end();
+    await setup?.end();
+    if (started) {
+      command("pg_ctl", ["-D", data, "-m", "fast", "-w", "stop"]);
+      started = false;
+    }
+    assert.ok(root.startsWith(join(tmpdir(), "field-filter-pg-")));
+    await rm(root, { recursive: true, force: true });
+  }
+  try {
+    command("initdb", ["-D", data, "--no-locale", "-A", "trust"]);
+    command("pg_ctl", ["-D", data, "-l", join(root, "postgres.log"), "-o",
+      `-c listen_addresses='' -c unix_socket_directories='${socket}' -c unix_socket_permissions=0700 -c shared_buffers=64MB -c max_connections=12 -p 6543`,
+      "-w", "start"]);
+    started = true;
+    const config = {
+      host: socket, port: 6543, database: "postgres", user: userInfo().username,
+      password: async () => "", ssl: false as const, max: 2,
+      connectionTimeoutMillis: 5000, query_timeout: 15000,
+      application_name: "synthetic-field-filter-validation",
+    };
+    setup = new pg.Pool({ ...config, options: "-c statement_timeout=12000" });
+    assert.equal((await setup.query("SHOW data_directory")).rows[0].data_directory, data);
+    assert.equal((await setup.query("SHOW listen_addresses")).rows[0].listen_addresses, "");
+    assert.equal(Number((await setup.query("SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")).rows[0].count), 0);
+    const version = (await setup.query("SHOW server_version")).rows[0].server_version;
+    // Fresh fixture tables only. Match actual column types/defaults and PK/unique
+    // constraints; omit foreign keys to unrelated business tables. No migrations.
+    const dialect = new PgDialect();
+    const quote = (name: string) => `"${name.replaceAll('"', '""')}"`;
+    for (const table of [schema.categories, schema.locations, schema.suppliers,
+      schema.items, schema.itemImages, schema.wireReels, schema.inventoryLocationBalances]) {
+      const cfg = getTableConfig(table);
+      assert.equal(cfg.indexes.length, 0, "Review fixture if business indexes change");
+      const columns = cfg.columns.map(c => {
+        let def = "";
+        if (c.default !== undefined) {
+          const v = c.default;
+          def = typeof v === "string" ? "'" + v.replaceAll("'", "''") + "'"
+            : typeof v === "number" || typeof v === "boolean" ? String(v)
+            : dialect.sqlToQuery(v as any).sql;
+        }
+        return `${quote(c.name)} ${c.getSQLType()}${c.primary ? " PRIMARY KEY" : ""}${c.notNull ? " NOT NULL" : ""}${c.isUnique && !c.primary ? " UNIQUE" : ""}${def ? " DEFAULT " + def : ""}`;
+      });
+      await setup.query(`CREATE TABLE ${quote(cfg.name)} (${columns.join(",")})`);
+    }
+    reads = new pg.Pool({ ...config, options: "-c statement_timeout=12000 -c default_transaction_read_only=on" });
+    assert.equal((await reads.query("SHOW transaction_read_only")).rows[0].transaction_read_only, "on");
+    const original = reads.query.bind(reads) as any;
+    (reads as any).query = async (...args: any[]) => {
+      const text = typeof args[0] === "string" ? args[0] : args[0].text;
+      assert.match(text.trim(), /^(select|show)\b/i, "Application may only SELECT in this harness");
+      const table = text.match(/from "([^"]+)"/i)?.[1] ?? "metadata";
+      const params = args[1]?.length ?? args[0]?.values?.length ?? 0;
+      const start = performance.now();
+      let ok = false;
+      try { const value = await original(...args); ok = true; return value; }
+      finally { trace.push({ table, params, ok, ms: +(performance.now() - start).toFixed(3) }); }
+    };
+    const output = await build({
+      entryPoints: ["server/storage.ts"], bundle: true, write: false, metafile: true,
+      platform: "node", format: "cjs",
+      plugins: [{ name: "private-db-only", setup(p) {
+        p.onResolve({ filter: /^\.\/db$/ }, () => ({ path: "private-db", namespace: "private-db" }));
+        p.onLoad({ filter: /.*/, namespace: "private-db" }, () => ({
+          contents: "export const db=globalThis.privateDB; export const pool={};",
+        }));
+      }}],
+    });
+    assert.ok(!Object.keys(output.metafile!.inputs).some(p => /server\/db\.ts|server\/index|node_modules\/(?:pg|@neondatabase)/.test(p)));
+    const exports = {};
+    const context: any = { module: { exports }, exports, privateDB: drizzle(reads), console,
+      require(name: string) { throw Error(`Unexpected module ${name}`); } };
+    runInNewContext(output.outputFiles[0].text, context);
+    return { setup, reads, storage: context.module.exports.storage, trace, version, close };
+  } catch (e) { await close(); throw e; }
+}

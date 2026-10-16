@@ -6,10 +6,59 @@
     <script id="dev-resize-observer-guard">
       (function () {
         if ("%MODE%" !== "development") return;
+        // Temporary local diagnostics: never log raw messages, stacks, reasons,
+        // arbitrary URLs, DOM content, input values or authentication data.
+        var diagnosticCounts = Object.create(null);
+        var diagnosticTotal = 0;
+        var knownSources = [
+          "/src/main.tsx",
+          "/src/components/ui/select.tsx",
+          "/src/components/MovementForm.tsx",
+          "/src/pages/field/FieldInventory.tsx",
+          "/src/pages/field/FieldMovement.tsx",
+          "/src/components/layout/FieldLayout.tsx",
+          "/@vite/client"
+        ];
+        function sourceLabel(filename) {
+          if (typeof filename !== "string" || !filename) return "unavailable";
+          try {
+            var path = new URL(filename, location.href).pathname;
+            if (knownSources.indexOf(path) !== -1) return path;
+            if (path.indexOf("/src/") === 0) return "other-app-module";
+            if (path.indexOf("/node_modules/") === 0) return "dependency-module";
+          } catch (_) {}
+          return "other-source";
+        }
+        function reportDiagnostic(kind, category, value, filename, line, column) {
+          try {
+            var source = sourceLabel(filename);
+            var key = kind + ":" + category + ":" + source;
+            if (diagnosticTotal >= 30 || (diagnosticCounts[key] || 0) >= 3) return;
+            diagnosticCounts[key] = (diagnosticCounts[key] || 0) + 1;
+            diagnosticTotal++;
+            console.info("[dev-runtime-diagnostic]", JSON.stringify({
+              kind: kind,
+              category: category,
+              frame: window === window.top ? "top" : "embedded",
+              valueType: value == null ? "none" : typeof value,
+              source: source,
+              line: Number.isSafeInteger(line) && line >= 0 && line < 10000000 ? line : null,
+              column: Number.isSafeInteger(column) && column >= 0 && column < 10000000 ? column : null
+            }));
+          } catch (_) {
+            // Diagnostics must never generate another runtime exception.
+          }
+        }
+        reportDiagnostic("ready", "installed", null);
         window.addEventListener("error", function (event) {
           var isDeliveryNotice =
             event.message === "ResizeObserver loop completed with undelivered notifications." ||
             event.message === "ResizeObserver loop limit exceeded";
+          reportDiagnostic("window-error",
+            isDeliveryNotice ? "resize-observer-delivery" :
+              event.message === "Script error." ? "opaque-script-error" :
+              typeof event.message === "string" ? "script-error" : "resource-error",
+            event.error, event.filename, event.lineno, event.colno);
           // Native delivery notices have no Error object. Never hide a thrown
           // application Error, even if it happens to have the same message.
           if (event.error == null && isDeliveryNotice) {
@@ -17,6 +66,12 @@
             event.stopImmediatePropagation();
           }
         }, true);
+        window.addEventListener("unhandledrejection", function (event) {
+          reportDiagnostic("promise-rejection",
+            event.reason instanceof Error ? "error-rejection" : "non-error-rejection",
+            event.reason);
+          // Do not prevent default or conceal real promise failures.
+        });
       })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />

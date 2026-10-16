@@ -15,14 +15,18 @@ after(async () => { await browser?.close(); });
 async function fixture(mode = "development") {
   const context = await browser.newContext({ serviceWorkers: "block" });
   const requests: string[] = [], errors: string[] = [];
+  const diagnostics: string[] = [];
   await context.route("**/*", r => r.abort());
   const page = await context.newPage();
   page.on("request", r => requests.push(r.resourceType()));
   page.on("pageerror", e => errors.push(e.message));
+  page.on("console", m => {
+    if (m.text().startsWith("[dev-runtime-diagnostic]")) diagnostics.push(m.text());
+  });
   await page.setContent(`<script>${script!.replaceAll("%MODE%", mode)}</script>
     <script>window.notices=[];window.addEventListener("error",e=>window.notices.push(e.message),true)</script>
     <div id="box" style="width:100px;height:10px"></div>`);
-  return { page, errors, async finish() {
+  return { page, errors, diagnostics, async finish() {
     assert.deepEqual(requests, [], "No network requests permitted");
     await context.close();
   }};
@@ -46,6 +50,7 @@ test("real Chromium ResizeObserver delivery loop does not become an uncaught app
     assert.equal(callbacks, 3);
     assert.deepEqual(await f.page.evaluate(() => (window as any).notices), []);
     assert.deepEqual(f.errors, []);
+    assert.ok(f.diagnostics.some(d => d.includes('"category":"resize-observer-delivery"')));
   } finally { await f.finish(); }
 });
 
@@ -80,5 +85,46 @@ test("production mode does not install the filter", async () => {
       message: "ResizeObserver loop completed with undelivered notifications.",
     })));
     assert.equal((await f.page.evaluate(() => (window as any).notices)).length, 1);
+    assert.deepEqual(f.diagnostics, []);
+  } finally { await f.finish(); }
+});
+
+test("diagnostics redact private payloads and URLs while retaining known code locations", async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(() => {
+      const privateText = "SYNTHETIC_PRIVATE_MARKER";
+      window.dispatchEvent(new ErrorEvent("error", {
+        message: privateText, error: new Error(privateText),
+        filename: "https://private-host.invalid/src/components/MovementForm.tsx?token=" + privateText,
+        lineno: 123, colno: 45,
+      }));
+      window.dispatchEvent(new ErrorEvent("error", {
+        message: privateText, filename: "https://private-host.invalid/" + privateText + ".js",
+      }));
+      window.dispatchEvent(new PromiseRejectionEvent("unhandledrejection", {
+        promise: Promise.resolve(), reason: { password: privateText, employee: privateText },
+      }));
+    });
+    const logs = f.diagnostics.join("\n");
+    assert.doesNotMatch(logs, /SYNTHETIC_PRIVATE_MARKER|private-host|password|employee|token=/);
+    assert.match(logs, /\/src\/components\/MovementForm.tsx/);
+    assert.match(logs, /"line":123,"column":45/);
+    assert.match(logs, /"source":"other-source"/);
+    assert.match(logs, /"category":"non-error-rejection"/);
+    assert.equal((await f.page.evaluate(() => (window as any).notices)).length, 2);
+  } finally { await f.finish(); }
+});
+
+test("repeated diagnostics are bounded without stopping genuine error propagation", async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(() => {
+      for (let i = 0; i < 20; i++) {
+        window.dispatchEvent(new ErrorEvent("error", { message: "Synthetic genuine error" }));
+      }
+    });
+    assert.equal(f.diagnostics.filter(d => d.includes('"kind":"window-error"')).length, 3);
+    assert.equal((await f.page.evaluate(() => (window as any).notices)).length, 20);
   } finally { await f.finish(); }
 });

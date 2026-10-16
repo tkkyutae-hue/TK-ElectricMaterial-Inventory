@@ -32,3 +32,15 @@ equally protected and requires separate approval for schema application/deployme
 fixtures. Prepare schema/review documents only; never add startup DDL, run a
 migration against an existing database, or assume an app rollback can discard
 newer employee entries.
+
+Do not infer missing historical supplier values or automatically associate legacy
+returns with an original issue. Return-to-stock and supplier-return policies must
+not be conflated.
+
+**Why:** The user explicitly prohibits guessed historical repairs and requires
+project/PO identity and outstanding-return rules to reflect actual business
+policy rather than assumptions.
+
+**How to apply:** Preserve unknown values as unknown, report unverifiable return
+links, and continue independent quantity/draft safety work without waiting for a
+return-policy decision.

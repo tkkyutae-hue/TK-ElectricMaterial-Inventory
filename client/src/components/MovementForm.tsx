@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Plus, ChevronLeft, ChevronRight, Trash2, AlertTriangle } from "lucide-react";
 import { api } from "@shared/routes";
+import { draftSupplierId } from "@shared/movementDraftSupplier";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { PersonPicker, type PersonValue } from "@/components/shared/PersonPicker";
 import { MovementTypePillSelector } from "./movement/MovementTypePillSelector";
@@ -253,6 +254,7 @@ export function MovementForm({
     try {
       const draftItems = JSON.parse(draftData.itemsJson || "[]");
       if (Array.isArray(draftItems) && draftItems.length > 0) {
+        form.setValue("supplierId", draftSupplierId(draftItems) ?? undefined);
         setItemRows(draftItems.map((di: any) => ({
           rowId: crypto.randomUUID(),
           itemId: di.itemId,
@@ -262,9 +264,12 @@ export function MovementForm({
             ? Object.fromEntries(Object.entries(di.reelSelections).map(([k, v]) => [Number(k), v as number]))
             : {},
           reelSnapshots: {},
+          newReels: di.newReels ?? [],
         })));
       }
-    } catch (_) {}
+    } catch (error: any) {
+      toast({ title: "Failed to load draft", description: error.message, variant: "destructive" });
+    }
   }, [draftData, items]);
 
   const movType    = form.watch("movementType");
@@ -362,6 +367,7 @@ export function MovementForm({
           itemName: item?.name ?? "",
           sku: item?.sku ?? "",
           qty: row.quantity,
+          supplierId: ["receive", "return"].includes(shared.movementType) ? (shared.supplierId || null) : null,
           unit: item?.unitOfMeasure ?? "",
           reelIds: Object.entries(row.reelSelections ?? {}).filter(([, v]) => v > 0).map(([k]) => Number(k)),
           reelSelections: row.reelSelections ?? {},

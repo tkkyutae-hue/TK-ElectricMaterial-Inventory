@@ -3,6 +3,8 @@ import { eq, desc, asc, like, and, or, sql, lt, lte, gte, inArray, isNull, ne } 
 import { alias } from "drizzle-orm/pg-core";
 import { users } from "@shared/models/auth";
 import { assertStandaloneMovement } from "./services/requestMovementGuard";
+import { validateNewMovement } from "./services/inventory/movement-validation";
+import { draftSupplierId } from "@shared/movementDraftSupplier";
 import {
   categories, locations, suppliers, projects, items, inventoryMovements, itemImages, itemGroups,
   inventoryLocationBalances, projectMaterialTransactions, supplierItems, purchaseRecommendations,
@@ -1023,12 +1025,30 @@ export class DatabaseStorage implements IStorage {
   ): Promise<InventoryMovement> {
     assertStandaloneMovement(movement);
     const run = async (client: any): Promise<InventoryMovement> => {
+      const validation = validateNewMovement(movement);
+      if (!validation.valid || !Number.isSafeInteger(movement.quantity) ||
+          movement.movementType !== movement.movementType.toLowerCase()) {
+        throw new Error(Object.values(validation.errors)[0] ?? "Invalid movement type");
+      }
+      // All ordinary creates and request completions serialize on this same row.
+      // Never trust a route/client's pre-transaction quantity snapshot.
+      const [current] = await client.select().from(items)
+        .where(eq(items.id, movement.itemId)).for("update");
+      if (!current) throw new Error("Item not found");
+      const previousQuantity = current.quantityOnHand;
+      let newQuantity = previousQuantity;
+      if (movement.movementType === "receive" || movement.movementType === "return") newQuantity += movement.quantity;
+      else if (movement.movementType === "issue") newQuantity -= movement.quantity;
+      else if (movement.movementType === "adjust") newQuantity = movement.quantity;
+      if (newQuantity < 0 || (movement.movementType === "transfer" && previousQuantity < movement.quantity)) {
+        throw new Error(`Insufficient stock. Available: ${previousQuantity}`);
+      }
       const [created] = await client.insert(inventoryMovements).values({
         itemId: movement.itemId,
         movementType: movement.movementType,
         quantity: movement.quantity,
-        previousQuantity: movement.previousQuantity,
-        newQuantity: movement.newQuantity,
+        previousQuantity,
+        newQuantity,
         sourceLocationId: movement.sourceLocationId ?? null,
         destinationLocationId: movement.destinationLocationId ?? null,
         supplierId: movement.supplierId ?? null,
@@ -1043,7 +1063,7 @@ export class DatabaseStorage implements IStorage {
 
       // Update item's total quantity_on_hand
       await client.update(items)
-        .set({ quantityOnHand: movement.newQuantity, updatedAt: new Date() })
+        .set({ quantityOnHand: newQuantity, updatedAt: new Date() })
         .where(eq(items.id, movement.itemId));
 
       // Update location balances
@@ -1059,7 +1079,7 @@ export class DatabaseStorage implements IStorage {
       } else if (movement.movementType === 'adjust') {
         const locId = movement.destinationLocationId ?? movement.sourceLocationId;
         if (locId) {
-          const delta = movement.newQuantity - movement.previousQuantity;
+          const delta = newQuantity - previousQuantity;
           await this._adjustLocationBalance(movement.itemId, locId, delta, client);
         }
       }
@@ -1289,25 +1309,17 @@ export class DatabaseStorage implements IStorage {
     const errors: { id: number; message: string }[] = [];
     for (const snap of snapshots) {
       try {
-        // Pre-validate before entering transaction
+        assertStandaloneMovement(snap);
         let delta = 0;
         if (snap.movementType === "receive" || snap.movementType === "return") delta = snap.quantity;
         else if (snap.movementType === "issue") delta = -snap.quantity;
 
-        const [itemRow] = await db.select().from(items).where(eq(items.id, snap.itemId));
-        if (!itemRow) {
-          errors.push({ id: snap.id ?? 0, message: `아이템 ${snap.itemId} 없음 — 복원 건너뜀` });
-          continue;
-        }
-
-        const newQty = itemRow.quantityOnHand + delta;
-        if (newQty < 0) {
-          errors.push({ id: snap.id ?? 0, message: `아이템 ${snap.itemId} 재고 부족 — 복원 시 ${newQty}가 됨` });
-          continue;
-        }
-
         // Wrap all writes for this snapshot in a single transaction
         const insertedId = await db.transaction(async (tx) => {
+          const [itemRow] = await tx.select().from(items).where(eq(items.id, snap.itemId)).for("update");
+          if (!itemRow) throw new Error(`Item ${snap.itemId} not found`);
+          const newQty = itemRow.quantityOnHand + delta;
+          if (newQty < 0) throw new Error(`Insufficient stock for restoration: ${newQty}`);
           await tx.update(items).set({ quantityOnHand: newQty, updatedAt: new Date() }).where(eq(items.id, snap.itemId));
 
           // Re-apply location balances for transfers
@@ -1321,11 +1333,12 @@ export class DatabaseStorage implements IStorage {
             itemId: snap.itemId,
             movementType: snap.movementType,
             quantity: snap.quantity,
-            previousQuantity: snap.previousQuantity ?? 0,
-            newQuantity: snap.newQuantity ?? 0,
+            previousQuantity: itemRow.quantityOnHand,
+            newQuantity: newQty,
             sourceLocationId: snap.sourceLocationId ?? null,
             destinationLocationId: snap.destinationLocationId ?? null,
             projectId: snap.projectId ?? null,
+            supplierId: snap.supplierId ?? null,
             unitCostSnapshot: snap.unitCostSnapshot ?? null,
             referenceType: snap.referenceType ?? null,
             referenceId: snap.referenceId ?? null,
@@ -2946,14 +2959,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async confirmDraft(id: number, performedBy: string | null): Promise<number[]> {
-    const draft = await this.getDraft(id);
-    if (!draft) throw new Error("Draft not found");
-
-    const draftItems: Array<{ itemId: number; qty: number; reelSelections?: Record<string, number>; newReels?: Array<{ reelId: string; lengthFt: number; brand?: string | null; locationId?: number | null; status?: string }> }> = JSON.parse(draft.itemsJson || "[]");
-
     const createdMovementIds: number[] = [];
 
     await db.transaction(async (tx) => {
+      // A second confirmer waits here, then sees the committed deletion.
+      const [draft] = await tx.select().from(movementDrafts).where(eq(movementDrafts.id, id)).for("update");
+      if (!draft || draft.status !== "draft") throw new Error("Draft not found or already confirmed");
+      const draftItems: Array<{ itemId: number; qty: number; supplierId?: number | null; reelSelections?: Record<string, number>; newReels?: Array<{ reelId: string; lengthFt: number; brand?: string | null; locationId?: number | null; status?: string }> }> = JSON.parse(draft.itemsJson || "[]");
+      if (!Array.isArray(draftItems) || draftItems.length === 0) throw new Error("Draft must contain items");
+      const supplierId = draftSupplierId(draftItems);
+      for (const di of draftItems) {
+        const vr = validateNewMovement({ ...draft, itemId: di.itemId, quantity: di.qty });
+        if (!vr.valid) throw new Error(Object.values(vr.errors)[0]);
+      }
+      // Match request completion's ascending item lock order, regardless of UI order.
+      const itemIds = [...new Set(draftItems.map(di => di.itemId))].sort((a,b) => a-b);
+      for (const itemId of itemIds) {
+        await tx.select({ id: items.id }).from(items).where(eq(items.id, itemId)).for("update");
+      }
       for (const di of draftItems) {
         // Use tx so we see uncommitted writes from earlier iterations in this loop
         const [itemRow] = await tx
@@ -2983,6 +3006,7 @@ export class DatabaseStorage implements IStorage {
           sourceLocationId: draft.sourceLocationId ?? null,
           destinationLocationId: draft.destinationLocationId ?? null,
           projectId: draft.projectId ?? null,
+          supplierId: (movementType === "receive" || movementType === "return") ? supplierId : null,
           unitCostSnapshot: itemRow.unitCost,
           note: draft.note ?? null,
           reason: null,
@@ -2996,8 +3020,11 @@ export class DatabaseStorage implements IStorage {
           for (const [reelIdStr, ftUsed] of Object.entries(di.reelSelections)) {
             if (!ftUsed) continue;
             const reelId = Number(reelIdStr);
-            const [reelRow] = await tx.select().from(wireReels).where(eq(wireReels.id, reelId)).limit(1);
-            if (!reelRow) continue;
+            const [reelRow] = await tx.select().from(wireReels).where(eq(wireReels.id, reelId)).for("update");
+            if (!Number.isInteger(ftUsed) || ftUsed < 0 || !reelRow ||
+                reelRow.itemId !== itemRow.id || !reelRow.isActive || reelRow.lengthFt < ftUsed) {
+              throw new Error("Invalid or insufficient reel stock");
+            }
             const newLength = reelRow.lengthFt - ftUsed;
             if (newLength <= 0) {
               await tx.delete(wireReels).where(eq(wireReels.id, reelId));
@@ -3028,6 +3055,7 @@ export class DatabaseStorage implements IStorage {
               reelId: nr.reelId,
               lengthFt: nr.lengthFt,
               brand: nr.brand ?? null,
+              supplierId,
               locationId: destLocationId,
               status: (nr.status ?? "full") as any,
             }).returning();
@@ -3040,7 +3068,7 @@ export class DatabaseStorage implements IStorage {
               actionType: movementType, // "receive" or "return"
               quantityFt: nr.lengthFt,
               manufacturerSnapshot: nr.brand ?? null,
-              supplierId: null, // draft does not carry supplierId; stored on wire_reels.supplierId per reel
+              supplierId,
               projectId: movementType === "return" ? (draft.projectId ?? null) : null,
               fromLocationId: movementType === "return" ? (draft.sourceLocationId ?? null) : null,
               toLocationId: destLocationId,

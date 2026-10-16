@@ -23,6 +23,8 @@ export interface FieldCartDraft {
   meta: EditingRequestMeta;
   editingRequestId: number | null;
   editingRequestNumber: string | null;
+  editingRevision?: number;
+  editingOriginal?: Record<string, unknown>;
 }
 
 export function emptyFieldDraft(): FieldCartDraft {
@@ -43,6 +45,7 @@ export function hasFieldDraft(draft: FieldCartDraft): boolean {
 
 export function sameFieldDraft(a: FieldCartDraft, b: FieldCartDraft): boolean {
   return a.editingRequestId === b.editingRequestId &&
+    a.editingRevision === b.editingRevision &&
     a.editingRequestNumber === b.editingRequestNumber &&
     (Object.keys(a.meta) as (keyof EditingRequestMeta)[]).every(key => a.meta[key] === b.meta[key]) &&
     a.items.length === b.items.length &&

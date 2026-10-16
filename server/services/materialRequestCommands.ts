@@ -1,0 +1,277 @@
+/**
+ * No application, environment or database imports. The caller supplies a pool.
+ * Every command, its inventory effects and its durable receipt commit together.
+ */
+import { createHash } from "node:crypto";
+import type { Pool, PoolClient } from "pg";
+
+export class RequestCommandError extends Error {
+  constructor(public status: number, public code: string) { super(code); }
+}
+type Row = Record<string, any>;
+export interface RequestCommand {
+  operationId: string;
+  action: "create" | "edit" | "undo_edit" | "status" | "undo_complete" | "delete";
+  requestId?: number;
+  expectedRevision?: number;
+  sourceOperationId?: string;
+  payload?: Row;
+}
+const fail = (status: number, code: string): never => { throw new RequestCommandError(status, code); };
+function canonical(value: any): any {
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === "object") return Object.fromEntries(
+    Object.keys(value).sort().map(key => [key, canonical(value[key])]),
+  );
+  return value;
+}
+const digest = (value: unknown): string => createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
+const fields = ["items_json", "request_type", "project_id", "requester_name", "requester_role", "notes"] as const;
+const editable = (r: Row) => Object.fromEntries(fields.map(k => [k, r[k]]));
+export function publicRequest(r: Row): Row {
+  return Object.fromEntries(Object.entries(r).map(([key, value]) => [
+    key.replace(/_([a-z])/g, (_, c) => c.toUpperCase()), value,
+  ]));
+}
+function normalized(input: Row): Row {
+  let parsed: any;
+  try { parsed = JSON.parse(input.itemsJson); } catch { fail(400, "INVALID_ITEMS"); }
+  if (!Array.isArray(parsed) || parsed.length === 0 || parsed.length > 500) fail(400, "INVALID_ITEMS");
+  const ids = new Set<number>();
+  for (const item of parsed) {
+    if (!Number.isSafeInteger(item.itemId) || item.itemId < 1 || ids.has(item.itemId) ||
+        !Number.isSafeInteger(item.requestedQty) || item.requestedQty < 1) fail(400, "INVALID_ITEMS");
+    ids.add(item.itemId);
+  }
+  if (!["issue", "transfer"].includes(input.requestType)) fail(400, "INVALID_REQUEST_TYPE");
+  if (input.projectId != null && (!Number.isSafeInteger(input.projectId) || input.projectId < 1)) fail(400, "INVALID_PROJECT");
+  for (const key of ["notes", "requesterName", "requesterRole"]) {
+    if (input[key] != null && (typeof input[key] !== "string" || input[key].length > 10000)) fail(400, "INVALID_TEXT");
+  }
+  return {
+    items_json: JSON.stringify(parsed), request_type: input.requestType,
+    project_id: input.projectId ?? null, requester_name: input.requesterName ?? null,
+    requester_role: input.requesterRole ?? null, notes: input.notes ?? null,
+  };
+}
+
+export class MaterialRequestCommands {
+  constructor(private pool: Pick<Pool, "connect">) {}
+
+  async receipt(actorId: string, operationId: string) {
+    const c = await this.pool.connect();
+    try {
+      const actor = (await c.query("SELECT id FROM users WHERE id=$1 AND status='active'", [actorId])).rows[0];
+      if (!actor) fail(403, "FORBIDDEN");
+      const row = (await c.query(
+        "SELECT result FROM material_request_operations WHERE operation_id=$1 AND actor_id=$2", [operationId, actorId],
+      )).rows[0];
+      return row ? { state: "committed", result: row.result } : { state: "unknown" };
+    } finally { c.release(); }
+  }
+
+  async execute(actorId: string, command: RequestCommand): Promise<Row> {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(command.operationId ?? "")) {
+      fail(428, "OPERATION_ID_REQUIRED");
+    }
+    if (command.action !== "create" && (!Number.isSafeInteger(command.expectedRevision) || command.expectedRevision! < 0)) {
+      fail(428, "REVISION_REQUIRED");
+    }
+    if (command.action !== "create" && (!Number.isSafeInteger(command.requestId) || command.requestId! < 1)) fail(400, "INVALID_ID");
+    const fingerprint = digest({
+      action: command.action, requestId: command.requestId ?? null,
+      expectedRevision: command.expectedRevision ?? null,
+      sourceOperationId: command.sourceOperationId ?? null, payload: command.payload ?? {},
+    });
+    const c = await this.pool.connect();
+    let committing = false;
+    try {
+      await c.query("BEGIN");
+      await c.query("SET LOCAL lock_timeout='3s'");
+      await c.query("SET LOCAL statement_timeout='8s'");
+      // Serialize retries of the SAME operation before checking its receipt.
+      await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [command.operationId]);
+      // Hold a share lock so role/status revocation cannot race this transaction.
+      const actor = (await c.query("SELECT * FROM users WHERE id=$1 FOR SHARE", [actorId])).rows[0];
+      if (!actor || actor.status !== "active" || !["staff", "manager", "admin"].includes(actor.role)) fail(403, "FORBIDDEN");
+      const prior = (await c.query("SELECT * FROM material_request_operations WHERE operation_id=$1", [command.operationId])).rows[0];
+      if (prior) {
+        if (prior.actor_id !== actorId || prior.fingerprint !== fingerprint) fail(409, "OPERATION_REUSED");
+        committing = true;
+        await c.query("COMMIT");
+        return { ...prior.result, replayed: true };
+      }
+      let request: Row;
+      let before: Row | null = null;
+      let effects: Row[] = [];
+      if (command.action === "create") {
+        const data = normalized(command.payload ?? {});
+        request = (await c.query(
+          `INSERT INTO material_requests(request_number,submitted_by,submitted_by_name,
+           items_json,request_type,project_id,requester_name,requester_role,notes)
+           VALUES('pending',$1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+          [actorId, actor.name ?? actor.username ?? "", ...fields.map(k => data[k])],
+        )).rows[0];
+        request = (await c.query("UPDATE material_requests SET request_number=$2 WHERE id=$1 RETURNING *",
+          [request.id, `REQ-${String(request.id).padStart(4, "0")}-${command.operationId.slice(0, 8)}`])).rows[0];
+      } else {
+        request = (await c.query("SELECT * FROM material_requests WHERE id=$1 FOR UPDATE", [command.requestId])).rows[0];
+        if (!request) fail(409, "REQUEST_CHANGED");
+        const manager = actor.role === "manager" || actor.role === "admin";
+        if (!manager && request.submitted_by !== actorId) fail(403, "FORBIDDEN");
+        if (request.revision !== command.expectedRevision) fail(409, "REQUEST_CHANGED");
+        before = { ...request };
+        const linked = request.fulfilled_movement_id != null;
+        if (command.action === "edit" || command.action === "undo_edit") {
+          if (linked || !["requested", "preparing", "ready"].includes(request.status) ||
+              (!manager && request.status !== "requested")) fail(409, "STATE_CHANGED");
+          let data: Row;
+          if (command.action === "undo_edit") {
+            const source = await this.source(c, actorId, command.sourceOperationId, request, "edit");
+            data = editable(source.before_state);
+          } else data = normalized(command.payload ?? {});
+          request = (await c.query(
+            `UPDATE material_requests SET items_json=$2,request_type=$3,project_id=$4,
+             requester_name=$5,requester_role=$6,notes=$7,revision=revision+1 WHERE id=$1 RETURNING *`,
+            [request.id, ...fields.map(k => data[k])],
+          )).rows[0];
+        } else if (command.action === "delete") {
+          if (!manager) fail(403, "FORBIDDEN");
+          if (linked || request.status === "completed") fail(409, "STATE_CHANGED");
+          await c.query("DELETE FROM material_requests WHERE id=$1", [request.id]);
+          request = { ...request, deleted: true, revision: request.revision + 1 };
+        } else if (command.action === "undo_complete") {
+          if (!manager || request.status !== "completed" || !linked) fail(409, "STATE_CHANGED");
+          const source = await this.source(c, actorId, command.sourceOperationId, request, "status");
+          if (source.result.request.status !== "completed") fail(409, "UNDO_UNAVAILABLE");
+          await this.reverse(c, request, source.effects);
+          request = (await c.query(
+            "UPDATE material_requests SET status=$2,fulfilled_movement_id=NULL,revision=revision+1 WHERE id=$1 RETURNING *",
+            [request.id, source.before_state.status],
+          )).rows[0];
+        } else {
+          const status = command.payload?.status;
+          const transitions: Record<string, string[]> = {
+            requested: ["preparing", "cancelled"], preparing: ["requested", "ready", "cancelled"],
+            ready: ["preparing", "completed", "cancelled"],
+          };
+          if (linked || !(transitions[request.status] ?? []).includes(status)) fail(409, "STATE_CHANGED");
+          if (!manager && !(request.status === "requested" && status === "cancelled")) fail(403, "FORBIDDEN");
+          // Undo of a newly created request must still refer to that create.
+          if (command.sourceOperationId) {
+            if (status !== "cancelled") fail(400, "INVALID_STATUS");
+            await this.source(c, actorId, command.sourceOperationId, request, "create");
+          }
+          if (status === "completed") effects = await this.fulfill(c, request, actorId);
+          request = (await c.query(
+            "UPDATE material_requests SET status=$2,fulfilled_movement_id=$3,revision=revision+1 WHERE id=$1 RETURNING *",
+            [request.id, status, effects[0]?.id ?? null],
+          )).rows[0];
+        }
+      }
+      const result = { operationId: command.operationId, request: publicRequest(request) };
+      await c.query(
+        `INSERT INTO material_request_operations(operation_id,actor_id,request_id,action,fingerprint,before_state,result,effects)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [command.operationId, actorId, request.id, command.action, fingerprint, before, result, JSON.stringify(effects)],
+      );
+      committing = true;
+      await c.query("COMMIT");
+      return result;
+    } catch (error) {
+      const rolledBack = await c.query("ROLLBACK").then(() => true, () => false);
+      if (!(error instanceof RequestCommandError) && !committing && rolledBack) {
+        throw new RequestCommandError(409, "COMMAND_ROLLED_BACK");
+      }
+      throw error;
+    } finally { c.release(); }
+  }
+
+  private async source(c: PoolClient, actorId: string, id: string | undefined, request: Row, action: string) {
+    const source = (await c.query("SELECT * FROM material_request_operations WHERE operation_id=$1", [id ?? ""])).rows[0];
+    if (!source || source.actor_id !== actorId || source.request_id !== request.id ||
+        source.action !== action || source.result.request.revision !== request.revision) fail(409, "UNDO_UNAVAILABLE");
+    return source;
+  }
+
+  private async fulfill(c: PoolClient, request: Row, actorId: string): Promise<Row[]> {
+    const data = normalized(publicRequest(request));
+    const lines = JSON.parse(data.items_json).sort((a: Row, b: Row) => a.itemId - b.itemId);
+    const movements: Row[] = [];
+    const existing = await c.query(
+      "SELECT id FROM inventory_movements WHERE reference_type='material_request' AND reference_id=$1 LIMIT 1",
+      [String(request.id)],
+    );
+    if (existing.rows.length) fail(409, "FULFILLMENT_CHANGED");
+    // Locks in item ID order prevent two requests from overspending the same stock.
+    for (const line of lines) {
+      const item = (await c.query("SELECT * FROM items WHERE id=$1 FOR UPDATE", [line.itemId])).rows[0];
+      if (!item || item.is_active === false) fail(409, "INVALID_ITEM");
+      if (request.request_type === "transfer") {
+        // Legacy request carts carry no destination ID: don't invent a transfer.
+        fail(409, "TRANSFER_DESTINATION_REQUIRED");
+      }
+      if (item.quantity_on_hand < line.requestedQty) fail(409, "INSUFFICIENT_STOCK");
+      let locationId: number | null = null;
+      if (line.locationName) {
+        const locations = (await c.query("SELECT id FROM locations WHERE lower(trim(name))=lower(trim($1))", [line.locationName])).rows;
+        if (locations.length !== 1) fail(409, "LOCATION_UNRESOLVED");
+        locationId = locations[0].id;
+      }
+      if (locationId !== null) {
+        const balances = (await c.query(
+          "SELECT * FROM inventory_location_balances WHERE item_id=$1 AND location_id=$2 FOR UPDATE", [item.id, locationId],
+        )).rows;
+        if (balances.length !== 1) fail(409, "LOCATION_BALANCE_MISSING");
+        if (balances[0].quantity_on_hand < line.requestedQty) fail(409, "INSUFFICIENT_STOCK");
+        await c.query(
+          "UPDATE inventory_location_balances SET quantity_on_hand=quantity_on_hand-$2,updated_at=now() WHERE id=$1",
+          [balances[0].id, line.requestedQty],
+        );
+      }
+      const movement = (await c.query(
+        `INSERT INTO inventory_movements(item_id,movement_type,quantity,previous_quantity,new_quantity,
+         source_location_id,project_id,reference_type,reference_id,created_by)
+         VALUES($1,'issue',$2,$3,$4,$5,$6,'material_request',$7,$8) RETURNING *`,
+        [item.id, line.requestedQty, item.quantity_on_hand, item.quantity_on_hand - line.requestedQty,
+          locationId, request.project_id, String(request.id), actorId],
+      )).rows[0];
+      await c.query("UPDATE items SET quantity_on_hand=quantity_on_hand-$2,updated_at=now() WHERE id=$1", [item.id, line.requestedQty]);
+      if (request.project_id) {
+        await c.query(
+          `INSERT INTO project_material_transactions(project_id,item_id,movement_id,transaction_type,quantity)
+           VALUES($1,$2,$3,'issue',$4)`, [request.project_id, item.id, movement.id, line.requestedQty],
+        );
+      }
+      movements.push(movement);
+    }
+    return movements;
+  }
+
+  private async reverse(c: PoolClient, request: Row, effects: Row[]) {
+    if (!Array.isArray(effects) || !effects.length) fail(409, "UNDO_UNAVAILABLE");
+    const current = (await c.query(
+      "SELECT * FROM inventory_movements WHERE reference_type='material_request' AND reference_id=$1 ORDER BY item_id,id FOR UPDATE",
+      [String(request.id)],
+    )).rows;
+    if (digest(current) !== digest(effects)) fail(409, "FULFILLMENT_CHANGED");
+    for (const movement of current) {
+      await c.query("SELECT id FROM items WHERE id=$1 FOR UPDATE", [movement.item_id]);
+      await c.query("UPDATE items SET quantity_on_hand=quantity_on_hand+$2,updated_at=now() WHERE id=$1", [movement.item_id, movement.quantity]);
+      if (movement.source_location_id !== null) {
+        const balances = (await c.query(
+          "SELECT * FROM inventory_location_balances WHERE item_id=$1 AND location_id=$2 FOR UPDATE",
+          [movement.item_id, movement.source_location_id],
+        )).rows;
+        if (balances.length !== 1) fail(409, "LOCATION_BALANCE_MISSING");
+        await c.query(
+          "UPDATE inventory_location_balances SET quantity_on_hand=quantity_on_hand+$2,updated_at=now() WHERE id=$1",
+          [balances[0].id, movement.quantity],
+        );
+      }
+      await c.query("DELETE FROM project_material_transactions WHERE movement_id=$1", [movement.id]);
+      await c.query("DELETE FROM inventory_movements WHERE id=$1", [movement.id]);
+    }
+  }
+}

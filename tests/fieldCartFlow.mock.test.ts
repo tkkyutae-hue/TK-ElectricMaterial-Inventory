@@ -211,8 +211,8 @@ test("Undo completion rechecks a changed draft and distinguishes server success 
       assert.deepEqual(await draft(f.page), b);
       const sent = await calls(f.page);
       assert.equal(sent.length, 2);
-      assert.equal(sent[1].method, "PATCH");
-      assert.equal(sent[1].url, editing ? "/api/field/requests/501" : "/api/field/requests/501/status");
+      assert.equal(sent[1].method, editing ? "POST" : "PATCH");
+      assert.equal(sent[1].url, editing ? "/api/field/requests/501/undo-edit" : "/api/field/requests/501/status");
       const result = (await toasts(f.page))[0];
       assert.equal(result.description, TRANSLATIONS[lang].cartUndoDraftKeptHint);
       assert.notEqual(result.title, TRANSLATIONS[lang].undoDone);
@@ -310,4 +310,90 @@ test("actual X, backdrop and lower Close preserve latest metadata; empty edit en
       }
     }
   }
+});
+
+test("real cart edit A -> B -> Undo restores A and advances the local edit base", async () => {
+  const f = await fixture();
+  try {
+    await startExistingEdit(f.page);
+    const a = await draft(f.page);
+    await f.page.getByTestId("cart-notes-input").fill("B edited cart");
+    await f.page.getByTestId("qty-input-cart").fill("7");
+    await f.page.getByTestId("cart-notes-input").click();
+    await f.page.getByTestId("btn-submit-request").click();
+    await f.page.getByTestId("toast-undo-request").click();
+    await f.page.waitForFunction(() => (window as any).__readDraft().editingRevision === 2);
+    const restored = await draft(f.page);
+    assert.deepEqual(restored.items, a.items);
+    assert.deepEqual(restored.meta, a.meta);
+    const sent = await calls(f.page);
+    assert.equal(sent[1].url, "/api/field/requests/501/undo-edit");
+    assert.equal(sent[1].envelope.expectedRevision, 1);
+    assert.equal(sent[1].envelope.sourceOperationId, sent[0].envelope.operationId);
+    assert.equal((await toasts(f.page))[0].title, TRANSLATIONS.ko.reqEditUndone);
+  } finally { await f.finish(); }
+});
+
+test("real inline edit Undo uses the committed operation, not a blind original-payload PATCH", async () => {
+  const f = await fixture();
+  try {
+    await openRequestEdit(f.page);
+    await f.page.getByTestId("input-edit-notes").fill("B inline");
+    await f.page.getByTestId("btn-edit-save").click();
+    await f.page.getByTestId("toast-undo-update").click();
+    await f.page.getByText(TRANSLATIONS.ko.reqEditUndone, { exact: true }).waitFor();
+    const sent = await calls(f.page);
+    assert.equal(sent.length, 2);
+    assert.equal(sent[0].envelope.expectedRevision, 0);
+    assert.equal(sent[1].url, "/api/field/requests/501/undo-edit");
+    assert.equal(sent[1].envelope.sourceOperationId, sent[0].envelope.operationId);
+    const restored = await f.page.evaluate(() => {
+      const calls = (window as any).__calls;
+      return (window as any).__operations[calls[1].envelope.operationId].request;
+    });
+    assert.equal(restored.notes, "A saved");
+  } finally { await f.finish(); }
+});
+
+test("real Undo conflict leaves a newer draft untouched and explains the conflict", async () => {
+  const f = await fixture();
+  try {
+    await startExistingEdit(f.page);
+    await f.page.getByTestId("cart-notes-input").fill("B submitted");
+    await f.page.getByTestId("btn-submit-request").click();
+    await f.page.getByTestId("toast-undo-request").waitFor();
+    await addItem(f.page, "b");
+    await fillMeta(f.page, "New local draft");
+    const current = await draft(f.page);
+    await f.page.evaluate(() => { (window as any).__conflict = true; });
+    await confirmClick(f.page, "toast-undo-request", true);
+    await f.page.getByText(TRANSLATIONS.ko.requestConflict, { exact: true }).waitFor();
+    assert.deepEqual(await draft(f.page), current);
+  } finally { await f.finish(); }
+});
+
+test("lost response and explicit retry reuse operation ID; double-click does not issue a second command", async () => {
+  const f = await fixture();
+  try {
+    await openInventory(f.page);
+    await addItem(f.page, "a");
+    await fillMeta(f.page, "One intent only");
+    const current = await draft(f.page);
+    await f.page.evaluate(() => { (window as any).__loseResponseOnce = true; });
+    await f.page.getByTestId("btn-submit-request").click();
+    await f.page.getByText(TRANSLATIONS.ko.requestResultUnknown, { exact: true }).waitFor();
+    assert.deepEqual(await draft(f.page), current);
+    await f.page.getByTestId("btn-submit-request").click();
+    await f.page.waitForFunction(() => (window as any).__readDraft().items.length === 0);
+    const sent = await calls(f.page);
+    assert.equal(sent.length, 2);
+    assert.equal(sent[0].envelope.operationId, sent[1].envelope.operationId);
+
+    await addItem(f.page, "b");
+    await f.page.evaluate(() => { (window as any).__defer = true; });
+    await f.page.getByTestId("btn-submit-request").dblclick({ delay: 20 });
+    assert.equal((await calls(f.page)).length, 3);
+    await resolvePending(f.page, true);
+    await f.page.waitForFunction(() => (window as any).__readDraft().items.length === 0);
+  } finally { await f.finish(); }
 });

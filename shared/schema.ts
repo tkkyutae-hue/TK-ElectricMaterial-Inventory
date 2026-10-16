@@ -650,6 +650,8 @@ export type ToolAssetWithRelations = ToolAsset & {
 
 export const materialRequests = pgTable("material_requests", {
   id: serial("id").primaryKey(),
+  // Prepared schema only: applying to ANY existing database needs separate approval.
+  revision: integer("revision").notNull().default(0),
   requestNumber: text("request_number").notNull(),
   status: text("status").notNull().default("requested"),
   requestType: text("request_type").notNull().default("issue"),
@@ -670,6 +672,19 @@ export const insertMaterialRequestSchema = createInsertSchema(materialRequests).
 
 export type MaterialRequest = typeof materialRequests.$inferSelect;
 export type InsertMaterialRequest = typeof materialRequests.$inferInsert;
+
+// Durable command receipts. No startup DDL, no backfill, no FK cascade on delete.
+export const materialRequestOperations = pgTable("material_request_operations", {
+  operationId: text("operation_id").primaryKey(),
+  actorId: text("actor_id").notNull(),
+  requestId: integer("request_id").notNull(),
+  action: text("action").notNull(),
+  fingerprint: text("fingerprint").notNull(),
+  beforeState: jsonb("before_state"),
+  result: jsonb("result").notNull(),
+  effects: jsonb("effects").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
 export type CreateEquipmentRequest = z.infer<typeof insertEquipmentSchema>;
 export type UpdateEquipmentRequest = Partial<CreateEquipmentRequest>;
 

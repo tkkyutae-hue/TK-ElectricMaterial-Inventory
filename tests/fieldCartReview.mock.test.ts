@@ -28,7 +28,7 @@ async function bundleMockReview() {
           const [open,setOpen] = useState(true);
           window.__cart = cart;
           const seed = () => cart.replaceDraft({
-            items:[item], editingRequestId:901,editingRequestNumber:"REQ-MOCK",
+            items:[item], editingRequestId:901,editingRequestNumber:"REQ-MOCK",editingRevision:0,
             meta:{requestType:"issue",projectId:null,notes:"",requesterName:"",requesterRole:""}
           }, () => window.confirm(TRANSLATIONS[window.__config.lang].cartReplaceDraftConfirm));
           return <main style={{maxWidth:520, margin:"auto"}}>
@@ -54,6 +54,11 @@ async function bundleMockReview() {
             import {TRANSLATIONS} from "./client/src/lib/i18n";
             import {F_DARK,F_LIGHT} from "./client/src/lib/fieldTokens";
             window.__calls = []; window.__toasts = [];
+            if(!crypto.randomUUID){
+              let sequence=0;
+              Object.defineProperty(crypto,"randomUUID",{value:()=>
+                "00000000-0000-4000-8000-"+String(++sequence).padStart(12,"0")});
+            }
             export const useLanguage = () => ({t:TRANSLATIONS[window.__config.lang]});
             export const useFieldTheme = () => ({F:window.__config.theme==="light"?F_LIGHT:F_DARK});
             export const useAuth = () => ({user:null});
@@ -66,10 +71,10 @@ async function bundleMockReview() {
               data:queryKey[0]==="/api/projects"?[{id:902,name:"Mock project"}]:[]
             });
             export const apiRequest = async (method,url,body) => {
-              window.__calls.push({method,url,body});
+              window.__calls.push({method,url,body:body.payload??body});
               if(window.__defer) await new Promise(resolve=>window.__resolve=resolve);
               if(window.__fail) throw new Error("Mock failure");
-              return {json:async()=>({id:901})};
+              return {json:async()=>({operationId:body.operationId,request:{id:901,revision:(body.expectedRevision??-1)+1}})};
             };
             export const PersonPicker = ({value,onChange,testId}) =>
               <input data-testid={testId} value={value?.name??""}

@@ -2,6 +2,7 @@ import { db, pool } from "./db";
 import { eq, desc, asc, like, and, or, sql, lt, lte, gte, inArray, isNull, ne } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { users } from "@shared/models/auth";
+import { assertStandaloneMovement } from "./services/requestMovementGuard";
 import {
   categories, locations, suppliers, projects, items, inventoryMovements, itemImages, itemGroups,
   inventoryLocationBalances, projectMaterialTransactions, supplierItems, purchaseRecommendations,
@@ -216,13 +217,7 @@ export interface IStorage {
 
   getMaterialRequests(submittedBy?: string): Promise<MaterialRequest[]>;
   getMaterialRequest(id: number): Promise<MaterialRequest | undefined>;
-  createMaterialRequest(data: { requestNumber: string; itemsJson: string; requestType?: string; submittedBy?: string; submittedByName?: string; notes?: string | null; projectId?: number | null; requesterName?: string | null; requesterRole?: string | null }): Promise<MaterialRequest>;
-  updateMaterialRequest(id: number, data: Partial<{ itemsJson: string; notes: string | null; projectId: number | null; requesterName: string | null; requesterRole: string | null; requestType: string }>): Promise<MaterialRequest | undefined>;
-  updateMaterialRequestStatus(id: number, status: string): Promise<MaterialRequest>;
-  fulfillMaterialRequest(id: number, movementId: number): Promise<MaterialRequest>;
-  deleteMaterialRequest(id: number): Promise<void>;
   getMovementsByReference(referenceType: string, referenceId: string): Promise<InventoryMovement[]>;
-  undoMaterialRequestCompletion(id: number): Promise<MaterialRequest>;
 
   createRmsExportHistory(header: CreateRmsExportHistory, lines: Omit<CreateRmsExportHistoryItem, "historyId">[]): Promise<RmsExportHistory>;
   listRmsExportHistory(limit?: number): Promise<RmsExportHistory[]>;
@@ -1020,6 +1015,7 @@ export class DatabaseStorage implements IStorage {
     movement: CreateInventoryMovementRequest & { previousQuantity: number; newQuantity: number; createdBy?: string | null },
     txClient?: any
   ): Promise<InventoryMovement> {
+    assertStandaloneMovement(movement);
     const run = async (client: any): Promise<InventoryMovement> => {
       const [created] = await client.insert(inventoryMovements).values({
         itemId: movement.itemId,
@@ -1089,6 +1085,7 @@ export class DatabaseStorage implements IStorage {
       if (!orig) throw new Error("Movement not found");
 
       const effectiveItemId = changes.itemId ?? orig.itemId;
+      assertStandaloneMovement(orig);
 
       // Get current item quantity
       const [itemRow] = await tx.select().from(items).where(eq(items.id, effectiveItemId));
@@ -1180,6 +1177,7 @@ export class DatabaseStorage implements IStorage {
     return db.transaction(async (tx) => {
       const [orig] = await tx.select().from(inventoryMovements).where(eq(inventoryMovements.id, id));
       if (!orig) throw new Error("Movement not found");
+      assertStandaloneMovement(orig);
       const history: any[] = Array.isArray(orig.editHistory) ? (orig.editHistory as any[]) : [];
       if (history.length === 0) throw new Error("No edit history to undo");
 
@@ -1238,6 +1236,7 @@ export class DatabaseStorage implements IStorage {
     return db.transaction(async (tx) => {
       const [orig] = await tx.select().from(inventoryMovements).where(eq(inventoryMovements.id, id));
       if (!orig) throw new Error("Movement not found");
+      assertStandaloneMovement(orig);
 
       // Reverse the stock impact on the item
       const [itemRow] = await tx.select().from(items).where(eq(items.id, orig.itemId));
@@ -3472,50 +3471,9 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
-  async createMaterialRequest(data: { requestNumber: string; itemsJson: string; requestType?: string; submittedBy?: string; submittedByName?: string; notes?: string | null; projectId?: number | null; requesterName?: string | null; requesterRole?: string | null }): Promise<MaterialRequest> {
-    const [created] = await db.insert(materialRequests).values(data).returning();
-    return created;
-  }
-
-  async updateMaterialRequest(id: number, data: Partial<{ itemsJson: string; notes: string | null; projectId: number | null; requesterName: string | null; requesterRole: string | null; requestType: string }>): Promise<MaterialRequest | undefined> {
-    const [updated] = await db.update(materialRequests)
-      .set(data)
-      .where(eq(materialRequests.id, id))
-      .returning();
-    return updated;
-  }
-
-  async updateMaterialRequestStatus(id: number, status: string): Promise<MaterialRequest> {
-    const [updated] = await db.update(materialRequests)
-      .set({ status })
-      .where(eq(materialRequests.id, id))
-      .returning();
-    return updated;
-  }
-
-  async fulfillMaterialRequest(id: number, movementId: number): Promise<MaterialRequest> {
-    const [updated] = await db.update(materialRequests)
-      .set({ status: "completed", fulfilledMovementId: movementId })
-      .where(eq(materialRequests.id, id))
-      .returning();
-    return updated;
-  }
-
-  async deleteMaterialRequest(id: number): Promise<void> {
-    await db.delete(materialRequests).where(eq(materialRequests.id, id));
-  }
-
   async getMovementsByReference(referenceType: string, referenceId: string): Promise<InventoryMovement[]> {
     return db.select().from(inventoryMovements)
       .where(and(eq(inventoryMovements.referenceType, referenceType), eq(inventoryMovements.referenceId, referenceId)));
-  }
-
-  async undoMaterialRequestCompletion(id: number): Promise<MaterialRequest> {
-    const [updated] = await db.update(materialRequests)
-      .set({ status: "ready", fulfilledMovementId: null })
-      .where(eq(materialRequests.id, id))
-      .returning();
-    return updated;
   }
 
   // ─── RMS Export History ────────────────────────────────────────────────────

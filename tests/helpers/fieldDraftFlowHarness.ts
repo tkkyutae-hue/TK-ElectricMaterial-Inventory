@@ -22,7 +22,7 @@ export async function buildIsolatedFieldFlow() {
           requestedQty:3,unit:"ea",locationName:null,imageUrl:null};
         const itemB={...itemA,itemId:903,itemName:"Mock B",sku:"MOCK-B"};
         window.__fixtures={
-          requests:[{id:501,requestNumber:"REQ-MOCK-A",status:"requested",
+          requests:[{id:501,revision:0,requestNumber:"REQ-MOCK-A",status:"requested",
             submittedBy:"mock-user",submittedByName:"Mock user",submittedAt:"2026-01-01T00:00:00Z",
             itemsJson:JSON.stringify([itemA]),requestType:"issue",projectId:null,
             requesterName:"",requesterRole:"",notes:"A saved",fulfilledMovementId:null}],
@@ -73,7 +73,12 @@ export async function buildIsolatedFieldFlow() {
             import {F_DARK,F_LIGHT} from "./client/src/lib/fieldTokens";
             let path="/field/inventory";
             const listeners=new Set();
-            window.__calls=[]; window.__pending=[]; window.__defer=false;
+            window.__calls=[]; window.__pending=[]; window.__defer=false; window.__operations={};
+            if(!crypto.randomUUID){
+              let sequence=0;
+              Object.defineProperty(crypto,"randomUUID",{value:()=>
+                "00000000-0000-4000-8000-"+String(++sequence).padStart(12,"0")});
+            }
             export function useLocation(){
               return [useSyncExternalStore(cb=>{listeners.add(cb);return()=>listeners.delete(cb)},()=>path),
                 next=>{path=next;listeners.forEach(cb=>cb())}];
@@ -91,11 +96,26 @@ export async function buildIsolatedFieldFlow() {
               return {data,isLoading:false};
             };
             export const apiRequest=async(method,url,body)=>{
-              if(!["POST","PATCH"].includes(method)||!/^\\/api\\/field\\/requests(?:\\/\\d+(?:\\/status)?)?$/.test(url))
+              if(!["POST","PATCH","DELETE"].includes(method)||!/^\\/api\\/field\\/requests(?:\\/\\d+(?:\\/(?:status|undo-edit|undo-complete))?)?$/.test(url))
                 throw Error("Unexpected mock mutation");
-              const call={method,url,body};window.__calls.push(call);
+              const payload=body.payload??body;
+              const call={method,url,body:payload,envelope:body};window.__calls.push(call);
               if(window.__defer)await new Promise((resolve,reject)=>window.__pending.push({resolve,reject}));
-              return {json:async()=>({id:501})};
+              if(window.__conflict)throw Error('409: {"code":"REQUEST_CHANGED"}');
+              if(window.__operations[body.operationId]){
+                const saved=window.__operations[body.operationId];
+                return {json:async()=>({operationId:body.operationId,request:saved.request,replayed:true})};
+              }
+              const before={...window.__fixtures.requests[0]};
+              const source=window.__operations[body.sourceOperationId];
+              const request=url.endsWith("/undo-edit")?{...source.before}:
+                {...before,...payload};
+              request.id=501;request.revision=(body.expectedRevision??-1)+1;
+              window.__operations[body.operationId]={before,request};
+              if(window.__loseResponseOnce){
+                window.__loseResponseOnce=false;throw Error("Mock lost response after commit");
+              }
+              return {json:async()=>({operationId:body.operationId,request})};
             };
           `,
         }));

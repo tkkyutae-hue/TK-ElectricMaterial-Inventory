@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useFieldTheme } from "@/hooks/use-field-theme";
-import { apiRequest } from "@/lib/queryClient";
+import { requestCommand, requestCommandMessage } from "@/lib/requestCommands";
 import { useAuth } from "@/hooks/use-auth";
 import type { Worker } from "@shared/schema";
 import type { Project } from "@shared/schema";
@@ -168,32 +168,30 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
 
     // Snapshot form state before clearing (for Undo restoration)
     const draftSnapshot = getDraft();
-    const cartSnapshot: CartItem[] = cartItems.map(i => ({ ...i }));
-    const notesSnapshot       = notes;
-    const projectIdSnapshot   = projectId;
-    const requesterSnapshot   = requester;
-    const requestTypeSnapshot = requestType;
     const editingIdSnapshot   = editingRequestId;
 
     setSubmitting(true);
     try {
       let submittedId: number | null = null;
+      let savedRevision: number | undefined;
+      let savedOperationId: string | undefined;
 
       if (isEditMode && editingIdSnapshot !== null) {
         // ── PATCH existing request ────────────────────────────────────────────
-        const res = await apiRequest("PATCH", `/api/field/requests/${editingIdSnapshot}`, {
+        const saved = await requestCommand("PATCH", `/api/field/requests/${editingIdSnapshot}`, {
           itemsJson:     JSON.stringify(cartItems),
           notes:         notes.trim() || null,
           projectId:     projectId ?? null,
           requesterName: requester?.name ?? null,
           requesterRole: requester?.role ?? null,
           requestType,
-        });
-        const updated: any = await res.json().catch(() => null);
-        submittedId = updated?.id ?? editingIdSnapshot;
+        }, draftSnapshot.editingRevision);
+        submittedId = saved.request.id;
+        savedRevision = saved.request.revision;
+        savedOperationId = saved.operationId;
       } else {
         // ── POST new request ──────────────────────────────────────────────────
-        const res = await apiRequest("POST", "/api/field/requests", {
+        const saved = await requestCommand("POST", "/api/field/requests", {
           itemsJson:     JSON.stringify(cartItems),
           notes:         notes.trim() || null,
           projectId:     projectId ?? undefined,
@@ -201,8 +199,9 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
           requesterRole: requester?.role ?? null,
           requestType,
         });
-        const submitted: any = await res.json().catch(() => null);
-        submittedId = submitted?.id ?? null;
+        submittedId = saved.request.id;
+        savedRevision = saved.request.revision;
+        savedOperationId = saved.operationId;
       }
 
       // Do not clear newer work entered while the request was in flight.
@@ -213,35 +212,42 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
       async function performUndo(dismissToast: () => void) {
         if (!submittedId) return;
         const approvedDraft = getDraft();
-        if (needsDraftReplacementConfirmation(approvedDraft, draftSnapshot) &&
+        const localRestoration = isEditMode && draftSnapshot.editingOriginal
+          ? {
+            ...draftSnapshot,
+            items: JSON.parse(String(draftSnapshot.editingOriginal.itemsJson)),
+            meta: {
+              requestType: draftSnapshot.editingOriginal.requestType as "issue" | "transfer",
+              projectId: (draftSnapshot.editingOriginal.projectId as number | null) ?? null,
+              requesterName: String(draftSnapshot.editingOriginal.requesterName ?? ""),
+              requesterRole: String(draftSnapshot.editingOriginal.requesterRole ?? ""),
+              notes: String(draftSnapshot.editingOriginal.notes ?? ""),
+            },
+          } : draftSnapshot;
+        if (needsDraftReplacementConfirmation(approvedDraft, localRestoration) &&
             !window.confirm(t.cartReplaceDraftConfirm)) return;
         setUndoing(true);
         dismissToast();
         try {
           if (isEditMode && editingIdSnapshot !== null) {
-            // Existing server Undo behavior is unchanged in this stage.
-            // This is the submission snapshot, NOT a pre-edit server version.
-            await apiRequest("PATCH", `/api/field/requests/${editingIdSnapshot}`, {
-              itemsJson:     JSON.stringify(cartSnapshot),
-              notes:         notesSnapshot.trim() || null,
-              projectId:     projectIdSnapshot ?? null,
-              requesterName: requesterSnapshot?.name ?? null,
-              requesterRole: requesterSnapshot?.role ?? null,
-              requestType:   requestTypeSnapshot,
-            });
+            const undone = await requestCommand("POST", `/api/field/requests/${editingIdSnapshot}/undo-edit`, {},
+              savedRevision, savedOperationId);
+            localRestoration.editingRevision = undone.request.revision;
+            localRestoration.editingOriginal = undone.request;
           } else {
-            await apiRequest("PATCH", `/api/field/requests/${submittedId}/status`, { status: "cancelled" });
+            await requestCommand("PATCH", `/api/field/requests/${submittedId}/status`, { status: "cancelled" },
+              savedRevision, savedOperationId);
           }
           // Use the current provider state, even if this toast outlives the panel.
           // Ask again only if another draft changed during the async operation.
-          const restored = replaceDraft(draftSnapshot, () =>
+          const restored = replaceDraft(localRestoration, () =>
             getDraft() === approvedDraft || window.confirm(t.cartReplaceDraftConfirm));
           queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
           toast(restored
-            ? { title: t.undoDone }
+            ? { title: isEditMode ? t.reqEditUndone : t.undoDone }
             : { title: t.cartUndoServerDoneDraftKept, description: t.cartUndoDraftKeptHint });
         } catch (err: any) {
-          toast({ title: t.undoFailed, description: err.message, variant: "destructive" });
+          toast({ title: t.undoFailed, description: requestCommandMessage(err, t), variant: "destructive" });
         } finally {
           setUndoing(false);
         }
@@ -308,7 +314,7 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
                   style={{ ...btnBase, background: "transparent", border: "1px solid transparent", color: F.textMuted }}
                 >
                   <Undo2 style={{ width: 11, height: 11, flexShrink: 0 }} />
-                  {t.undoRequest}
+                  {t.undoNewRequestCancel}
                 </button>
               )}
             </div>
@@ -316,7 +322,7 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
         });
       }
     } catch (err: any) {
-      toast({ title: t.errorTitle, description: err.message, variant: "destructive" });
+      toast({ title: t.errorTitle, description: requestCommandMessage(err, t), variant: "destructive" });
     } finally {
       setSubmitting(false);
     }

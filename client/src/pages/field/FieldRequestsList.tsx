@@ -13,7 +13,8 @@ import { useLocation } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { requestCommand, requestCommandMessage } from "@/lib/requestCommands";
 import { useFieldCart } from "@/lib/fieldCart";
 import type { CartItem } from "@/lib/fieldCart";
 import { CartPhoto } from "@/pages/field/FieldCartReview";
@@ -128,7 +129,7 @@ function StatusActions({
     const isCancelling = newStatus === "cancelled";
     setChanging(newStatus);
     try {
-      await apiRequest("PATCH", `/api/field/requests/${req.id}/status`, { status: newStatus });
+      const saved = await requestCommand("PATCH", `/api/field/requests/${req.id}/status`, { status: newStatus }, req.revision);
       onStatusChanged();
 
       // No undo for cancel (ambiguous business reversal)
@@ -148,15 +149,17 @@ function StatusActions({
                 dismiss();
                 try {
                   if (isCompleting) {
-                    await apiRequest("POST", `/api/field/requests/${req.id}/undo-complete`);
+                    await requestCommand("POST", `/api/field/requests/${req.id}/undo-complete`, {},
+                      saved.request.revision, saved.operationId);
                     toast({ title: t.reqCompletionUndone });
                   } else {
-                    await apiRequest("PATCH", `/api/field/requests/${req.id}/status`, { status: prevStatus });
+                    await requestCommand("PATCH", `/api/field/requests/${req.id}/status`, { status: prevStatus },
+                      saved.request.revision);
                     toast({ title: t.reqStatusUndone });
                   }
                   qc.invalidateQueries({ queryKey: ["/api/field/requests"] });
                 } catch (err: any) {
-                  toast({ title: t.undoFailed, description: err.message, variant: "destructive" });
+                  toast({ title: t.undoFailed, description: requestCommandMessage(err, t), variant: "destructive" });
                 }
               }}
               style={undoBtnStyle}
@@ -168,7 +171,7 @@ function StatusActions({
         ),
       });
     } catch (err: any) {
-      toast({ title: t.errorTitle, description: err.message, variant: "destructive" });
+      toast({ title: t.errorTitle, description: requestCommandMessage(err, t), variant: "destructive" });
     } finally {
       setChanging(null);
     }
@@ -231,6 +234,9 @@ function EditRequestPanel({
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { replaceDraft } = useFieldCart();
+  // Never silently adopt a refreshed row's version while the form still holds
+  // older inputs. Both inline save and Continue use this original edit base.
+  const [original] = useState(() => ({ ...req }));
   const [saving, setSaving] = useState(false);
 
   let initialItems: CartItem[] = [];
@@ -269,14 +275,14 @@ function EditRequestPanel({
     };
     setSaving(true);
     try {
-      await apiRequest("PATCH", `/api/field/requests/${req.id}`, {
+      const saved = await requestCommand("PATCH", `/api/field/requests/${req.id}`, {
         itemsJson: JSON.stringify(editItems),
         requestType,
         projectId: projectId ?? null,
         requesterName: requesterName || null,
         requesterRole: requesterRole || null,
         notes: notes || null,
-      });
+      }, original.revision);
       onSaved();
       onClose();
       const toastBtnStyle: React.CSSProperties = {
@@ -299,11 +305,12 @@ function EditRequestPanel({
               onClick={async () => {
                 dismiss();
                 try {
-                  await apiRequest("PATCH", `/api/field/requests/${req.id}`, originalPayload);
+                  await requestCommand("POST", `/api/field/requests/${req.id}/undo-edit`, {},
+                    saved.request.revision, saved.operationId);
                   queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
                   toast({ title: t.reqEditUndone });
                 } catch (err: any) {
-                  toast({ title: t.undoFailed, description: err.message, variant: "destructive" });
+                  toast({ title: t.undoFailed, description: requestCommandMessage(err, t), variant: "destructive" });
                 }
               }}
               style={toastBtnStyle}
@@ -315,7 +322,7 @@ function EditRequestPanel({
         ),
       });
     } catch (err: any) {
-      toast({ title: t.errorTitle, description: err.message, variant: "destructive" });
+      toast({ title: t.errorTitle, description: requestCommandMessage(err, t), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -524,6 +531,8 @@ function EditRequestPanel({
                 items: editItems,
                 editingRequestId: req.id,
                 editingRequestNumber: req.requestNumber,
+                editingRevision: original.revision,
+                editingOriginal: original,
                 meta: { requestType, projectId, notes, requesterName, requesterRole },
               }, () => window.confirm(t.cartReplaceDraftConfirm))) return;
               onClose();
@@ -640,11 +649,11 @@ function RequestCard({
   async function handleSelfCancel() {
     setCancelling(true);
     try {
-      await apiRequest("PATCH", `/api/field/requests/${req.id}/status`, { status: "cancelled" });
+      await requestCommand("PATCH", `/api/field/requests/${req.id}/status`, { status: "cancelled" }, req.revision);
       toast({ title: t.reqStatus_cancelled });
       queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
     } catch (err: any) {
-      toast({ title: t.errorTitle, description: err.message, variant: "destructive" });
+      toast({ title: t.errorTitle, description: requestCommandMessage(err, t), variant: "destructive" });
     } finally {
       setCancelling(false);
     }
@@ -653,11 +662,11 @@ function RequestCard({
   async function handleDelete() {
     setDeleting(true);
     try {
-      await apiRequest("DELETE", `/api/field/requests/${req.id}`);
+      await requestCommand("DELETE", `/api/field/requests/${req.id}`, {}, req.revision);
       toast({ title: t.reqDeleted });
       queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
     } catch (err: any) {
-      toast({ title: t.errorTitle, description: err.message, variant: "destructive" });
+      toast({ title: t.errorTitle, description: requestCommandMessage(err, t), variant: "destructive" });
     } finally {
       setDeleting(false);
       setShowDeleteConfirm(false);

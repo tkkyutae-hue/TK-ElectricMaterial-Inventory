@@ -20,3 +20,15 @@ Use in-memory browser pages for these isolated tests; do not start a preview HTT
 **Why:** A temporary preview used for a test left an extra port registration in the project configuration after its process stopped. Stopping the process alone does not remove that configuration.
 
 **How to apply:** Bundle selected client components with mocked service boundaries, render with browser `setContent`/inline scripts, and block browser networking. Test the real UI handlers without importing the app entry point.
+
+Staff data may also exist in the development database. Permission for a new
+disposable test database does not authorize connecting to the existing development
+database, running application bootstrap, or applying the prepared schema there.
+
+**Why:** The user explicitly treats development and production business data as
+equally protected and requires separate approval for schema application/deployment.
+
+**How to apply:** Keep tests on fresh private Unix-socket clusters with synthetic
+fixtures. Prepare schema/review documents only; never add startup DDL, run a
+migration against an existing database, or assume an app rollback can discard
+newer employee entries.

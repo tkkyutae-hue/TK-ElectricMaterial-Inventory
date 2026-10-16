@@ -58,6 +58,12 @@ export type ReelIdPreviewRow = {
   reason: string;
 };
 
+export interface FieldItemFilters {
+  categoryId?: number; family?: string; brand?: string; type?: string;
+  subcategory?: string; size?: string; status?: string; search?: string;
+  page?: number; perPage?: number;
+}
+
 export interface IStorage {
   getCategories(): Promise<Category[]>;
   createCategory(category: CreateCategoryRequest): Promise<Category>;
@@ -136,14 +142,14 @@ export interface IStorage {
 
   getFieldFamilies(params: { categoryId?: number }): Promise<{ name: string; count: number }[]>;
   getFieldBrands(params: { categoryId?: number; family?: string }): Promise<{ name: string; count: number }[]>;
-  getFieldSizes(params: { categoryId?: number; family?: string; detailType?: string; subcategory?: string; status?: string; search?: string }): Promise<string[]>;
+  getFieldSizes(params: FieldItemFilters): Promise<string[]>;
   getFieldTypes(params: { categoryId?: number; family?: string; brand?: string }): Promise<{ name: string; count: number }[]>;
-  getFieldSubcategories(params: { categoryId?: number; family?: string; detailType?: string }): Promise<{ name: string; count: number }[]>;
+  getFieldSubcategories(params: { categoryId?: number; family?: string; brand?: string; type?: string }): Promise<{ name: string; count: number }[]>;
   getFieldItems(params: {
     categoryId?: number;
     family?: string;
     brand?: string;
-    detailType?: string;
+    type?: string;
     subcategory?: string;
     size?: string;
     status?: string;
@@ -2487,58 +2493,10 @@ export class DatabaseStorage implements IStorage {
     return entries.sort((a, b) => b.count - a.count);
   }
 
-  async getFieldSizes(params: {
-    categoryId?: number;
-    family?: string;
-    type?: string;
-    subcategory?: string;
-    status?: string;
-    search?: string;
-  }): Promise<string[]> {
-    const allItems = await db.select({
-      sizeLabel: items.sizeLabel,
-      sizeSortValue: items.sizeSortValue,
-      categoryId: items.categoryId,
-      subcategory: items.subcategory,
-      detailType: items.detailType,
-      subType: items.subType,
-      baseItemName: items.baseItemName,
-      name: items.name,
-      quantityOnHand: items.quantityOnHand,
-      reorderPoint: items.reorderPoint,
-      statusOverride: items.statusOverride,
-    }).from(items).where(eq(items.isActive, true));
-
-    let filtered = allItems as any[];
-    if (params.categoryId) filtered = filtered.filter(i => i.categoryId === params.categoryId);
-    if (params.family) filtered = filtered.filter(i =>
-      derivedFamily(i.subcategory, i.detailType, i.name || '', i.baseItemName) === params.family
-    );
-    if (params.type) filtered = filtered.filter(i =>
-      derivedType(i.subcategory, i.detailType, i.baseItemName, i.name || '') === params.type
-    );
-    if (params.subcategory) {
-      filtered = filtered.filter(i => {
-        const sc = i.subType?.trim() || extractSubcategory(i.name || '', i.detailType, i.subcategory, i.baseItemName);
-        return sc === params.subcategory;
-      });
-    }
-    if (params.search) {
-      const tokens = params.search.toLowerCase().split(/\s+/).filter(t => t.length > 0);
-      filtered = filtered.filter(i => {
-        const hay = (i.name || '').toLowerCase();
-        return tokens.every((t: string) => hay.includes(t));
-      });
-    }
-    if (params.status && params.status !== "all") {
-      filtered = filtered.filter(i => {
-        let st = "in_stock";
-        if (i.statusOverride === "ORDERED") st = "ordered";
-        else if (i.quantityOnHand === 0) st = "out_of_stock";
-        else if (i.quantityOnHand <= i.minimumStock) st = "low_stock";
-        return st === params.status;
-      });
-    }
+  async getFieldSizes(params: FieldItemFilters): Promise<string[]> {
+    // Same predicates, joins and live reel quantities as the item results.
+    // Ignore the selected size and pagination when building size choices.
+    const filtered = await this.getFilteredFieldItems({ ...params, size: undefined });
 
     const seen = new Set<string>();
     const result: { label: string; sortVal: number | null }[] = [];
@@ -2617,6 +2575,7 @@ export class DatabaseStorage implements IStorage {
   async getFieldSubcategories(params: {
     categoryId?: number;
     family?: string;
+    brand?: string;
     type?: string;
   }): Promise<{ name: string; count: number }[]> {
     const allItems = await db.select({
@@ -2626,10 +2585,12 @@ export class DatabaseStorage implements IStorage {
       subType: items.subType,
       baseItemName: items.baseItemName,
       categoryId: items.categoryId,
+      manufacturer: items.manufacturer,
     }).from(items).where(eq(items.isActive, true));
 
     let filtered = allItems;
     if (params.categoryId) filtered = filtered.filter(i => i.categoryId === params.categoryId);
+    if (params.brand) filtered = filtered.filter(i => (i.manufacturer || '').trim() === params.brand);
     if (params.family) {
       filtered = filtered.filter(i =>
         derivedFamily(i.subcategory, i.detailType, i.name || '', i.baseItemName) === params.family
@@ -2687,18 +2648,7 @@ export class DatabaseStorage implements IStorage {
     return { subcategories, detailTypes, subTypes };
   }
 
-  async getFieldItems(params: {
-    categoryId?: number;
-    family?: string;
-    brand?: string;
-    type?: string;
-    subcategory?: string;
-    size?: string;
-    status?: string;
-    search?: string;
-    page?: number;
-    perPage?: number;
-  }): Promise<{ items: (ItemWithRelations & { status: string; extractedSubcategory: string; derivedFamilyName: string; derivedTypeName: string; manufacturer: string | null })[]; total: number }> {
+  private async getFilteredFieldItems(params: FieldItemFilters, includeImages = false) {
     const results = await db.select({
       item: items,
       category: categories,
@@ -2713,7 +2663,7 @@ export class DatabaseStorage implements IStorage {
     .orderBy(asc(items.name));
 
     const itemIds = results.map(r => r.item.id);
-    const allImages = itemIds.length > 0
+    const allImages = includeImages && itemIds.length > 0
       ? await db.select().from(itemImages).where(inArray(itemImages.itemId, itemIds)).orderBy(asc(itemImages.sortOrder))
       : [];
 
@@ -2799,6 +2749,11 @@ export class DatabaseStorage implements IStorage {
       return (a.name || '').localeCompare(b.name || '');
     });
 
+    return statusFiltered;
+  }
+
+  async getFieldItems(params: FieldItemFilters) {
+    const statusFiltered = await this.getFilteredFieldItems(params, true);
     const total = statusFiltered.length;
     const page = Math.max(1, params.page || 1);
     const perPage = Math.min(100, Math.max(1, params.perPage || 10));

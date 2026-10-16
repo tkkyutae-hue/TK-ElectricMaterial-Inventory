@@ -15,6 +15,7 @@ import { useLanguage } from "@/hooks/use-language";
 import { getCategoryGradient } from "@/lib/categoryUtils";
 import { FilterChip } from "@/components/shared/FilterChip";
 import { ErrorState } from "@/components/shared/ErrorState";
+import { readFieldFilter, fieldFilterErrors } from "@/lib/fieldFilterQuery";
 import { useAuth } from "@/hooks/use-auth";
 import { resolveReelMode } from "@/lib/reelEligibility";
 import { parseWireConfig } from "@/lib/wire-config-utils";
@@ -901,7 +902,7 @@ function MobileCatBar({
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function FieldInventory() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { F, theme } = useFieldTheme();
   const rawSearch = useSearch();
   const [, navigate] = useLocation();
@@ -965,8 +966,9 @@ export default function FieldInventory() {
 
   // ── Queries ──
 
-  const { data: categorySummary } = useQuery<CategorySummary[]>({
+  const { data: categorySummary, ...categoryQuery } = useQuery<CategorySummary[]>({
     queryKey: ["/api/inventory/categories/summary"],
+    queryFn: ({ signal }) => readFieldFilter("/api/inventory/categories/summary", signal),
   });
 
   const selectedCat = useMemo(
@@ -974,81 +976,72 @@ export default function FieldInventory() {
     [categorySummary, selectedCatId]
   );
 
-  const { data: families = [] } = useQuery<PillEntry[]>({
+  const { data: families = [], ...familiesQuery } = useQuery<PillEntry[]>({
     queryKey: ["/api/field/families", selectedCatId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const qs = selectedCatId ? `?category=${selectedCatId}` : "";
-      const r = await fetch("/api/field/families" + qs, { credentials: "include" });
-      return r.json();
+      return readFieldFilter<PillEntry[]>("/api/field/families" + qs, signal);
     },
   });
 
-  const { data: brands = [] } = useQuery<PillEntry[]>({
+  const { data: brands = [], ...brandsQuery } = useQuery<PillEntry[]>({
     queryKey: ["/api/field/brands", selectedCatId, selectedFamily],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!selectedCatId || selectedFamily === "all") return [];
       const p = new URLSearchParams();
       p.set("category", String(selectedCatId));
       p.set("family", selectedFamily);
-      const r = await fetch("/api/field/brands?" + p, { credentials: "include" });
-      return r.json();
+      return readFieldFilter<PillEntry[]>("/api/field/brands?" + p, signal);
     },
     enabled: selectedCatId !== null && selectedFamily !== "all",
   });
 
-  const { data: types = [] } = useQuery<PillEntry[]>({
+  const { data: types = [], ...typesQuery } = useQuery<PillEntry[]>({
     queryKey: ["/api/field/types", selectedCatId, selectedFamily, selectedBrand],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!selectedCatId || selectedFamily === "all") return [];
       const p = new URLSearchParams();
       p.set("category", String(selectedCatId));
       p.set("family", selectedFamily);
       if (selectedBrand !== "all") p.set("brand", selectedBrand);
-      const r = await fetch("/api/field/types?" + p, { credentials: "include" });
-      return r.json();
+      return readFieldFilter<PillEntry[]>("/api/field/types?" + p, signal);
     },
     enabled: selectedCatId !== null && selectedFamily !== "all",
   });
 
-  const { data: subcategories = [], isFetching: subcatFetching } = useQuery<PillEntry[]>({
-    queryKey: ["/api/field/subcategories", selectedCatId, selectedFamily, selectedType],
-    queryFn: async () => {
+  const { data: subcategories = [], isFetching: subcatFetching, ...subcategoriesQuery } = useQuery<PillEntry[]>({
+    queryKey: ["/api/field/subcategories", selectedCatId, selectedFamily, selectedBrand, selectedType],
+    queryFn: async ({ signal }) => {
       if (!selectedCatId || selectedType === "all") return [];
       const p = new URLSearchParams();
       p.set("category", String(selectedCatId));
       if (selectedFamily !== "all") p.set("family", selectedFamily);
+      if (selectedBrand !== "all") p.set("brand", selectedBrand);
       p.set("type", selectedType);
-      const r = await fetch("/api/field/subcategories?" + p, { credentials: "include" });
-      return r.json();
+      return readFieldFilter<PillEntry[]>("/api/field/subcategories?" + p, signal);
     },
     enabled: selectedCatId !== null && selectedType !== "all",
     staleTime: 0,
   });
 
-  const { data: sizes = [] } = useQuery<string[]>({
-    queryKey: ["/api/field/sizes", selectedCatId, selectedFamily, selectedType, selectedSubcategory, selectedStatus, debouncedSearch],
-    queryFn: async () => {
+  const { data: sizes = [], ...sizesQuery } = useQuery<string[]>({
+    queryKey: ["/api/field/sizes", selectedCatId, selectedFamily, selectedBrand, selectedType, selectedSubcategory, selectedStatus, debouncedSearch],
+    queryFn: async ({ signal }) => {
       const p = new URLSearchParams();
       if (selectedCatId) p.set("category", String(selectedCatId));
       if (selectedFamily !== "all") p.set("family", selectedFamily);
+      if (selectedBrand !== "all") p.set("brand", selectedBrand);
       if (selectedType !== "all") p.set("type", selectedType);
       if (selectedSubcategory !== "all") p.set("subcategory", selectedSubcategory);
       if (selectedStatus !== "all") p.set("status", selectedStatus);
       if (debouncedSearch) p.set("q", debouncedSearch);
-      const r = await fetch("/api/field/sizes?" + p, { credentials: "include" });
-      return r.json();
+      return readFieldFilter<string[]>("/api/field/sizes?" + p, signal);
     },
   });
 
-  useEffect(() => {
-    if (selectedSize !== "all" && sizes.length > 0 && !sizes.includes(selectedSize)) {
-      setSelectedSize("all");
-    }
-  }, [sizes, selectedSize]);
-
-  const { data: fieldData, isLoading, isError: itemsError } = useQuery<FieldItemsResponse>({
+  const { data: fieldData, isLoading, ...itemsQuery } = useQuery<FieldItemsResponse>({
     queryKey: ["/api/field/items", selectedCatId, selectedFamily, selectedBrand, selectedType, selectedSubcategory, selectedSize, selectedStatus, debouncedSearch, page, pageSize],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const p = new URLSearchParams();
       if (selectedCatId) p.set("category", String(selectedCatId));
       if (selectedFamily !== "all") p.set("family", selectedFamily);
@@ -1060,11 +1053,13 @@ export default function FieldInventory() {
       if (debouncedSearch) p.set("q", debouncedSearch);
       p.set("page", String(page));
       p.set("perPage", String(pageSize));
-      const r = await fetch("/api/field/items?" + p, { credentials: "include" });
-      return r.json();
+      return readFieldFilter<FieldItemsResponse>("/api/field/items?" + p, signal, "items");
     },
   });
 
+  const failedQueries = [categoryQuery, familiesQuery, brandsQuery, typesQuery,
+    subcategoriesQuery, sizesQuery, itemsQuery].filter(query => query.isError);
+  const filterError = fieldFilterErrors[lang as keyof typeof fieldFilterErrors] ?? fieldFilterErrors.en;
   const pageItems = fieldData?.items || [];
   const totalItems = fieldData?.total || 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
@@ -1085,6 +1080,7 @@ export default function FieldInventory() {
       }
     }
     setSelectedFamily("all");
+    setSelectedBrand("all");
     setSelectedType("all");
     setSelectedSubcategory("all");
     setSelectedSize("all");
@@ -1195,7 +1191,7 @@ export default function FieldInventory() {
             <h2 style={{ fontSize: 11, fontWeight: 700, color: "#7aab82", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t.browseByCategory}</h2>
             {selectedCatId !== null && (
               <button
-                onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); setCatGridCollapsed(false); }}
+                onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedBrand("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); setCatGridCollapsed(false); }}
                 style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#7aab82", background: "none", border: "none", cursor: "pointer" }}
                 data-testid="btn-clear-category"
               >
@@ -1413,13 +1409,16 @@ export default function FieldInventory() {
               </button>
             )}
           </div>
-          {selectedCatId !== null && sizes.filter(s => s && s.trim()).length > 0 && (
+          {selectedCatId !== null && (selectedSize !== "all" || sizes.filter(s => s && s.trim()).length > 0) && (
             <Select value={selectedSize} onValueChange={handleSizeChange}>
               <SelectTrigger className="w-[100px] h-10 text-sm shrink-0" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-size-filter">
                 <SelectValue placeholder={t.allSizes} />
               </SelectTrigger>
               <SelectContent className="max-h-[264px] overflow-y-auto">
                 <SelectItem value="all">{t.allSizes}</SelectItem>
+                {selectedSize !== "all" && !sizes.includes(selectedSize) && (
+                  <SelectItem value={selectedSize}>{selectedSize}</SelectItem>
+                )}
                 {sizes.filter(s => s && s.trim()).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -1478,7 +1477,7 @@ export default function FieldInventory() {
       {hasFilters && (
         <div className="flex flex-wrap items-center gap-1.5">
           {selectedCat && (
-            <FilterChip label={selectedCat.name} onRemove={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} />
+            <FilterChip label={selectedCat.name} onRemove={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedBrand("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} />
           )}
           {selectedFamily !== "all" && (
             <FilterChip label={getFamilyDisplay(selectedFamily)} onRemove={() => { setSelectedFamily("all"); setSelectedBrand("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} />
@@ -1501,7 +1500,9 @@ export default function FieldInventory() {
           {searchInput && (
             <FilterChip label={`"${searchInput}"`} onRemove={() => { setSearchInput(""); setPage(1); }} />
           )}
-          <span style={{ fontSize: 12, color: "#4a7052" }}>{totalItems.toLocaleString()} item{totalItems !== 1 ? "s" : ""}</span>
+          {failedQueries.length === 0 && !isLoading && (
+            <span style={{ fontSize: 12, color: "#4a7052" }}>{totalItems.toLocaleString()} item{totalItems !== 1 ? "s" : ""}</span>
+          )}
           <button
             onClick={clearAll}
             style={{ marginLeft: 4, fontSize: 12, color: "#2ddb6f", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}
@@ -1515,11 +1516,12 @@ export default function FieldInventory() {
       {/* ── Item List — mobile cards / desktop table ── */}
       <div style={{ background: F.surface2, border: `1px solid ${F.border}`, borderRadius: 12, overflow: "hidden" }}>
 
-        {itemsError ? (
+        {failedQueries.length > 0 ? (
           <ErrorState
-            title="Failed to load inventory"
-            description="Check your connection and try again."
-            onRetry={() => window.location.reload()}
+            title={filterError.title}
+            description={filterError.description}
+            retryLabel={filterError.retry}
+            onRetry={() => { failedQueries.forEach(query => void query.refetch()); }}
           />
         ) : isMobile ? (
           /* ── Mobile Card List ── */
@@ -1710,7 +1712,7 @@ export default function FieldInventory() {
         )}
 
         {/* Pagination */}
-        {totalItems > 0 && (
+        {failedQueries.length === 0 && totalItems > 0 && (
           <div className="px-3 py-2 flex items-center justify-between gap-2" style={{ borderTop: `1px solid ${F.border}` }}>
             {/* Left: items-per-page selector */}
             <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(1); }}>

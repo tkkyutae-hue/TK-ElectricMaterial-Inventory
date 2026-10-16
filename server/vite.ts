@@ -18,13 +18,9 @@ export async function setupVite(server: Server, app: Express) {
   const vite = await createViteServer({
     ...viteConfig,
     configFile: false,
-    customLogger: {
-      ...viteLogger,
-      error: (msg, options) => {
-        viteLogger.error(msg, options);
-        process.exit(1);
-      },
-    },
+    // Let Vite report recoverable transform/HMR errors without terminating
+    // Express. In particular, an in-progress JSX edit must not kill the app.
+    customLogger: viteLogger,
     server: serverOptions,
     appType: "custom",
   });

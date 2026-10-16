@@ -1,0 +1,206 @@
+.tk-field {
+  --bg: #f6faf6; --surface: #fdfefd; --inset: #eef4ee; --border: #d5e5d5; --strong: #a9c8ad;
+  --text: #0f1f17; --muted: #315f3b; --dim: #526d59; --accent: #286b40; --selected: #e1eee3;
+  --on-accent: #f6faf6; --danger: #a43429; --danger-bg: #f8e9e4; --warning: #865c14; --warning-bg: #f6eedc;
+  font-family: "Barlow Condensed", "Trebuchet MS", system-ui, sans-serif;
+  color: var(--text); background: var(--bg); min-height: 100dvh; line-height: 1.45; font-size: 15px;
+  color-scheme: light; padding-bottom: 132px;
+}
+.tk-field[data-theme="dark"] {
+  --bg: #0d1410; --surface: #1c2b1f; --inset: #162019; --border: #263c2c; --strong: #3b5742;
+  --text: #e2f0e5; --muted: #a3c4aa; --dim: #96b39c; --accent: #a0cbaa; --selected: #243e2c;
+  --on-accent: #0d1410; --danger: #efa99e; --danger-bg: #39241f; --warning: #e0bd76; --warning-bg: #352e1e;
+  color-scheme: dark;
+}
+.tk-field *, .tk-field *::before, .tk-field *::after { box-sizing: border-box; }
+.tk-field button, .tk-field input, .tk-field select { font: inherit; color: inherit; }
+.tk-field button, .tk-field select { min-height: 44px; }
+.tk-field button { cursor: pointer; background: var(--surface); border: 1px solid var(--strong); border-radius: 8px; padding: 9px 13px; display: inline-flex; justify-content: center; align-items: center; gap: 7px; }
+.tk-field button:hover:not(:disabled) { background: var(--selected); border-color: var(--accent); }
+.tk-field button:disabled { cursor: not-allowed; opacity: .55; }
+.tk-field :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.tk-field svg { width: 19px; height: 19px; flex-shrink: 0; }
+.tk-field h1,.tk-field h2,.tk-field h3,.tk-field p { margin: 0; }
+.tk-field h1 { font-family: "Bebas Neue", "Barlow Condensed", "Trebuchet MS", system-ui, sans-serif; font-size: clamp(29px, 3.2vw, 40px); letter-spacing: -.8px; line-height: 1.1; }
+.tk-field h2 { font-size: 19px; letter-spacing: -.25px; }
+.tk-field small { font-size: 13px; color: var(--muted); }
+.tk-field .muted { color: var(--muted); }
+.tk-field .eyebrow { text-transform: uppercase; letter-spacing: 1.4px; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 7px; }
+.tk-field .topbar { border-top: 3px solid var(--accent); border-bottom: 1px solid var(--strong); background: var(--inset); }
+.tk-field .topbar-inner { max-width: 1240px; margin: auto; padding: 15px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.tk-field .brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.tk-field .brand img { width: 64px; height: 44px; object-fit: contain; }
+.tk-field .brand strong { display: block; letter-spacing: 1px; font-size: 19px; }
+.tk-field .brand small { display: flex; align-items: center; gap: 6px; }
+.tk-field .brand small svg { width: 13px; height: 13px; }
+.tk-field .header-controls { display: flex; gap: 8px; align-items: center; }
+.tk-field select { background: var(--surface); border: 1px solid var(--strong); border-radius: 8px; padding: 9px 30px 9px 10px; min-width: 0; width: 100%; }
+.tk-field .header-controls select { width: 113px; }
+.tk-field main { max-width: 1240px; margin: auto; padding: 28px 28px 32px; }
+.tk-field .page-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
+.tk-field .page-intro p { color: var(--muted); margin-top: 9px; max-width: 640px; }
+.tk-field .demo-label { color: var(--muted); background: var(--inset); padding: 9px 12px; border: 1px solid var(--border); border-radius: 7px; font-size: 12px; max-width: 235px; }
+.tk-field .searchbox { display: flex; align-items: center; gap: 13px; border: 1px solid var(--strong); background: var(--surface); border-radius: 10px; padding: 5px 12px 5px 17px; margin-bottom: 24px; }
+.tk-field .searchbox:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tk-field .searchbox input { width: 100%; min-width: 0; min-height: 48px; border: 0; background: transparent; font-size: 17px; outline: none; }
+.tk-field input::placeholder { color: var(--dim); opacity: 1; }
+.tk-field .searchbox button { border: none; padding: 8px; background: transparent; }
+.tk-field .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+.tk-field .section-heading small { display: block; margin-top: 3px; }
+.tk-field .categories { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 12px; }
+.tk-field .category { display: flex; flex-direction: column; text-align: left; align-items: stretch; justify-content: flex-start; padding: 0; overflow: hidden; gap: 0; background: var(--inset); }
+.tk-field .category[aria-pressed="true"] { border-color: var(--accent); outline: 1px solid var(--accent); }
+.tk-field .category-art { height: 108px; background: var(--surface); display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); }
+.tk-field .category-art img { width: 100%; height: 100%; object-fit: contain; }
+.tk-field .category-copy { padding: 10px 11px 11px; width: 100%; }
+.tk-field .category-copy strong { display: block; font-size: 15px; }
+.tk-field .category-copy small { display: block; margin-top: 3px; }
+.tk-field .sample-note { font-size: 12px; color: var(--dim); margin-top: 8px; display: flex; gap: 6px; align-items: center; }
+.tk-field .sample-note svg { width: 14px; height: 14px; }
+.tk-field .selected-category { background: var(--selected); border: 1px solid var(--strong); padding: 10px 12px; border-radius: 10px; display: flex; align-items: center; gap: 12px; }
+.tk-field .selected-category .category-art { width: 56px; height: 48px; border: 0; border-radius: 6px; flex-shrink: 0; overflow: hidden; }
+.tk-field .selected-category .selection-copy { flex: 1; min-width: 0; }
+.tk-field .selected-category strong { display: block; }
+.tk-field .filter-panel { background: var(--inset); border: 1px solid var(--border); border-radius: 12px; margin-top: 20px; padding: 18px; }
+.tk-field .hierarchy { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.tk-field label.field { display: flex; flex-direction: column; gap: 7px; font-size: 13px; font-weight: 600; min-width: 0; }
+.tk-field label.field span { display: flex; align-items: center; gap: 6px; }
+.tk-field .step { width: 20px; height: 20px; display: inline-flex; justify-content: center; align-items: center; background: var(--selected); border-radius: 50%; color: var(--accent); font-size: 11px; }
+.tk-field .quick-filters { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; border-top: 1px solid var(--border); margin-top: 17px; padding-top: 15px; }
+.tk-field .sizes { display: flex; flex-wrap: wrap; gap: 7px; }
+.tk-field .size-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.tk-field .sizes button { border-radius: 7px; min-width: 56px; padding: 7px 12px; }
+.tk-field button[aria-pressed="true"] { background: var(--selected); color: var(--accent); border-color: var(--accent); }
+.tk-field .detail-trigger { flex-shrink: 0; font-weight: 600; }
+.tk-field .conditions { padding-top: 17px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tk-field .chip { background: var(--selected); font-size: 13px; padding: 6px 9px; border-color: var(--strong); min-height: 38px; max-width: 100%; overflow-wrap: anywhere; }
+.tk-field .chip svg { width: 14px; height: 14px; }
+.tk-field .text-button { background: transparent; border: 0; text-decoration: underline; color: var(--muted); }
+.tk-field .results-heading { margin-top: 26px; margin-bottom: 12px; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.tk-field .results-heading strong { font-size: 21px; }
+.tk-field .result-table { border: 1px solid var(--strong); border-radius: 10px; overflow: hidden; }
+.tk-field .table-head, .tk-field .result-row { display: grid; grid-template-columns: minmax(0,1fr) 104px 145px 100px 114px; gap: 16px; align-items: center; }
+.tk-field .table-head { padding: 12px 17px; background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 700; }
+.tk-field .result-row { padding: 15px 17px; background: var(--inset); border-top: 1px solid var(--border); }
+.tk-field .material-cell { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.tk-field .item-copy { min-width: 0; }
+.tk-field .item-copy strong { display: block; font-size: 16px; overflow-wrap: anywhere; }
+.tk-field .item-copy small { display: block; margin-top: 4px; overflow-wrap: anywhere; }
+.tk-field .photo { width: 58px; height: 58px; border-radius: 8px; padding: 0; overflow: hidden; flex-shrink: 0; background: var(--surface); }
+.tk-field .photo img { width: 100%; height: 100%; object-fit: contain; }
+.tk-field .image-fallback { height: 100%; width: 100%; min-height: 45px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 3px; color: var(--dim); padding: 3px; }
+.tk-field .image-fallback span { font-size: 10px; line-height: 1.15; text-align: center; }
+.tk-field .size-cell { font-weight: 700; font-size: 17px; }
+.tk-field .stock-number { font-variant-numeric: tabular-nums; display: block; font-size: 21px; font-weight: 700; line-height: 1.2; }
+.tk-field .stock-number small { font-size: 13px; font-weight: 500; }
+.tk-field .stock-status { font-size: 12px; color: var(--muted); display: inline-block; margin-top: 4px; }
+.tk-field .low .stock-status { color: var(--warning); }
+.tk-field .out .stock-status, .tk-field .out .stock-number { color: var(--danger); }
+.tk-field .location-cell { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.tk-field .mobile-label { display: none; }
+.tk-field .add-button { width: 100%; font-weight: 600; }
+.tk-field .primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 700; }
+.tk-field .primary:hover:not(:disabled) { background: var(--accent); color: var(--on-accent); filter: brightness(.93); }
+.tk-field .state-panel { border: 1px solid var(--strong); border-radius: 10px; padding: 38px 20px; text-align: center; background: var(--inset); }
+.tk-field .state-panel > svg { width: 30px; height: 30px; color: var(--muted); margin-bottom: 12px; }
+.tk-field .state-panel p { margin: 8px auto 18px; max-width: 420px; color: var(--muted); }
+.tk-field .error-state { border-color: var(--danger); }
+.tk-field .error-state > svg { color: var(--danger); }
+.tk-field .skeleton { border-radius: 9px; height: 88px; background: var(--inset); border: 1px solid var(--border); margin-top: 8px; padding: 20px; }
+.tk-field .skeleton::before { content: ""; display: block; background: var(--strong); opacity: .5; width: 56%; height: 13px; border-radius: 3px; }
+.tk-field .skeleton::after { content: ""; display: block; background: var(--strong); opacity: .3; width: 30%; height: 10px; margin-top: 12px; border-radius: 3px; }
+.tk-field .demo-controls { margin-top: 24px; padding-top: 17px; border-top: 1px dashed var(--strong); display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.tk-field .demo-controls label { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); min-width: 0; }
+.tk-field .demo-controls select { width: 190px; }
+.tk-field .cart-bar { position: fixed; z-index: 30; bottom: 0; left: 0; right: 0; border-top: 1px solid var(--strong); background: var(--surface); padding: 13px 24px calc(13px + env(safe-area-inset-bottom)); }
+.tk-field .cart-inner { max-width: 1184px; margin: auto; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.tk-field .cart-summary { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.tk-field .cart-summary strong { display: block; }
+.tk-field .cart-summary small { display: block; margin-top: 2px; }
+.tk-field .modal-backdrop { position: fixed; inset: 0; background: rgba(5,13,8,.75); z-index: 100; padding: 24px; display: flex; justify-content: center; align-items: center; }
+.tk-field .dialog { background: var(--bg); border: 1px solid var(--strong); border-radius: 15px; width: 570px; max-width: 100%; max-height: calc(100dvh - 48px); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 18px 60px rgba(5,13,8,.25); }
+.tk-field .dialog-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; border-bottom: 1px solid var(--border); padding: 20px; }
+.tk-field .dialog-header p { color: var(--muted); font-size: 13px; margin-top: 5px; }
+.tk-field .dialog-header button { padding: 9px; flex-shrink: 0; }
+.tk-field .dialog-body { padding: 20px; overflow-y: auto; overscroll-behavior: contain; }
+.tk-field .detail-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 17px; }
+.tk-field .dialog-footer { border-top: 1px solid var(--border); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--inset); }
+.tk-field .enlarged-image { width: 100%; max-height: 380px; aspect-ratio: 4/3; object-fit: contain; background: var(--surface); border-radius: 9px; }
+.tk-field .cart-item { padding: 15px 0; border-bottom: 1px solid var(--border); }
+.tk-field .cart-item:first-child { padding-top: 0; }
+.tk-field .cart-item strong { display: block; overflow-wrap: anywhere; }
+.tk-field .quantity-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.tk-field .quantity-controls button { padding: 9px; }
+.tk-field .quantity-controls output { min-width: 32px; text-align: center; font-variant-numeric: tabular-nums; }
+.tk-field .quantity-controls .text-button { margin-left: auto; padding: 8px; }
+@media (max-width: 1050px) {
+  .tk-field .categories { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .tk-field .category { flex-direction: row; align-items: center; }
+  .tk-field .category-art { width: 85px; height: 90px; flex-shrink: 0; border-bottom: 0; }
+  .tk-field .table-head,.tk-field .result-row { grid-template-columns: minmax(0,1fr) 90px 120px 105px; gap: 12px; }
+  .tk-field .location-cell { display: none; }
+  .tk-field .location-head { display: none; }
+}
+@media (max-width: 850px) {
+  .tk-field .table-head { display: none; }
+  .tk-field .result-table { border: 0; border-radius: 0; overflow: visible; display: grid; gap: 10px; }
+  .tk-field .result-row { border: 1px solid var(--strong); border-radius: 10px; grid-template-columns: minmax(0,1fr) auto; padding: 15px; gap: 12px 15px; }
+  .tk-field .material-cell { grid-column: 1/-1; }
+  .tk-field .size-cell { grid-column: 1; font-size: 18px; }
+  .tk-field .stock-cell { grid-column: 2; grid-row: 2/4; text-align: right; align-self: start; }
+  .tk-field .location-cell { display: block; grid-column: 1; }
+  .tk-field .mobile-label { display: inline; font-size: 12px; color: var(--muted); font-weight: 500; margin-right: 6px; }
+  .tk-field .add-button { grid-column: 1/-1; width: auto; justify-self: stretch; }
+}
+@media (max-width: 650px) {
+  .tk-field main { padding: 22px 14px 28px; }
+  .tk-field .topbar-inner { padding: 12px 14px; gap: 10px; }
+  .tk-field .brand { gap: 8px; }
+  .tk-field .brand img { width: 45px; height: 36px; }
+  .tk-field .brand strong { font-size: 16px; }
+  .tk-field .brand small { font-size: 11px; }
+  .tk-field .header-controls { gap: 5px; }
+  .tk-field .header-controls select { width: 102px; font-size: 13px; padding-left: 7px; }
+  .tk-field .header-controls button { padding: 9px; }
+  .tk-field .theme-text { display: none; }
+  .tk-field .page-intro { flex-direction: column; align-items: flex-start; gap: 13px; margin-bottom: 18px; }
+  .tk-field .demo-label { max-width: none; width: 100%; font-size: 12px; padding: 7px 10px; }
+  .tk-field .searchbox { margin-bottom: 22px; padding-left: 12px; gap: 8px; }
+  .tk-field .searchbox input { font-size: 16px; }
+  .tk-field .categories { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+  .tk-field .category { flex-direction: column; align-items: stretch; }
+  .tk-field .category-art { width: 100%; height: 91px; border-bottom: 1px solid var(--border); }
+  .tk-field .category-copy { padding: 9px 10px; }
+  .tk-field .category-copy strong { font-size: 14px; }
+  .tk-field .section-heading h2 { font-size: 18px; }
+  .tk-field .section-heading > small { font-size: 12px; }
+  .tk-field .filter-panel { padding: 13px; margin-top: 15px; }
+  .tk-field .hierarchy { grid-template-columns: minmax(0,1fr); gap: 11px; }
+  .tk-field .hierarchy label.field { display: grid; grid-template-columns: 90px minmax(0,1fr); align-items: center; gap: 6px; }
+  .tk-field .quick-filters { flex-direction: column; align-items: stretch; gap: 14px; }
+  .tk-field .detail-trigger { width: 100%; }
+  .tk-field .selected-category { gap: 8px; padding: 8px; }
+  .tk-field .selected-category .category-art { width: 44px; height: 44px; }
+  .tk-field .selected-category button { font-size: 13px; padding: 8px; gap: 3px; }
+  .tk-field .selected-category strong { font-size: 14px; }
+  .tk-field .results-heading { margin-top: 22px; }
+  .tk-field .results-heading strong { font-size: 19px; }
+  .tk-field .demo-controls { flex-direction: column; align-items: stretch; }
+  .tk-field .demo-controls label { justify-content: space-between; }
+  .tk-field .demo-controls select { width: 180px; }
+  .tk-field .cart-bar { padding: 11px 14px calc(11px + env(safe-area-inset-bottom)); }
+  .tk-field .cart-summary { gap: 8px; }
+  .tk-field .cart-summary > svg { display: none; }
+  .tk-field .cart-summary strong { font-size: 14px; }
+  .tk-field .cart-summary small { font-size: 11px; }
+  .tk-field .cart-inner > button { padding: 9px 11px; font-size: 13px; flex-shrink: 0; }
+  .tk-field .modal-backdrop { padding: 10px; }
+  .tk-field .dialog { max-height: calc(100dvh - 20px); border-radius: 12px; }
+  .tk-field .detail-grid { grid-template-columns: minmax(0,1fr); }
+  .tk-field .dialog-header,.tk-field .dialog-body { padding: 16px; }
+  .tk-field .dialog-footer { padding: 12px 16px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tk-field .dialog { animation: tk-enter .16s ease-out; }
+  @keyframes tk-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+}

@@ -1,0 +1,44 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "VpXlp7ufhz43QyM3BhS88"
+uri = "file://tests/mockups/field-filters/review/filter-review.html"
+type = "html"
+title = "필드모드 필터 개선 — 전체 검토본"
+description = "합성 데이터 전용. 모바일·데스크톱·태블릿 대표 화면, 검증 결과와 통합 전 제한을 담은 오프라인 HTML입니다. 실제 앱/API에 연결하지 않습니다."
+logical_id = "4ac0c83a-a170-4dc5-a587-1ef4d5e3ad77"
+content_hash = "sha256:b27e7e7124a54cf3c3319e42743a711fe1c0cab6b12a5fb7ef71bf4dd0a0cf41"
+size = 379470
+mtime_ms = 1792179028433
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:1656bc2a-6b50-4cdc-b025-f927d6ba52b6/4ac0c83a-a170-4dc5-a587-1ef4d5e3ad77/27927f7c-5a83-4d85-b083-ef1e801716fc"
+storage_version_token = "1792179062704952"
+content_type = "text/html"
+
+[[outputs]]
+id = "IRgPPpJYYI_IzuGhnwIs2"
+uri = "file://tests/mockups/field-filters/review/mobile-dark-ko-selected.jpg"
+type = "image"
+title = "모바일 · 한국어 · 어두운 테마"
+description = "합성 데이터 모의 화면: 이미지 카테고리 선택 후 분류 단계·직접 규격·상세 필터·카트 동선. 자재 이미지는 대표 삽화이며 기존 사진을 대체하지 않습니다."
+logical_id = "94e6091c-e99f-42e8-94be-7ce9b9c09af5"
+content_hash = "sha256:02b72dab2a6c4e19528af70940521e8d7ff8c36f3365ddf8cb5e98016c3916bc"
+size = 43376
+mtime_ms = 1792178902525
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:1656bc2a-6b50-4cdc-b025-f927d6ba52b6/94e6091c-e99f-42e8-94be-7ce9b9c09af5/753828e0-1f7a-46c1-9237-dea6c2dc116e"
+storage_version_token = "1792179063419017"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "pvE59IfuLqqh6JVO8o_T9"
+uri = "file://tests/mockups/field-filters/review/desktop-light-en-results.jpg"
+type = "image"
+title = "데스크톱 · 밝은 테마 · 자재 비교표"
+description = "모든 품목과 수량은 합성 데이터입니다. 규격·재고·단위 비교와 품절 구분, 하단 모의 카트 표시를 확인할 수 있습니다."
+logical_id = "df5d0344-a1c4-47d1-8eab-8364cf5d77e0"
+content_hash = "sha256:d5e68a240ad7f8ac04ec2fae56248e256614380a59f527f92cc1dc962283a8bc"
+size = 77617
+mtime_ms = 1792178903865
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:1656bc2a-6b50-4cdc-b025-f927d6ba52b6/df5d0344-a1c4-47d1-8eab-8364cf5d77e0/f8e69c03-6410-44e9-967d-1a76d572eb31"
+storage_version_token = "1792179064252013"
+content_type = "image/jpeg"

@@ -7,3 +7,4 @@
 - [Safe Excel scope extraction](xlsx-scope-extraction.md) — parse uploaded BOQ files selectively with caps; never load whole workbooks in deployment.
 - [Mobile material section navigation](mobile-material-section-navigation.md) — keep jump and active-section anchors aligned so selection does not revert after smooth scroll.
 - [Field draft safety](field-draft-safety.md) — distinguish local drafts from saved requests; validate with isolated mocks, not existing business databases or app startup.
+- [Request receipt privacy](request-receipt-privacy.md) — historical success is not current viewing permission; deleted targets permit only restricted minimal confirmation.

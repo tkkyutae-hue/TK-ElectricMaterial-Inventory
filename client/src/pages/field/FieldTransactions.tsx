@@ -5,6 +5,7 @@ import { useMovements, useBulkDeleteMovements, useBulkRestoreMovements } from "@
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
 import { FieldMovementBadge } from "@/components/StatusBadge";
+import { isRequestLinkedMovement, RequestLinkedMovementNotice } from "@/components/RequestWorkflowNotice";
 import DraftMovementsList from "./DraftMovementsList";
 import FieldRequestsList from "./FieldRequestsList";
 import {
@@ -278,7 +279,13 @@ export default function FieldTransactions() {
 
   function clearSelection() { setSelectedIds(new Set()); }
 
+  const hasLinkedSelection = (movements ?? []).some(m => selectedIds.has(m.id) && isRequestLinkedMovement(m));
+
   async function handleDelete() {
+    if (hasLinkedSelection) {
+      toast({ title: t.requestLinkedMovementNotice, variant: "destructive" });
+      return;
+    }
     const ids = Array.from(selectedIds);
     const count = ids.length;
     const snapshots = (movements ?? [])
@@ -1326,15 +1333,20 @@ export default function FieldTransactions() {
                   {/* Selection actions (always visible when selCount > 0) */}
                   <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                     {selCount > 0 && <span style={{ fontSize: 11, color: F.textDim }}>{selCount} {t.selected}</span>}
+                    {hasLinkedSelection && <RequestLinkedMovementNotice />}
                     {canEdit && hasDeletePerm && (
+                      <fieldset disabled={hasLinkedSelection} title={hasLinkedSelection ? t.requestLinkedMovementNotice : undefined} style={{ display: "contents" }}>
                       <button type="button" onClick={() => selectedTx && setEditTx(selectedTx)} disabled={selCount !== 1} data-testid="button-field-edit-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: selCount === 1 ? "rgba(91,156,246,0.12)" : F.surface2, border: `1px solid ${selCount === 1 ? "rgba(91,156,246,0.35)" : F.borderStrong}`, color: selCount === 1 ? "#5b9cf6" : F.textDim, fontSize: 11, fontWeight: 700, cursor: selCount === 1 ? "pointer" : "default", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
                         <Pencil style={{ width: 10, height: 10 }} /> {t.fieldTxnEditBtn}
                       </button>
+                      </fieldset>
                     )}
                     {canDelete && hasDeletePerm && (
+                      <fieldset disabled={hasLinkedSelection} title={hasLinkedSelection ? t.requestLinkedMovementNotice : undefined} style={{ display: "contents" }}>
                       <button type="button" onClick={() => setConfirmOpen(true)} data-testid="button-field-delete-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", color: "#ff5050", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
                         <Trash2 style={{ width: 10, height: 10 }} /> {t.fieldTxnDeleteBtn} ({selCount})
                       </button>
+                      </fieldset>
                     )}
                   </div>
                 </div>
@@ -1394,15 +1406,20 @@ export default function FieldTransactions() {
                       <button type="button" onClick={clearSelection} data-testid="button-field-cancel-select" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
                         <X style={{ width: 10, height: 10 }} /> {t.cancel}
                       </button>
+                      {hasLinkedSelection && <RequestLinkedMovementNotice />}
                       {canEdit && hasDeletePerm && (
+                        <fieldset disabled={hasLinkedSelection} title={hasLinkedSelection ? t.requestLinkedMovementNotice : undefined} style={{ display: "contents" }}>
                         <button type="button" onClick={() => selectedTx && setEditTx(selectedTx)} disabled={selCount !== 1} data-testid="button-field-edit-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: selCount === 1 ? "rgba(91,156,246,0.12)" : F.surface2, border: `1px solid ${selCount === 1 ? "rgba(91,156,246,0.35)" : F.borderStrong}`, color: selCount === 1 ? "#5b9cf6" : F.textDim, fontSize: 11, fontWeight: 700, cursor: selCount === 1 ? "pointer" : "default", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
                           <Pencil style={{ width: 10, height: 10 }} /> {t.fieldTxnEditBtn}
                         </button>
+                        </fieldset>
                       )}
                       {canDelete && hasDeletePerm && (
+                        <fieldset disabled={hasLinkedSelection} title={hasLinkedSelection ? t.requestLinkedMovementNotice : undefined} style={{ display: "contents" }}>
                         <button type="button" onClick={() => setConfirmOpen(true)} data-testid="button-field-delete-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", color: "#ff5050", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
                           <Trash2 style={{ width: 10, height: 10 }} /> {t.fieldTxnDeleteBtn} ({selCount})
                         </button>
+                        </fieldset>
                       )}
                     </>
                   )}

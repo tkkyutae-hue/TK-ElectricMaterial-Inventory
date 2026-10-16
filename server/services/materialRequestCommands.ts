@@ -62,13 +62,45 @@ export class MaterialRequestCommands {
   async receipt(actorId: string, operationId: string) {
     const c = await this.pool.connect();
     try {
-      const actor = (await c.query("SELECT id FROM users WHERE id=$1 AND status='active'", [actorId])).rows[0];
-      if (!actor) fail(403, "FORBIDDEN");
+      await c.query("BEGIN");
+      await c.query("SET LOCAL lock_timeout='3s'");
+      await c.query("SET LOCAL statement_timeout='8s'");
+      const actor = await this.activeActor(c, actorId);
       const row = (await c.query(
-        "SELECT result FROM material_request_operations WHERE operation_id=$1 AND actor_id=$2", [operationId, actorId],
+        "SELECT operation_id,actor_id,request_id,action,result FROM material_request_operations WHERE operation_id=$1 AND actor_id=$2", [operationId, actorId],
       )).rows[0];
-      return row ? { state: "committed", result: row.result } : { state: "unknown" };
+      const result = row ? { state: "committed", result: await this.visibleResult(c, actor, row) } : { state: "unknown" };
+      await c.query("COMMIT");
+      return result;
+    } catch (error) {
+      await c.query("ROLLBACK").catch(() => {});
+      throw error;
     } finally { c.release(); }
+  }
+
+  private async activeActor(c: PoolClient, actorId: string): Promise<Row> {
+    const actor = (await c.query("SELECT * FROM users WHERE id=$1 FOR SHARE", [actorId])).rows[0];
+    if (!actor || actor.status !== "active" || !["staff", "manager", "admin"].includes(actor.role)) fail(403, "FORBIDDEN");
+    return actor;
+  }
+
+  /** Historical permission is never enough to disclose a saved snapshot. */
+  private async visibleResult(c: PoolClient, actor: Row, operation: Row): Promise<Row> {
+    if (operation.actor_id !== actor.id) fail(403, "FORBIDDEN");
+    const manager = actor.role === "manager" || actor.role === "admin";
+    const current = (await c.query("SELECT submitted_by FROM material_requests WHERE id=$1 FOR SHARE", [operation.request_id])).rows[0];
+    if (current) {
+      if (!manager && current.submitted_by !== actor.id) fail(403, "FORBIDDEN");
+      return operation.result;
+    }
+    // Only the original deleter who STILL has deletion authority may confirm
+    // their deletion. Never return the deleted request's content/old snapshots.
+    // All other receipts for an absent request fail closed, even for managers.
+    if (!manager || operation.action !== "delete" || operation.result?.request?.deleted !== true) fail(403, "FORBIDDEN");
+    return {
+      operationId: operation.operation_id,
+      request: { id: operation.request_id, revision: operation.result.request.revision, deleted: true },
+    };
   }
 
   async execute(actorId: string, command: RequestCommand): Promise<Row> {
@@ -93,14 +125,14 @@ export class MaterialRequestCommands {
       // Serialize retries of the SAME operation before checking its receipt.
       await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [command.operationId]);
       // Hold a share lock so role/status revocation cannot race this transaction.
-      const actor = (await c.query("SELECT * FROM users WHERE id=$1 FOR SHARE", [actorId])).rows[0];
-      if (!actor || actor.status !== "active" || !["staff", "manager", "admin"].includes(actor.role)) fail(403, "FORBIDDEN");
+      const actor = await this.activeActor(c, actorId);
       const prior = (await c.query("SELECT * FROM material_request_operations WHERE operation_id=$1", [command.operationId])).rows[0];
       if (prior) {
         if (prior.actor_id !== actorId || prior.fingerprint !== fingerprint) fail(409, "OPERATION_REUSED");
+        const result = await this.visibleResult(c, actor, prior);
         committing = true;
         await c.query("COMMIT");
-        return { ...prior.result, replayed: true };
+        return { ...result, replayed: true };
       }
       let request: Row;
       let before: Row | null = null;
@@ -140,7 +172,7 @@ export class MaterialRequestCommands {
           if (!manager) fail(403, "FORBIDDEN");
           if (linked || request.status === "completed") fail(409, "STATE_CHANGED");
           await c.query("DELETE FROM material_requests WHERE id=$1", [request.id]);
-          request = { ...request, deleted: true, revision: request.revision + 1 };
+          request = { id: request.id, deleted: true, revision: request.revision + 1 };
         } else if (command.action === "undo_complete") {
           if (!manager || request.status !== "completed" || !linked) fail(409, "STATE_CHANGED");
           const source = await this.source(c, actorId, command.sourceOperationId, request, "status");

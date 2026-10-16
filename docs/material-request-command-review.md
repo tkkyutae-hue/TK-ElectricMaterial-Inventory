@@ -7,7 +7,10 @@ post-merge setup or deployment against existing development/production databases
 to evaluate this change. No existing database was inspected or changed.
 
 The schema source changes below are **not yet applied to existing databases**.
-There is no startup DDL, deploy-time migration hook, or production migration script.
+This change adds no automatic startup/deploy DDL for the new revision/operation
+structures and no production migration script. **The existing application startup
+DOES call seed, migrations and backfill.** Starting the app with an existing DB
+connection is not a safe read-only check, even when the new structures are absent.
 Do not publish this version until schema and operational cutover are separately approved.
 
 ## Proposed database structures
@@ -36,6 +39,18 @@ Do not publish this version until schema and operational cutover are separately 
   instances. The committed receipt and all business changes share one transaction.
   Same ID/actor/intent replays the original result. Reusing the ID for a different
   intent is rejected.
+- Both receipt lookup and replay lock/re-read the current active actor and target
+  request. Only staff/manager/admin are eligible; managers/admin can view any
+  existing target and staff only the current submitter's target. Historical
+  ownership or a formerly elevated role cannot authorize disclosure. These checks
+  share a transaction with share locks, so ownership/role revocation coordinates
+  with the authorization decision.
+- For a missing/deleted target, all old create/edit/status/Undo results are denied.
+  Only the original deletion actor who still has manager/admin authority can
+  confirm their deletion, and receives only operation ID, request ID, revision and
+  deleted=true. No deleted content, before-state or snapshots are disclosed.
+  Other actors receive no receipt; demoted/inactive actors cannot confirm deletion.
+  Rejection never re-executes the recorded command.
 - Lock/re-read the active actor and request. Enforce current ownership, role,
   state and revision before changing anything. A user-row share lock coordinates
   with role/status updates. Item locks use increasing item ID order.
@@ -73,6 +88,13 @@ Do not publish this version until schema and operational cutover are separately 
   they are never initialized or repaired silently.
 - Completed/cancelled requests are not editable through Undo. Managers do not
   bypass revision/state checks.
+- Completed request details explain in all three languages that historical
+  completions without safe records cannot be automatically undone. This is a
+  conditional notice, not an assertion that every completed row lacks a receipt.
+- General field/admin history screens explain linked movement restrictions in
+  all three languages and disable direct editing/deletion, including mixed
+  selections. Cancellation of selection remains available; blocked actions keep
+  local drafts and issue no mutation. Server restrictions remain authoritative.
 - These commands coordinate related request fulfillment operations, not every
   legacy inventory writer. Unrelated stock edits/syncs remain outside this scope;
   do not claim whole-inventory concurrency safety.
@@ -115,6 +137,12 @@ Do not publish this version until schema and operational cutover are separately 
   browser secure-context `crypto.randomUUID()`.
 - No full app bootstrap, live DB/API, deployment, mixed-version rolling rollout,
   real production constraints, production load, or disaster recovery test.
+- Additional real Express middleware-chain tests run entirely in memory (no
+  listener/network): the same session guard, dependency-injected user loader,
+  routes and command service, using only the fresh PostgreSQL fixture. Session
+  objects are synthetic. Real cookie signing/session persistence/login/OAuth and
+  external identity providers are not tested; the application's session-store
+  module is deliberately not imported because it imports the existing DB.
 
 ## Approval gates and rollback restrictions
 

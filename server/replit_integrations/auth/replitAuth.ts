@@ -31,9 +31,4 @@ export async function setupAuth(app: Express) {
   app.use(getSession());
 }
 
-export const isAuthenticated: RequestHandler = (req, res, next) => {
-  if (!(req.session as any).userId) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  next();
-};
+export { isSessionAuthenticated as isAuthenticated } from "../../services/requestIdentity";

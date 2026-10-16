@@ -11,6 +11,10 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
+import express from "express";
+import { IncomingMessage, ServerResponse } from "node:http";
+import { Duplex } from "node:stream";
+import { isSessionAuthenticated, loadRequestUser } from "../server/services/requestIdentity";
 import { MaterialRequestCommands, RequestCommandError, type RequestCommand } from "../server/services/materialRequestCommands";
 import { registerMaterialRequestCommands } from "../server/services/materialRequestRoutes";
 import { assertStandaloneMovement } from "../server/services/requestMovementGuard";
@@ -298,4 +302,107 @@ test("SQL: proposed constant revision default needs no corrective row backfill o
   const after = (await pool.query("SELECT notes,xmin::text,ctid::text,revision FROM mock_legacy_requests WHERE id=1")).rows[0];
   assert.equal(after.revision, 0);
   assert.deepEqual({ notes: after.notes, xmin: after.xmin, ctid: after.ctid }, before);
+});
+
+test("SQL: receipt and replay use CURRENT ownership, not the original permission", async () => {
+  const command: RequestCommand = { action: "create", operationId: randomUUID(), payload: data("private A") };
+  const created = await service.execute("owner", command);
+  await pool.query("UPDATE material_requests SET submitted_by='other',revision=revision+1 WHERE id=$1", [created.request.id]);
+  const before = (await pool.query("SELECT * FROM material_requests WHERE id=$1", [created.request.id])).rows[0];
+  await code(service.receipt("owner", command.operationId), "FORBIDDEN");
+  await code(service.execute("owner", command), "FORBIDDEN");
+  assert.deepEqual((await pool.query("SELECT * FROM material_requests WHERE id=$1", [created.request.id])).rows[0], before);
+  assert.deepEqual(await service.receipt("other", command.operationId), { state: "unknown" });
+});
+
+test("SQL: role/status revocation protects both receipt reads and replays without re-execution", async () => {
+  const a = (await create()).request;
+  const command: RequestCommand = { action: "edit", requestId: a.id, expectedRevision: a.revision,
+    operationId: randomUUID(), payload: data("manager result") };
+  const saved = await service.execute("admin", command);
+  try {
+    for (const [role, status] of [["staff", "active"], ["viewer", "active"], ["admin", "inactive"]]) {
+      await pool.query("UPDATE users SET role=$1,status=$2 WHERE id='admin'", [role, status]);
+      await code(service.receipt("admin", command.operationId), "FORBIDDEN");
+      await code(service.execute("admin", command), "FORBIDDEN");
+      assert.equal((await pool.query("SELECT revision FROM material_requests WHERE id=$1", [a.id])).rows[0].revision, saved.request.revision);
+    }
+  } finally { await pool.query("UPDATE users SET role='admin',status='active' WHERE id='admin'"); }
+  assert.equal((await service.execute("admin", command)).replayed, true);
+});
+
+test("SQL: operation ID rejects another actor, target, action and body; exact replay makes no new change", async () => {
+  const a = (await create()).request, other = (await create()).request;
+  const command: RequestCommand = { action: "edit", requestId: a.id, expectedRevision: a.revision,
+    operationId: randomUUID(), payload: data("B bound") };
+  const saved = await service.execute("owner", command);
+  await code(service.execute("admin", command), "OPERATION_REUSED");
+  await code(service.execute("owner", { ...command, requestId: other.id }), "OPERATION_REUSED");
+  await code(service.execute("owner", { ...command, action: "status" }), "OPERATION_REUSED");
+  await code(service.execute("owner", { ...command, payload: data("tampered") }), "OPERATION_REUSED");
+  assert.equal((await service.execute("owner", command)).request.revision, saved.request.revision);
+  assert.equal((await pool.query("SELECT revision FROM material_requests WHERE id=$1", [a.id])).rows[0].revision, saved.request.revision);
+});
+
+test("SQL: deletion confirms only a minimal tombstone to the original currently privileged deleter", async () => {
+  const original: RequestCommand = { action: "create", operationId: randomUUID(), payload: data("private deleted notes") };
+  const a = (await service.execute("owner", original)).request;
+  const command: RequestCommand = { action: "delete", requestId: a.id, expectedRevision: a.revision, operationId: randomUUID() };
+  const result = await service.execute("admin", command);
+  assert.deepEqual(Object.keys(result.request).sort(), ["deleted", "id", "revision"]);
+  assert.deepEqual((await service.receipt("admin", command.operationId) as any).result, result);
+  assert.equal((await service.execute("admin", command)).replayed, true);
+  assert.deepEqual(await service.receipt("other", command.operationId), { state: "unknown" });
+  await code(service.receipt("owner", original.operationId), "FORBIDDEN");
+  await code(service.execute("owner", original), "FORBIDDEN");
+  try {
+    await pool.query("UPDATE users SET role='staff' WHERE id='admin'");
+    await code(service.receipt("admin", command.operationId), "FORBIDDEN");
+    await code(service.execute("admin", command), "FORBIDDEN");
+  } finally { await pool.query("UPDATE users SET role='admin' WHERE id='admin'"); }
+  assert.equal((await pool.query("SELECT id FROM material_requests WHERE id=$1", [a.id])).rows.length, 0);
+});
+
+/** Real Express chain, entirely in memory: no listen(), HTTP server or network. */
+function dispatch(app: express.Express, method: string, url: string, actor?: string, body: any = {}) {
+  return new Promise<{ status: number; body: any }>((resolve, reject) => {
+    const socket = new Duplex({ read() {}, write(_chunk, _encoding, cb) { cb(); } });
+    const req = new IncomingMessage(socket);
+    Object.assign(req, { method, url, body, session: actor ? { userId: actor } : {} });
+    const res = new ServerResponse(req);
+    const timer = setTimeout(() => reject(Error("Isolated middleware dispatch timeout")), 10000);
+    res.end = ((chunk: any) => {
+      clearTimeout(timer);
+      try { resolve({ status: res.statusCode, body: JSON.parse(String(chunk)) }); }
+      catch (e) { reject(e); }
+      socket.destroy();
+      return res;
+    }) as any;
+    app(req, res);
+  });
+}
+
+test("Express chain: real session guard, real user loader, routes and SQL reject revoked/forged access", async () => {
+  const app = express();
+  registerMaterialRequestCommands(app, pool, isSessionAuthenticated,
+    loadRequestUser(async id => (await pool.query("SELECT * FROM users WHERE id=$1", [id])).rows[0]));
+  assert.equal((await dispatch(app, "POST", "/api/field/requests")).status, 401);
+  const operationId = randomUUID();
+  const body = { operationId, payload: data("via real chain") };
+  const saved = await dispatch(app, "POST", "/api/field/requests", "owner", body);
+  assert.equal(saved.status, 200);
+  assert.equal((await dispatch(app, "GET", `/api/field/request-operations/${operationId}`, "owner")).body.state, "committed");
+  assert.equal((await dispatch(app, "POST", "/api/field/requests", "admin", body)).body.code, "OPERATION_REUSED");
+  await pool.query("UPDATE material_requests SET submitted_by='other',revision=revision+1 WHERE id=$1", [saved.body.request.id]);
+  for (const response of [
+    await dispatch(app, "GET", `/api/field/request-operations/${operationId}`, "owner"),
+    await dispatch(app, "POST", "/api/field/requests", "owner", body),
+  ]) {
+    assert.equal(response.status, 403);
+    assert.deepEqual(response.body, { code: "FORBIDDEN" });
+  }
+  try {
+    await pool.query("UPDATE users SET status='inactive' WHERE id='owner'");
+    assert.equal((await dispatch(app, "POST", "/api/field/requests", "owner", body)).status, 401);
+  } finally { await pool.query("UPDATE users SET status='active' WHERE id='owner'"); }
 });

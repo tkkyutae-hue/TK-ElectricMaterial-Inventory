@@ -8,6 +8,7 @@ import { resolveScopeReportTarget } from "../shared/scopeReportTarget";
 import { insertItemSchema, type Item, type CreateRmsExportHistory, type CreateRmsExportHistoryItem, completionReportPhotos, projects, dailyReports, projectScopeItems, workers, dailyWorkerAssignments } from "../shared/schema";
 import { db, pool } from "./db";
 import { registerMaterialRequestCommands } from "./services/materialRequestRoutes";
+import { loadRequestUser } from "./services/requestIdentity";
 import { eq, sql as drizzleSql } from "drizzle-orm";
 import type { Request } from "express";
 import type { User } from "@shared/models/auth";
@@ -5209,7 +5210,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ─── Material Requests ────────────────────────────────────────────────────
   // Field-submitted material requests (no inventory change until pickup).
   // All request writes use the versioned protocol; no unconditional fallback.
-  registerMaterialRequestCommands(app, pool, isAuthenticated, loadCurrentUser);
+  registerMaterialRequestCommands(app, pool, isAuthenticated, loadRequestUser(id => authStorage.getUser(id)));
 
   app.get("/api/field/requests", isAuthenticated, loadCurrentUser, async (req: any, res) => {
     try {

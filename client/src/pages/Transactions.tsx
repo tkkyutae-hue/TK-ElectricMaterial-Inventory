@@ -19,6 +19,7 @@ import { ko as dfKo, es as dfEs } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { getTransactionLoadState } from "@/lib/transaction-load-state";
+import { isRequestLinkedMovement, RequestLinkedMovementNotice } from "@/components/RequestWorkflowNotice";
 import type { Lang } from "@/lib/i18n";
 
 const DATE_FNS_LOCALE: Record<Lang, any> = { en: undefined, ko: dfKo, es: dfEs };
@@ -117,6 +118,7 @@ export default function Transactions() {
   const filteredIds = useMemo(() => paginated.map((tx: any) => tx.id as number), [paginated]);
   const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
   const selCount = selectedIds.size;
+  const hasLinkedSelection = (movements ?? []).some(tx => selectedIds.has(tx.id) && isRequestLinkedMovement(tx));
 
   function toggleRow(id: number) {
     setSelectedIds(prev => {
@@ -196,6 +198,10 @@ export default function Transactions() {
   }, [search, typeFilter, projectFilter, startDate, endDate, currentPage, pageSize]);
 
   async function handleBulkDelete() {
+    if (hasLinkedSelection) {
+      shadcnToast({ title: t.requestLinkedMovementNotice, variant: "destructive" });
+      return;
+    }
     const ids = Array.from(selectedIds);
     try {
       const result = await bulkDelete.mutateAsync(ids);
@@ -216,6 +222,7 @@ export default function Transactions() {
   const canDelete = selCount >= 1;
 
   function openInlineEdit() {
+    if (hasLinkedSelection) return;
     const ids = Array.from(selectedIds);
     const newDrafts: Record<number, any> = {};
     ids.forEach(id => {
@@ -246,6 +253,10 @@ export default function Transactions() {
   }
 
   async function saveRow(id: number) {
+    if (isRequestLinkedMovement((movements ?? []).find(tx => tx.id === id))) {
+      shadcnToast({ title: t.requestLinkedMovementNotice, variant: "destructive" });
+      return;
+    }
     const draft = editDrafts[id];
     if (!draft) return;
     setSavingIds(prev => { const s = new Set(prev); s.add(id); return s; });
@@ -1149,11 +1160,14 @@ export default function Transactions() {
           <div style={{ width: 1, height: 18, background: "#e2e8f0", flexShrink: 0 }} />
 
           {/* Edit — any selection, not while editing */}
+          {hasLinkedSelection && <RequestLinkedMovementNotice />}
           {canEdit && (
             <button
               type="button"
               data-testid="btn-tx-edit"
               onClick={openInlineEdit}
+              disabled={hasLinkedSelection}
+              title={hasLinkedSelection ? t.requestLinkedMovementNotice : undefined}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 5,
                 padding: "5px 13px", borderRadius: 8,
@@ -1173,6 +1187,8 @@ export default function Transactions() {
             <button
               type="button"
               data-testid="btn-tx-delete"
+              disabled={hasLinkedSelection}
+              title={hasLinkedSelection ? t.requestLinkedMovementNotice : undefined}
               onClick={() => setConfirmDelete(true)}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 5,

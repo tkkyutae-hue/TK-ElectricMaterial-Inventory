@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { requestCommand, requestCommandMessage } from "@/lib/requestCommands";
+import { RequestCompletionUndoNotice } from "@/components/RequestWorkflowNotice";
 import { useFieldCart } from "@/lib/fieldCart";
 import type { CartItem } from "@/lib/fieldCart";
 import { CartPhoto } from "@/pages/field/FieldCartReview";
@@ -1075,6 +1076,7 @@ function RequestCard({
             )}
 
             {/* Fulfillment reference (completed only) */}
+            {req.status === "completed" && <RequestCompletionUndoNotice />}
             {req.status === "completed" && req.fulfilledMovementId != null && (
               <div style={{
                 padding: "10px 14px", borderTop: `1px solid ${F.border}`,

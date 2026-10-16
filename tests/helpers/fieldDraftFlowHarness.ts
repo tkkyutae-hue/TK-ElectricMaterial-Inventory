@@ -15,6 +15,8 @@ export async function buildIsolatedFieldFlow() {
         import {FieldCartProvider,useFieldCart} from "./client/src/lib/fieldCart";
         import FieldCartPanel from "./client/src/pages/field/FieldCartPanel";
         import FieldRequestsList from "./client/src/pages/field/FieldRequestsList";
+        import FieldTransactions from "./client/src/pages/field/FieldTransactions";
+        import Transactions from "./client/src/pages/Transactions";
         import {Toaster} from "./client/src/components/ui/toaster";
         import {useToast} from "./client/src/hooks/use-toast";
         import {useLocation} from "wouter";
@@ -29,11 +31,18 @@ export async function buildIsolatedFieldFlow() {
           projects:[{id:902,name:"Mock project"},{id:904,name:"Mock second project"}],
           workers:[{id:905,fullName:"Mock requester",trade:"Mock role",isActive:true}]
         };
+        window.__fixtures.movements=[1001,1002].map((id,index)=>({
+          id,itemId:901,movementType:"issue",quantity:3,previousQuantity:10,newQuantity:7,
+          createdAt:new Date().toISOString(),note:"Synthetic transaction",
+          referenceType:index===0?"material_request":null,referenceId:index===0?"501":null,
+          item:{id:901,name:"Mock A",sku:"MOCK-A",unit:"ea",sizeLabel:null,imageUrl:null}
+        }));
         function Harness(){
           const cart=useFieldCart();
           const {toasts}=useToast();
           const [path,navigate]=useLocation();
           const [open,setOpen]=useState(false);
+          const [history,setHistory]=useState(null);
           useEffect(()=>{if(path.includes("cart=open"))setOpen(true)},[path]);
           window.__readDraft=()=>cart.getDraft();
           window.__readToasts=()=>toasts.map(({id,title,description,open})=>({
@@ -42,16 +51,21 @@ export async function buildIsolatedFieldFlow() {
           return <>
             <nav>
               <button data-testid="fixture-open-inventory" onClick={()=>{
+                setHistory(null);
                 navigate("/field/inventory?cart=open");setOpen(true);
               }}>Mock inventory navigation</button>
               <button data-testid="fixture-open-requests" onClick={()=>{
+                setHistory(null);
                 setOpen(false);navigate("/field/transactions?tab=requests");
               }}>Mock requests navigation</button>
+              <button data-testid="fixture-open-field-history" onClick={()=>setHistory("field")}>Mock field history</button>
+              <button data-testid="fixture-open-admin-history" onClick={()=>setHistory("admin")}>Mock admin history</button>
               <button data-testid="fixture-add-a" onClick={()=>cart.addToCart(itemA,3)}>Mock inventory item A</button>
               <button data-testid="fixture-add-b" onClick={()=>cart.addToCart(itemB,8)}>Mock inventory item B</button>
             </nav>
             <output data-testid="fixture-path">{path}</output>
-            {path.includes("transactions")?<FieldRequestsList/>:open&&<FieldCartPanel onClose={()=>setOpen(false)}/>}
+            {history==="field"?<FieldTransactions/>:history==="admin"?<Transactions/>:
+              path.includes("transactions")?<FieldRequestsList/>:open&&<FieldCartPanel onClose={()=>setOpen(false)}/>}
             <Toaster/>
           </>;
         }
@@ -63,8 +77,17 @@ export async function buildIsolatedFieldFlow() {
     plugins: [{
       name: "mock-all-service-boundaries",
       setup(plugin) {
+        plugin.onResolve({filter:/^(?:@\/components\/(?:MovementForm|EditTransactionDrawer)|\.\/DraftMovementsList)$/},
+          ()=>({path:"unrelated-editors",namespace:"unrelated"}));
+        plugin.onLoad({filter:/.*/,namespace:"unrelated"},()=>({loader:"tsx",resolveDir:process.cwd(),contents:`
+          import React from "react";
+          export default function UnrelatedDrafts(){return null}
+          export const MovementForm=()=>null;
+          export const EditSuccessToast=()=>null;
+          export const EditTransactionDrawer=()=> <div data-testid="fixture-editor-open"/>;
+        `}));
         plugin.onResolve({
-          filter: /^(?:@\/hooks\/(?:use-language|use-field-theme|use-auth)|@\/lib\/queryClient|@tanstack\/react-query|wouter)$/,
+          filter: /^(?:@\/hooks\/(?:use-language|use-field-theme|use-auth|use-transactions|use-reference-data)|@\/lib\/queryClient|@tanstack\/react-query|wouter)$/,
         }, () => ({ path: "boundaries", namespace: "isolated" }));
         plugin.onLoad({ filter: /.*/, namespace: "isolated" }, () => ({
           loader: "tsx", resolveDir: process.cwd(), contents: `
@@ -83,9 +106,21 @@ export async function buildIsolatedFieldFlow() {
               return [useSyncExternalStore(cb=>{listeners.add(cb);return()=>listeners.delete(cb)},()=>path),
                 next=>{path=next;listeners.forEach(cb=>cb())}];
             }
-            export const useLanguage=()=>({t:TRANSLATIONS[window.__config.lang]});
-            export const useFieldTheme=()=>({F:window.__config.theme==="light"?F_LIGHT:F_DARK});
+            export const useSearch=()=>"";
+            export const Link=({children,...props})=><a {...props}>{children}</a>;
+            export const useLanguage=()=>({t:TRANSLATIONS[window.__config.lang],lang:window.__config.lang});
+            export const useFieldTheme=()=>({F:window.__config.theme==="light"?F_LIGHT:F_DARK,theme:window.__config.theme});
             export const useAuth=()=>({user:{id:"mock-user",role:"staff",name:"Mock user"}});
+            window.__movementCalls=[];
+            export const useMovements=()=>({data:window.__fixtures.movements,isLoading:false,isError:false,refetch:()=>{}});
+            export const useProjects=()=>({data:window.__fixtures.projects});
+            export const useLocations=()=>({data:[]});
+            const mutation={isPending:false,mutateAsync:async(...args)=>{
+              window.__movementCalls.push(args);return {deleted:args[0],restored:[]};
+            }};
+            export const useBulkDeleteMovements=()=>mutation;
+            export const useBulkRestoreMovements=()=>mutation;
+            export const useUpdateMovement=()=>mutation;
             export const queryClient={invalidateQueries:()=>{}};
             export const useQueryClient=()=>queryClient;
             export const useQuery=({queryKey})=>{

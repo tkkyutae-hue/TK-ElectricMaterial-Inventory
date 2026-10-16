@@ -2,7 +2,7 @@ import type { Express, RequestHandler } from "express";
 import { MaterialRequestCommands, RequestCommandError, type RequestCommand } from "./materialRequestCommands";
 import type { Pool } from "pg";
 
-/** Mutating routes registered BEFORE legacy routes; no schema bootstrapping. */
+/** Versioned routes only; this module performs no schema bootstrapping. */
 export function registerMaterialRequestCommands(
   app: Express, pool: Pool, authenticate: RequestHandler, loadUser: RequestHandler,
 ) {
@@ -33,6 +33,9 @@ export function registerMaterialRequestCommands(
     try {
       if (!req.user?.id) return res.status(401).json({ code: "AUTH_REQUIRED" });
       res.json(await service.receipt(req.user.id, req.params.operationId));
-    } catch { res.status(503).json({ code: "RESULT_UNKNOWN" }); }
+    } catch (error) {
+      if (error instanceof RequestCommandError) return res.status(error.status).json({ code: error.code });
+      res.status(503).json({ code: "RESULT_UNKNOWN" });
+    }
   });
 }

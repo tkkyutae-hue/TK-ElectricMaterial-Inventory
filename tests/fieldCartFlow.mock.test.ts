@@ -397,3 +397,65 @@ test("lost response and explicit retry reuse operation ID; double-click does not
     await f.page.waitForFunction(() => (window as any).__readDraft().items.length === 0);
   } finally { await f.finish(); }
 });
+
+test("real request/history screens explain blocked actions in three languages, keep drafts and send no writes", async () => {
+  for (const lang of ["en", "ko", "es"] as const) {
+    for (const theme of ["light", "dark"]) {
+      for (const width of [390, 1280]) {
+        const f = await fixture(width, lang, theme);
+        try {
+          await openInventory(f.page);
+          await addItem(f.page, "a");
+          await fillMeta(f.page, "Draft must survive blocked history actions");
+          const original = await draft(f.page);
+          await f.page.evaluate(() => {
+            const req = (window as any).__fixtures.requests[0];
+            req.status = "completed"; req.fulfilledMovementId = 1001;
+          });
+          await f.page.getByTestId("btn-close-cart-panel").click();
+          await f.page.getByTestId("fixture-open-requests").click();
+          await f.page.getByTestId("btn-request-expand-501").click();
+          assert.equal(await f.page.getByTestId("request-completion-undo-notice").innerText(),
+            TRANSLATIONS[lang].requestCompletionUndoNotice);
+          assert.equal(await f.page.getByTestId("toast-undo-status-501").count(), 0);
+
+          await f.page.getByTestId("fixture-open-field-history").click();
+          await f.page.locator('[data-testid="field-checkbox-sel-1001"]:visible').first().click();
+          const notices = f.page.getByTestId("request-linked-movement-notice");
+          assert.equal(await notices.first().innerText(), TRANSLATIONS[lang].requestLinkedMovementNotice);
+          for (const id of ["button-field-edit-selected", "button-field-delete-selected"]) {
+            const button = f.page.locator(`[data-testid="${id}"]:visible`).first();
+            assert.equal(await button.isDisabled(), true);
+            await button.evaluate((el: HTMLButtonElement) => el.click());
+          }
+          assert.equal(await f.page.getByTestId("fixture-editor-open").count(), 0);
+          await f.page.locator('[data-testid="field-checkbox-sel-1002"]:visible').first().click();
+          assert.equal(await f.page.locator('[data-testid="button-field-delete-selected"]:visible').first().isDisabled(), true);
+          await f.page.locator('[data-testid="field-checkbox-sel-1001"]:visible').first().click();
+          assert.equal(await f.page.locator('[data-testid="button-field-edit-selected"]:visible').first().isEnabled(), true);
+          assert.equal(await f.page.locator('[data-testid="button-field-delete-selected"]:visible').first().isEnabled(), true);
+          assert.deepEqual(await draft(f.page), original);
+
+          await f.page.getByTestId("fixture-open-admin-history").click();
+          await f.page.getByTestId("checkbox-tx-1001").click();
+          assert.equal(await f.page.getByTestId("request-linked-movement-notice").innerText(),
+            TRANSLATIONS[lang].requestLinkedMovementNotice);
+          for (const id of ["btn-tx-edit", "btn-tx-delete"]) {
+            assert.equal(await f.page.getByTestId(id).isDisabled(), true);
+            await f.page.getByTestId(id).evaluate((el: HTMLButtonElement) => el.click());
+          }
+          // Mixed selections fail closed instead of partially deleting manual rows.
+          await f.page.getByTestId("checkbox-tx-1002").click();
+          assert.equal(await f.page.getByTestId("btn-tx-delete").isDisabled(), true);
+          await f.page.getByTestId("checkbox-tx-1001").click();
+          assert.equal(await f.page.getByTestId("btn-tx-edit").isEnabled(), true);
+          assert.equal(await f.page.getByTestId("btn-tx-delete").isEnabled(), true);
+          assert.deepEqual(await f.page.evaluate(() => (window as any).__fixtures.movements.map((m: any) => m.id)), [1001, 1002]);
+          assert.deepEqual(await draft(f.page), original);
+          assert.deepEqual(await calls(f.page), []);
+          assert.deepEqual(await f.page.evaluate(() => (window as any).__movementCalls), []);
+        } finally { await f.finish(); }
+      }
+    }
+  }
+});

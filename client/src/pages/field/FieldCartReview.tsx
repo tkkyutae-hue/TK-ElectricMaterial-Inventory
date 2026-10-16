@@ -234,10 +234,12 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
           }
           // Use the current provider state, even if this toast outlives the panel.
           // Ask again only if another draft changed during the async operation.
-          replaceDraft(draftSnapshot, () =>
+          const restored = replaceDraft(draftSnapshot, () =>
             getDraft() === approvedDraft || window.confirm(t.cartReplaceDraftConfirm));
           queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
-          toast({ title: t.undoDone });
+          toast(restored
+            ? { title: t.undoDone }
+            : { title: t.cartUndoServerDoneDraftKept, description: t.cartUndoDraftKeptHint });
         } catch (err: any) {
           toast({ title: t.undoFailed, description: err.message, variant: "destructive" });
         } finally {

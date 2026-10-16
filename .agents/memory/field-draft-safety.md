@@ -14,3 +14,9 @@ Do not use existing development or production business databases to test field r
 **Why:** Employees continuously enter live operational data; startup can run migrations, seeds or backfills. The user repeatedly requires preservation of existing inventory, requests and history.
 
 **How to apply:** Prefer pure state tests and isolated client tests with mocked services and blocked network. Report live integration checks as unverified rather than connecting to existing databases or restarting the application.
+
+Use in-memory browser pages for these isolated tests; do not start a preview HTTP server or expose an additional port without explicit approval.
+
+**Why:** A temporary preview used for a test left an extra port registration in the project configuration after its process stopped. Stopping the process alone does not remove that configuration.
+
+**How to apply:** Bundle selected client components with mocked service boundaries, render with browser `setContent`/inline scripts, and block browser networking. Test the real UI handlers without importing the app entry point.

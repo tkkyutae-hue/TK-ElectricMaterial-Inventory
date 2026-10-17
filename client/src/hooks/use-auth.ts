@@ -6,6 +6,7 @@ import {
   canAccessDailyReport,
   canAccessProjectOperations,
   canDoMovements,
+  canRequestMaterials,
   isAdminRole,
   isManagerOrAbove,
 } from "@/lib/role-access";
@@ -51,8 +52,9 @@ export function useAuth() {
     canAccessProjectOperations: canAccessProjectOperations(role),
     // Read-only admin mode (no edit/add/delete buttons shown)
     isManagerViewer: role === "manager_viewer",
-    // Can perform field movements — staff, manager, admin (not viewer or manager_viewer)
-    canDoMovements: canDoMovements(role),
+    // Physical stock changes and request drafts are separate permissions.
+    canDoMovements: user?.status === "active" && canDoMovements(role),
+    canRequestMaterials: user?.status === "active" && canRequestMaterials(role),
     // Can edit/modify data in admin mode — manager + admin (excludes manager_viewer)
     isManagerOrAbove: isManagerOrAbove(role),
     logout: logoutMutation.mutate,

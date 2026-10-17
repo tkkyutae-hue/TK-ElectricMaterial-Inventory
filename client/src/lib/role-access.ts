@@ -29,5 +29,10 @@ export function canAccessCrewDispatchAssignment(role: string | null | undefined)
 }
 
 export function canDoMovements(role: string | null | undefined): boolean {
+  return isManagerOrAbove(role);
+}
+
+/** Requests do not change physical stock; staff must retain their cart access. */
+export function canRequestMaterials(role: string | null | undefined): boolean {
   return hasRole(role, ["admin", "manager", "staff"]);
 }

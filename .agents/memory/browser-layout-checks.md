@@ -19,7 +19,7 @@ Isolated `setContent` pages do not have the same secure-context APIs as the HTTP
 
 **Why:** A missing `crypto.randomUUID` in an about:blank fixture can prevent the actual movement form from rendering and masquerade as a missing-selector application failure.
 
-**How to apply:** Check captured browser errors before waiting for UI selectors. Keep any secure-context shim local to synthetic tests; never replace the application's UUID generation.
+**How to apply:** Check captured browser errors before waiting for UI selectors. Fail fast on initial render errors instead of repeating missing-selector timeouts across fixtures. Keep any secure-context shim local to synthetic tests; never replace the application's UUID generation.
 
 Avoid nested named function definitions in TypeScript callbacks passed directly to Playwright `evaluate` when running through tsx.
 

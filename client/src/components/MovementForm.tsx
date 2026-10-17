@@ -223,7 +223,8 @@ export function MovementForm({
   const { data: workers } = useQuery<Worker[]>({ queryKey: ["/api/workers"] });
   const { data: suppliersRaw } = useQuery<any[]>({ queryKey: ["/api/suppliers"] });
   const supplierList: { id: number; name: string }[] = (suppliersRaw ?? []).map((s: any) => ({ id: s.id, name: s.name }));
-  const { isAdminRole } = useAuth();
+  const { isAdminRole, canDoMovements, canRequestMaterials } = useAuth();
+  const stockReadOnly = readOnly || !canDoMovements;
   const [submitting, setSubmitting] = useState(false);
   const [draftSaving, setDraftSaving] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -347,6 +348,7 @@ export function MovementForm({
 
   // ── Save draft ────────────────────────────────────────────────────────────────
   async function onSaveDraft() {
+    if (stockReadOnly) return;
     const shared = form.getValues();
     if (!shared.movementType) {
       form.setError("movementType", { message: "Movement type is required" });
@@ -421,6 +423,11 @@ export function MovementForm({
 
   // ── Submit ────────────────────────────────────────────────────────────────────
   async function onSubmit(shared: SharedData) {
+    // Also guard Enter/programmatic submit, not only the visible button.
+    if (stockReadOnly) {
+      setGlobalError(t.stockMovementManagerOnly);
+      return;
+    }
     if (!validateRows()) return;
 
     const validRows = itemRows.filter(r => r.itemId && r.quantity >= 1);
@@ -679,7 +686,8 @@ export function MovementForm({
             className={fieldMode ? "-mx-4 sm:-mx-6 px-4 sm:px-6" : "sticky bottom-0 z-10 flex items-center justify-end gap-2 py-3 mt-4 -mx-4 md:-mx-6 px-4 md:px-6"}
           >
             <div className={fieldMode ? "w-full flex items-center gap-2" : "flex items-center gap-2"}>
-              {readOnly ? (
+              {stockReadOnly ? (
+                <>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span tabIndex={0}>
@@ -690,12 +698,21 @@ export function MovementForm({
                         className={fieldMode ? undefined : "bg-slate-300 text-slate-500 min-w-[100px] cursor-not-allowed"}
                         data-testid="button-submit-movement"
                       >
-                        Confirm
+                        {t.confirm}
                       </Button>
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent side="top">Viewer role is read-only</TooltipContent>
+                  <TooltipContent side="top">{t.stockMovementManagerOnly}</TooltipContent>
                 </Tooltip>
+                <div role="status" data-testid="movement-permission-notice" className="min-w-0 text-sm">
+                  {t.stockMovementManagerOnly}
+                  {canRequestMaterials && (
+                    <Button type="button" variant="ghost" className="h-auto whitespace-normal px-0 text-left" onClick={() => navigate("/field/inventory")} data-testid="movement-request-link">
+                      {t.stockMovementRequestLink}
+                    </Button>
+                  )}
+                </div>
+                </>
               ) : (
                 <>
                   <Button

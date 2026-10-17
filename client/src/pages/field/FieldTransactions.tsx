@@ -169,7 +169,7 @@ function useIsNarrow() {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function FieldTransactions() {
-  const { user }  = useAuth();
+  const { user, canDoMovements }  = useAuth();
   const { t }     = useLanguage();
   const { F, theme } = useFieldTheme();
   const { toast } = useToast();
@@ -180,7 +180,7 @@ export default function FieldTransactions() {
     background: theme === "dark" ? F.surface : "#e8f1e8",
     borderBottom: `2px solid ${F.borderStrong}`,
   };
-  const hasDeletePerm = user?.role === "staff" || user?.role === "manager" || user?.role === "admin";
+  const hasDeletePerm = canDoMovements;
 
   const urlSearch = useSearch();
   const urlSearchParams = new URLSearchParams(urlSearch);

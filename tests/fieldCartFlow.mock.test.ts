@@ -419,6 +419,9 @@ test("real request/history screens explain blocked actions in three languages, k
             TRANSLATIONS[lang].requestCompletionUndoNotice);
           assert.equal(await f.page.getByTestId("toast-undo-status-501").count(), 0);
 
+          // Only managers can now edit stock movements. Exercise the linked-
+          // request restriction as a manager, rather than granting staff writes.
+          await f.page.evaluate(() => { (window as any).__config.role = "manager"; });
           await f.page.getByTestId("fixture-open-field-history").click();
           await f.page.locator('[data-testid="field-checkbox-sel-1001"]:visible').first().click();
           const notices = f.page.getByTestId("request-linked-movement-notice");

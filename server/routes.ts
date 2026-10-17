@@ -9,6 +9,7 @@ import { insertItemSchema, type Item, type CreateRmsExportHistory, type CreateRm
 import { db, pool } from "./db";
 import { registerMaterialRequestCommands } from "./services/materialRequestRoutes";
 import { loadRequestUser } from "./services/requestIdentity";
+import { createRoleAuthorization } from "./services/roleAuthorization";
 import { eq, sql as drizzleSql } from "drizzle-orm";
 import type { Request } from "express";
 import type { User } from "@shared/models/auth";
@@ -61,24 +62,10 @@ function normalizeScopeReportTarget(
 // ─── RBAC middleware ─────────────────────────────────────────────────────────
 // Roles: viewer < staff < manager < admin
 // - viewer:  field mode, read-only
-// - staff:   field mode, can do movements
+// - staff:   field requests/reports; no direct stock changes
 // - manager: admin mode (normal pages), cannot access Admin Tools
 // - admin:   full access including Admin Tools
-async function requireRole(roles: string | string[], req: any, res: any, next: any) {
-  const userId = req.session?.userId;
-  if (!userId) return res.status(401).json({ message: "Authentication required" });
-  try {
-    const { authStorage } = await import("./replit_integrations/auth/storage");
-    const user = await authStorage.getUser(userId);
-    if (!user || user.status !== "active") return res.status(401).json({ message: "Authentication required" });
-    const allowed = Array.isArray(roles) ? roles : [roles];
-    if (!allowed.includes(user.role ?? "")) return res.status(403).json({ message: "Insufficient permissions" });
-    (req as any).currentUser = user;
-    next();
-  } catch {
-    res.status(500).json({ message: "Authorization check failed" });
-  }
-}
+const requireRole = createRoleAuthorization(id => authStorage.getUser(id));
 
 // Populates req.user from session without restricting by role.
 async function loadCurrentUser(req: any, _res: any, next: any) {
@@ -103,7 +90,7 @@ const requireAdmin       = (req: any, res: any, next: any) => requireRole("admin
 const requireManager     = (req: any, res: any, next: any) => requireRole(["admin", "manager"], req, res, next);
 // Read-only admin operations — manager_viewer can also access these GET routes
 const requireManagerRead = (req: any, res: any, next: any) => requireRole(["admin", "manager", "manager_viewer"], req, res, next);
-// Field operations (movements, transactions, drafts)
+// Staff request/report operations and non-stock-changing draft maintenance
 const requireStaff       = (req: any, res: any, next: any) => requireRole(["admin", "manager", "staff"], req, res, next);
 // Daily Report read access — manager_viewer (read-only) + staff (field workers) both need project/crew data
 const requireStaffRead   = (req: any, res: any, next: any) => requireRole(["admin", "manager", "manager_viewer", "staff"], req, res, next);
@@ -1310,7 +1297,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // Generic movement endpoint
-  app.post("/api/movements", isAuthenticated, requireStaff, async (req, res) => {
+  app.post("/api/movements", isAuthenticated, requireManager, async (req, res) => {
     try {
       const body = req.body;
       const movementType = body.movementType as string;
@@ -1407,7 +1394,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // Specific typed movement endpoints
   for (const type of ['receive', 'issue', 'return', 'adjust', 'transfer']) {
-    app.post(`/api/movements/${type}`, isAuthenticated, requireStaff, async (req, res) => {
+    app.post(`/api/movements/${type}`, isAuthenticated, requireManager, async (req, res) => {
       try {
         req.body.movementType = type;
 
@@ -1493,7 +1480,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   }
 
   // Legacy alias
-  app.post("/api/items/movements", isAuthenticated, requireStaff, async (req, res) => {
+  app.post("/api/items/movements", isAuthenticated, requireManager, async (req, res) => {
     try {
       // ── Validate new movement input ──────────────────────────────────────────
       const vr = validateNewMovement({
@@ -2359,7 +2346,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/drafts/:id/confirm", isAuthenticated, requireStaff, async (req: any, res) => {
+  app.post("/api/drafts/:id/confirm", isAuthenticated, requireManager, async (req: any, res) => {
     try {
       const draftId = parseIntParam(req.params.id, "draftId", res);
       if (draftId === null) return;

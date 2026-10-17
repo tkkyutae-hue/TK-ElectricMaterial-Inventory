@@ -25,7 +25,7 @@ test("actual MovementForm loads, changes and saves supplier in a draft without a
         const blocked=()=>{throw Error("Unexpected mutation")};
         export const useLanguage=()=>({t:TRANSLATIONS.en,lang:"en"});
         export const useFieldTheme=()=>({F:F_DARK,theme:"dark"});
-        export const useAuth=()=>({isAdminRole:true,user:{id:"synthetic",role:"admin"}});
+        export const useAuth=()=>({isAdminRole:true,canDoMovements:true,canRequestMaterials:true,user:{id:"synthetic",role:"admin"}});
         export const useToast=()=>({toast:()=>({dismiss:()=>{}})});
         export const useLocation=()=>["/synthetic",()=>{}];
         export const useItems=()=>({data:items,isLoading:false});

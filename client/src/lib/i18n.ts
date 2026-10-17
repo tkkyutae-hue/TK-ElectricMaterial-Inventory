@@ -93,6 +93,8 @@ const en = {
   logMovement:        "Log Movement",
   resumingDraft:      "RESUMING DRAFT",
   editConfirmDraft:   "Edit & Confirm Draft",
+  stockMovementManagerOnly: "Only admins and managers can change stock. Viewing and existing drafts are preserved.",
+  stockMovementRequestLink: "Browse materials and submit a request",
 
   // ── Field Inventory page ─────────────────────────────────────────────────
   inventory:          "Inventory",
@@ -2720,6 +2722,8 @@ const ko: Translations = {
   logMovement:        "이동 기록",
   resumingDraft:      "임시 저장 불러오기",
   editConfirmDraft:   "임시 저장 편집 & 확인",
+  stockMovementManagerOnly: "실제 재고 변경은 관리자/매니저만 가능합니다. 조회와 기존 초안은 유지됩니다.",
+  stockMovementRequestLink: "자재를 조회하고 요청 작성하기",
 
   inventory:          "재고",
   inventorySubtitle:  "카테고리를 선택하고 패밀리, 타입, 서브카테고리, 사이즈로 필터링하세요.",
@@ -5337,6 +5341,8 @@ const es: Translations = {
   logMovement:        "Registrar movimiento",
   resumingDraft:      "RETOMANDO BORRADOR",
   editConfirmDraft:   "Editar y confirmar borrador",
+  stockMovementManagerOnly: "Solo administradores y gerentes pueden cambiar existencias. La consulta y los borradores existentes se conservan.",
+  stockMovementRequestLink: "Consultar materiales y enviar una solicitud",
 
   inventory:          "Inventario",
   inventorySubtitle:  "Selecciona una categoría y filtra por familia, tipo, subcategoría y tamaño.",

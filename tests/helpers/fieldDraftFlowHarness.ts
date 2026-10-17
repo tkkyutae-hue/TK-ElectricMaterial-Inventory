@@ -110,7 +110,7 @@ export async function buildIsolatedFieldFlow() {
             export const Link=({children,...props})=><a {...props}>{children}</a>;
             export const useLanguage=()=>({t:TRANSLATIONS[window.__config.lang],lang:window.__config.lang});
             export const useFieldTheme=()=>({F:window.__config.theme==="light"?F_LIGHT:F_DARK,theme:window.__config.theme});
-            export const useAuth=()=>({user:{id:"mock-user",role:"staff",name:"Mock user"}});
+            export const useAuth=()=>({user:{id:"mock-user",role:window.__config.role??"staff",name:"Mock user"},canDoMovements:["manager","admin"].includes(window.__config.role),canRequestMaterials:true});
             window.__movementCalls=[];
             export const useMovements=()=>({data:window.__fixtures.movements,isLoading:false,isError:false,refetch:()=>{}});
             export const useProjects=()=>({data:window.__fixtures.projects});

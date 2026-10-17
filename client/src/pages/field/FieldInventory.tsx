@@ -267,7 +267,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
   const { t } = useLanguage();
   const { F } = useFieldTheme();
   const [, navigate] = useLocation();
-  const { isManagerOrAbove, canDoMovements } = useAuth();
+  const { isManagerOrAbove, canRequestMaterials } = useAuth();
   const isReelItem = resolveReelMode(item);
   const wireConfig = parseWireConfig(item);
   const isMobile = useIsMobile();
@@ -564,7 +564,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
         </div>
 
         {/* ── Action Footer ── */}
-        {canDoMovements && (
+        {canRequestMaterials && (
           <div style={{
             position: "sticky", bottom: 0, background: F.bg,
             borderTop: `1px solid ${F.border}`, padding: "12px 16px",
@@ -719,10 +719,10 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
 function FieldCartBar({ onReviewCart }: { onReviewCart: () => void }) {
   const { F } = useFieldTheme();
   const { t } = useLanguage();
-  const { canDoMovements } = useAuth();
+  const { canRequestMaterials } = useAuth();
   const { totalItems, totalQty, hasDraft, editingRequestId, editingRequestNumber } = useFieldCart();
 
-  if (!canDoMovements || !hasDraft) return null;
+  if (!canRequestMaterials || !hasDraft) return null;
 
   return createPortal(
     <div

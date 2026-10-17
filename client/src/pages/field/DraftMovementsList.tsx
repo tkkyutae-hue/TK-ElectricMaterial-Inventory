@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { FieldMovementBadge } from "@/components/StatusBadge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileText, Clock, RotateCcw, Check, Trash2, AlertTriangle } from "lucide-react";
@@ -89,10 +90,11 @@ interface DraftCardProps {
   onResume: () => void;
   onConfirm: () => void;
   onDelete: () => void;
+  canConfirm: boolean;
   t: any;
 }
 
-function DraftCard({ draft, onResume, onConfirm, onDelete, t }: DraftCardProps) {
+function DraftCard({ draft, onResume, onConfirm, onDelete, canConfirm, t }: DraftCardProps) {
   const draftItems: any[] = (() => {
     try { return JSON.parse(draft.itemsJson || "[]"); } catch { return []; }
   })();
@@ -171,6 +173,8 @@ function DraftCard({ draft, onResume, onConfirm, onDelete, t }: DraftCardProps) 
             icon={<Check style={{ width: 12, height: 12 }} />}
             label={t.confirm}
             data-testid={`button-confirm-draft-${draft.id}`}
+            disabled={!canConfirm}
+            title={!canConfirm ? t.stockMovementManagerOnly : undefined}
             onClick={onConfirm}
           />
           <FieldBtn
@@ -316,6 +320,7 @@ function DeleteDraftModal({ onClose, onDelete, loading, t }: {
 export default function DraftMovementsList() {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const { canDoMovements } = useAuth();
   const qc = useQueryClient();
   const [, navigate] = useLocation();
 
@@ -327,7 +332,7 @@ export default function DraftMovementsList() {
   const { data: drafts = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/drafts"] });
 
   async function handleConfirm() {
-    if (!confirmingDraft) return;
+    if (!confirmingDraft || !canDoMovements) return;
     const snapshot = confirmingDraft;
     setConfirmLoading(true);
     try {
@@ -486,6 +491,7 @@ export default function DraftMovementsList() {
             key={draft.id}
             draft={draft}
             t={t}
+            canConfirm={canDoMovements}
             onResume={() => navigate(
               `/field/movement?type=${draft.movementType === "receive" || draft.movementType === "return" ? "receive" : "issue"}&draftId=${draft.id}`
             )}

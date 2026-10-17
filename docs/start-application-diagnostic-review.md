@@ -72,3 +72,25 @@ startup remains prohibited because it executes seed/migration/backfill.
 The eight tests were not re-run after the user's clarification: they already
 cover the named movement type and inventory status controls. No additional
 production-code changes have been made in response to the later generic logs.
+
+## Full frontend follow-up
+
+An additional one-off Playwright inspection used the already-running Vite asset
+server to load the actual frontend entry, providers, header, theme and routes.
+The document itself was fulfilled from the previously fetched HTML. Every
+`/api/` request was intercepted with synthetic JSON, service workers were blocked,
+WebSocket routes were closed locally and external requests were blocked.
+Only whitelisted same-origin JavaScript/CSS asset GETs reached the development
+server; no business API reached it, and no existing cookies/session were used.
+This executed browser frontend code, not server bootstrap.
+
+Receive, issue and inventory all rendered successfully. Their movement-type /
+inventory-status dropdowns opened and accepted selection. No page exceptions or
+ResizeObserver notices were observed. The deliberately blocked external font
+stylesheet produced a resource-error diagnostic, which is distinct from the
+reported uncaught exception. Synthetic screenshots were inspected locally.
+
+This check does not reproduce the user's Replit-hosted preview monitoring
+environment, original fonts, data or session. It is not a post-fix test: no fix has
+been made. The investigation remains blocked on direct evidence from the failing
+preview event or a comparison outside that preview. Do not mark it completed.

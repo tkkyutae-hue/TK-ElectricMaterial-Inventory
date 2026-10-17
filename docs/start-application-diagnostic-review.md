@@ -15,6 +15,12 @@ commit caused the screenshot.
 - The previously collected browser log at 2026-10-17 02:01:27.858 UTC contains a
   non-Error uncaught-exception report and a redacted diagnostic classifying an
   error event as `resize-observer-delivery` in an embedded frame.
+- The user subsequently identified movement type selectors on receive/issue
+  screens and the inventory status selector, after the screen had already loaded.
+  A later existing log snapshot contains non-Error reports at 02:10:18.426 and
+  02:10:28.215 UTC while the development workflow remains running. Those later
+  records contain no original message, stack or new diagnostic classification,
+  so they cannot independently be classified as ResizeObserver notices.
 - Their coincidence is evidence to investigate preview error reporting, not
   proof of the originating component or of a specific preview-monitor listener.
 - A cookie-free read of the already-running development root HTML found the
@@ -62,3 +68,7 @@ The actual failing preview event must be correlated with its reporting path
 before modifying application behavior. Safe isolated reproductions do not prove
 that the complete app or preview integration is fixed. Existing DB-connected
 startup remains prohibited because it executes seed/migration/backfill.
+
+The eight tests were not re-run after the user's clarification: they already
+cover the named movement type and inventory status controls. No additional
+production-code changes have been made in response to the later generic logs.

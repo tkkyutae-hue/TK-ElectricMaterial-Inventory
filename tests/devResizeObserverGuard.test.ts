@@ -89,6 +89,34 @@ test("production mode does not install the filter", async () => {
   } finally { await f.finish(); }
 });
 
+test("an earlier capture listener can report native notices before the HTML guard", async () => {
+  const context = await browser.newContext({ serviceWorkers: "block" });
+  const requests: string[] = [], errors: string[] = [];
+  await context.route("**/*", r => r.abort());
+  const page = await context.newPage();
+  page.on("request", r => requests.push(r.resourceType()));
+  page.on("pageerror", e => errors.push(e.message));
+  try {
+    await page.setContent(`<script>
+      window.early=[];window.late=[];
+      window.addEventListener("error",e=>window.early.push(e.message),true);
+    </script><script>${script!.replaceAll("%MODE%", "development")}</script><script>
+      window.addEventListener("error",e=>window.late.push(e.message),true);
+    </script><div id="box" style="width:100px;height:10px"></div>`);
+    await page.evaluate(`new Promise(resolve=>{
+      const box=document.getElementById("box");let count=0;
+      const observer=new ResizeObserver(()=>{
+        box.style.width=(100+(++count%2))+"px";
+        if(count===3){observer.disconnect();requestAnimationFrame(resolve)}
+      });observer.observe(box);
+    })`);
+    assert.ok((await page.evaluate("window.early")).includes("ResizeObserver loop completed with undelivered notifications."));
+    assert.deepEqual(await page.evaluate("window.late"), []);
+    assert.deepEqual(errors, []);
+    assert.deepEqual(requests, []);
+  } finally { await context.close(); }
+});
+
 test("diagnostics redact private payloads and URLs while retaining known code locations", async () => {
   const f = await fixture();
   try {

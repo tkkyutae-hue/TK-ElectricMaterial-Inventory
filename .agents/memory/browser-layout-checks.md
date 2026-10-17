@@ -26,3 +26,16 @@ Avoid nested named function definitions in TypeScript callbacks passed directly 
 **Why:** tsx can insert a `__name` helper that does not exist in the browser execution context.
 
 **How to apply:** Pass data through simple callbacks and use self-contained JavaScript strings for injected mock functions.
+
+An HTML error guard cannot undo reporting already performed by a previously
+registered capture listener. A passing guard-only test is not proof that an
+embedded preview's error reporter is fixed.
+
+**Why:** Isolated native Chromium loops demonstrated that an earlier listener
+receives the delivery notice even when a later guard prevents default and stops
+subsequent listeners. Real component fixtures did not reproduce the reported
+preview failure, so the platform reporter's actual ordering remains unconfirmed.
+
+**How to apply:** Distinguish browser notices, app exceptions and preview failure
+reporting. Establish the real reporting order before changing suppression or
+claiming a successful repair; keep genuine application errors visible.

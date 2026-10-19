@@ -1,0 +1,370 @@
+# TK ELECTRIC — Multi-Branch Inventory System Architecture & Integration
+
+## 1. 최종 목표
+
+현재 운영 중인 **[TK Electric] Material Inventory**를 기반으로 중앙 품목 관리와 다중 지점 운영 시스템을 구축한다.
+
+기존 시스템을 버리고 새로운 Inventory 앱을 처음부터 개발하지 마라.
+
+반드시 다음 원칙을 지킨다.
+
+- **One Shared Codebase:** 공통 기능과 UI는 하나의 소스에서 개발한다.
+- **Independent Branch Operations:** Savannah와 Indiana는 각각 독립 서버와 독립 DB를 사용한다.
+- **Centralized Item Master:** 모든 지점의 품목명, 규격, 분류, SKU는 중앙에서 통일한다.
+- **Centralized Approved Pricing:** 중앙에서 승인단가를 관리하되 실제 구매가격과 거래 이력은 지점별로 유지한다.
+- **Single Entry Point:** 사용자는 기존 TK Electric Inventory 로그인 화면에서 시작한다.
+- **Data Preservation:** 기존 Savannah의 재고, 거래 이력, 가격, 릴, 사용자·프로젝트 데이터를 손상시키지 않는다.
+
+앞으로 공통 UI 또는 기능을 수정할 때 Savannah와 Indiana를 별도로 개발할 필요가 없도록 설계해야 한다.
+
+---
+
+## 2. 현재 프로젝트 확인
+
+기존 메인 앱:
+
+https://replit.com/@tkkyutae/TK-ElectricMaterial-Inventory
+
+기존 GitHub:
+
+https://github.com/tkkyutae-hue/TK-ElectricMaterial-Inventory
+
+이전에 신규 생성된 프로젝트:
+
+Central 후보:
+https://replit.com/@tkkyutae/FrankBuzzingField
+
+Indiana 후보:
+https://replit.com/@tkkyutae/DevotedAquaWaterfall
+
+먼저 세 프로젝트의 구조와 현재 진행 상태를 확인한다.
+
+신규 생성된 앱들이 기존 TK Electric Inventory와 관계없는 독립 코드로 제작됐다면 해당 구현을 최종 구조로 사용하지 마라.
+
+기존 Inventory의 실제 기능, 컴포넌트, 권한 시스템, 데이터 구조를 재사용하는 방향으로 수정한다.
+
+기존에 만든 앱을 사용할 수 있다면 재활용하되, 무조건 처음부터 다시 만드는 작업도 하지 마라.
+
+프로젝트 삭제·초기화·강제 동기화는 승인 없이 금지한다.
+
+## 3. 로그인 및 사용자 화면 흐름
+
+최종 화면 흐름은 다음과 같다.
+
+**TK Electric Inventory Login**
+
+↓
+
+**Select Branch / Workspace**
+
+- Savannah, GA
+- Indiana
+- Central Management (중앙 관리 권한을 가진 사용자만 표시)
+
+↓
+
+**Select Mode**
+
+- Field Mode
+- Admin Mode
+- 해당 역할에서 허용된 기타 기존 모드
+
+↓
+
+**Selected Branch Inventory System**
+
+요구사항:
+
+1. 기존 로그인 시스템과 기존 계정을 가능한 한 유지한다.
+2. 새 아이디나 별도 비밀번호를 만들 필요가 없도록 공통 인증 구조를 설계한다.
+3. 로그인 직후 지점 선택 화면을 제공한다.
+4. 사용자의 허용된 지점만 표시한다.
+5. 지점 선택 후 기존 Field Mode / Admin Mode 선택 화면으로 연결한다.
+6. 중앙 관리 권한이 있으면 Central Management로 이동할 수 있게 한다.
+7. 화면 상단에는 현재 지점을 명확하게 표시하고, 허용된 지점으로 전환할 수 있게 한다.
+8. 지점 전환 시 다른 지점의 캐시, 초안, 가격, 장바구니 데이터가 섞이지 않아야 한다.
+9. 작성 중인 내용이 있으면 지점 전환 전에 경고한다.
+10. 브라우저에서 지점 ID나 URL을 바꾸더라도 권한을 우회할 수 없도록 서버에서 검증한다.
+
+**지점 선택은 UI 라우팅만 바꾸는 기능이어서는 안 된다.**
+
+실제 API 요청과 데이터 처리는 선택한 지점의 서버와 DB에서 수행되어야 한다.
+
+기존 Savannah 운영 앱의 현재 로그인과 업무 흐름을 새로운 구조가 검증되기 전에 변경하지 마라.
+
+## 4. 공통 소스코드 관리
+
+**가장 중요한 설계 조건이다.**
+
+Savannah와 Indiana가 각자 독립적인 소스코드를 개발하는 방식은 금지한다.
+
+공통 GitHub Repository를 기준으로 아래 기능을 재사용한다.
+
+- Login & Authorization
+- Field Mode
+- Admin Mode
+- Inventory Management
+- Item Detail
+- Transactions
+- Material Requests
+- Wire Reel Management
+- Project Management
+- Dashboard
+- UI Components
+- Theme & Translations
+
+중앙 전용 기능과 지점별 환경 설정은 필요에 따라 분리한다.
+
+가능한 한 다음 구조를 목표로 한다.
+
+- Shared UI / Components
+- Shared Business Logic
+- Shared Inventory Application
+- Central Catalog Service
+- Branch-Specific Configuration
+- Independent Branch Deployment
+
+기존 Repository를 유지하면서 모노레포 또는 공통 패키지 구조 중 현재 코드에 적합한 방식을 결정한다.
+
+어느 방식을 선택하든 **공통 버그 수정이나 UI 변경은 한 번만 구현**해야 한다.
+
+수정된 공통 버전은 지점별로 검증 후 배포한다. 공통 코드 수정이 모든 운영 지점에 즉시 자동 배포되는 구조는 만들지 않는다.
+
+배포 버전과 변경 이력도 지점별로 추적할 수 있게 한다.
+
+## 5. 중앙 품목 관리 시스템
+
+별도의 Central Catalog Service와 중앙 PostgreSQL DB를 사용한다.
+
+중앙 시스템에서는 다음 정보를 관리한다.
+
+- Global Master Item ID
+- Standard SKU
+- Standard Item Name
+- Category / Subcategory
+- Type / Subtype
+- Specification / Size
+- Material / Rating
+- Manufacturer / Model (필요한 품목)
+- Unit of Measure
+- Approved Product Images
+- Search Aliases
+- Item Status
+- Item Version & Change History
+
+Savannah와 Indiana는 중앙에서 승인된 동일한 품목 정보를 사용한다.
+
+각 지점에서 표준 이름, SKU, 규격, 기준 단위를 임의로 수정할 수 없게 한다.
+
+### 신규 품목 등록 흐름
+
+**지점에서 품목 검색**
+
+↓
+
+**중앙에 존재하는 품목인가?**
+
+- YES: 이미 지점 DB에 있으면 기존 품목 사용. 아직 동기화되지 않았다면 해당 Master ID의 반영 상태 확인.
+- NO: 중앙 시스템에 신규 품목 등록 요청.
+
+↓
+
+**중앙 담당자 검토**
+
+- 기존 품목과 중복 확인
+- 규격·분류·단위 검증
+- 승인 / 반려 / 정보 보완 요청
+
+↓
+
+**승인 시 중앙 Master Item 등록**
+
+↓
+
+**모든 지점 DB에 자동 동기화**
+
+신규 품목은 지점에 최초 생성할 때만 Quantity = 0으로 등록한다.
+
+이미 존재하는 지점 품목의 수량, 구매가격, 이력, 위치는 중앙 품목 동기화로 초기화하거나 덮어쓰지 않는다.
+
+중복 요청, 네트워크 장애, 재전송, 이전 버전 수신, 복구 후 재동기화를 처리해야 한다.
+
+동기화 성공·실패·대기 상태를 중앙 Admin이 확인할 수 있도록 한다.
+
+## 6. 중앙 가격 관리 — 후속 구축 범위
+
+공통 품목과 가격은 별도 데이터 구조로 관리한다.
+
+중앙 가격 관리 기능의 목표:
+
+- Company-Wide Approved Price
+- Branch-Specific Approved Price
+- Supplier-Specific Price
+- Price Unit / Conversion
+- Effective Date
+- Price Revision History
+- Branch Price Change Requests
+
+중앙에서 승인된 가격만 해당 지점으로 전달한다.
+
+지점별 실제 구매가격과 과거 거래의 가격 스냅샷은 그대로 보존한다.
+
+중앙 승인단가 변경으로 기존 DB 구매가격이나 재고 평가액을 자동 수정하면 안 된다.
+
+구매가격은 권한 있는 Admin/Manager만 열람할 수 있도록 한다. 중앙 카탈로그 관리 권한과 중앙 가격 관리 권한은 구분한다.
+
+**가격 관리 기능 구현은 첫 MVP 이후 단계로 유지한다.** 지금은 향후 통합에 문제가 없도록 데이터·권한 경계를 설계하는 데 그친다. RMS 및 자동 발주 기능은 보류한다.
+
+## 7. Savannah / Indiana 데이터 격리
+
+지점별 운영 환경은 다음과 같이 독립적이어야 한다.
+
+**Savannah**
+- Existing Savannah Inventory DB
+- Existing Inventory & Transaction History
+- Existing Wire Reel Records
+- Existing Projects / PO
+- Existing Purchase Prices
+
+**Indiana**
+- New Independent Inventory DB
+- Independent Stock Quantities
+- Independent Transaction History
+- Independent Wire Reel Records
+- Independent Projects / PO
+- Independent Purchase Prices
+
+두 지점에서 공유되는 것은 승인된 Master Item 정보와 공통 애플리케이션 코드다.
+
+지점 DB끼리 직접 재고를 합산·이동·동기화하지 않는다.
+
+중앙에는 재고 수량과 실제 출납 이력을 저장하지 않는다.
+
+기존 Savannah Item ID는 그대로 유지하고 Global Master Item ID를 추가 연결하는 방향으로 설계한다.
+
+기존 품목을 이름만 비교해서 자동 병합하지 않는다.
+
+기존 Savannah DB를 Indiana에 복사한 뒤 수량을 0으로 만드는 방식도 금지한다.
+
+## 8. 중앙 관리 화면
+
+중앙 관리 권한을 가진 사용자는 다음 메뉴를 이용한다.
+
+- Central Dashboard
+- Master Item Management
+- New Item Requests
+- Category & Specification Management
+- Branch Synchronization Status
+- Item Change History
+- Central Pricing (후속 단계)
+- Central User Permissions
+
+중앙은 재고를 관리하는 창고가 아니다.
+
+중앙 Admin이 품목을 수정할 수 있다고 해서 해당 사용자가 모든 지점의 재고 수량이나 실제 구매가격까지 수정할 수 있는 것은 아니다.
+
+## 9. 기존 운영 기능 보존
+
+현재 TK Electric Inventory에서 이미 구현된 기능을 가능한 한 재사용한다.
+
+특히 다음 보호를 유지한다.
+
+- 실제 재고 변경은 허용된 Manager/Admin만 수행
+- Staff의 정상 자재 요청 권한
+- 기존 요청·초안과 작성 중 데이터 보존
+- 승인·확정 거래 이력 보존
+- 릴 ID 및 잔여 길이 보존
+- 재고 단위 및 기존 수량 보존
+- 기존 카테고리 사진 보존
+- 한국어 / 영어 / 스페인어
+- Light Mode / Dark Mode
+
+현재 진행 중이거나 검증 대기 중인 2A·2B 권한·가격 보호 작업을 덮어쓰지 마라.
+
+기존 #620 드롭다운 오류, Vite 설정 검토, RMS 등 별도 작업은 이번 구축과 섞지 않는다.
+
+## 10. 이번 1차 개발 범위
+
+첫 MVP는 다음 기능이 함께 작동하는 수준까지 구현한다.
+
+1. 공통 코드베이스 및 지점별 배포 구조
+2. 중앙 관리 앱과 독립 개발 DB
+3. Indiana의 기존 Inventory 기반 개발 앱과 독립 개발 DB
+4. 공통 로그인 및 지점·모드 선택 흐름
+5. 중앙 품목 등록·수정·중복 확인
+6. 지점 신규 품목 등록 요청과 중앙 승인
+7. 중앙에서 Indiana로 품목 자동 동기화
+8. 기존 품목·수량·가격·거래 보호
+9. 동기화 상태·실패·재시도 관리
+
+Central Pricing의 실제 구현과 Savannah 운영 연결은 후속 단계다.
+
+**화면만 만든 시제품이 아니라 격리된 개발 환경에서 등록 → 승인 → 동기화가 작동하는 MVP를 목표로 한다.**
+
+## 11. 작업 방법과 승인 경계
+
+먼저 기존 앱과 신규 생성 앱의 실제 구조를 비교하고, 재사용 가능한 코드와 설계가 맞지 않는 부분을 확인한다.
+
+이후 기존 Inventory 중심의 구조로 개발을 진행한다.
+
+이미 승인된 범위의 기술적 구현·테스트 도구 조정은 중간마다 사용자에게 묻지 말고 처리한다.
+
+단, 다음은 이번 승인에 포함되지 않는다.
+
+- 기존 Savannah 운영 코드의 직접 변경
+- 기존 Savannah Dev/Prod DB 조회·쓰기
+- 기존 Savannah 앱 시작·재시작
+- 운영 DB 스키마 변경·마이그레이션·백필
+- 기존 운영 데이터 복사·수량 초기화·과거 기록 수정
+- 운영 배포·재배포
+- 기존 프로젝트 삭제
+- 자격증명 변경·공개
+- 새로운 유료 인프라의 비용 확정 또는 외부 서비스 결제
+
+새 중앙·Indiana 환경의 생성과 합성 데이터 검증은 허용된 개발 범위에서 진행하되, 기존 운영 자격증명이나 운영 DB를 재사용하지 않는다.
+
+새 개발 환경 생성에 필요한 유료 서비스·보안 권한·운영 연결 승인이 추가로 필요하면 그 부분만 차단하고 독립적으로 가능한 작업은 계속한다.
+
+실행 검증은 독립 개발 DB 및 합성 데이터에서 수행한다.
+
+**새 앱의 서버 시작 시에도 기존 Savannah의 seed·migration·backfill 코드를 무조건 실행하지 마라.** 실행 전에 새 환경의 데이터 연결 및 자동 쓰기 경로를 확인한다.
+
+Savannah 도입은 별도 승인 전까지 하지 않는다.
+
+## 12. 필수 검증
+
+다음 사항을 합성 데이터와 독립 개발 환경에서 확인한다.
+
+- 중앙 품목 등록 후 Indiana에 정확히 한 번 생성되는가?
+- 신규 생성된 품목만 최초 재고 0이 되는가?
+- 동일한 품목을 재전송해도 중복 생성되지 않는가?
+- 중앙에서 품목명을 수정해도 Indiana 재고 수량·가격·거래 이력이 유지되는가?
+- 오래된 버전이 최신 품목을 덮어쓰지 않는가?
+- 지점 신규 등록 요청이 중앙에서 승인·반려되는가?
+- 지점별 권한 없는 접근이 서버에서 거절되는가?
+- Savannah와 Indiana API·캐시·세션·DB가 혼동되지 않는가?
+- 동일한 공통 UI 수정사항을 별도 코드 수정 없이 두 지점 빌드에 사용할 수 있는가?
+- 중앙 서버 장애나 동기화 실패 시 기존 지점 업무 데이터를 변경하지 않는가?
+
+검사 범위를 정확하게 설명하고 소스 검사·모의 검사·개발 DB 검사·실제 브라우저 검사·운영 검증을 구분한다.
+
+## 13. 최종 보고
+
+작업 완료 시 아래 내용을 하나의 보고서로 제출한다.
+
+- 최종 아키텍처와 재사용한 기존 코드
+- 실제 생성·수정한 앱 및 파일
+- 공통 GitHub 코드 관리 방식
+- 로그인 → 지점 선택 → 모드 선택의 실제 구현 상태
+- 중앙 품목 등록·요청·승인·동기화 구현 상태
+- DB 분리와 데이터 보존 검증
+- 실제 수행한 검사 결과와 미검증 항목
+- Savannah 운영 연결에 필요한 별도 단계
+- 기존 운영 앱·DB·배포 미변경 여부
+- 각 Replit 앱의 최종 URL
+
+기술적 내부 단계마다 승인 요청을 반복하지 않는다.
+
+단, 실제 운영 적용이나 기존 데이터에 영향을 줄 수 있는 작업은 반드시 별도 승인을 받는다.
+
+**최종 목표: 개발은 공통 코드 한 곳에서 하고, 지점은 독립적으로 운영하며, 품목은 중앙에서 통일 관리하는 TK Electric Inventory System을 구축한다.**

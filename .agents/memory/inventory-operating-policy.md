@@ -103,3 +103,16 @@ visibility and preservation work was explained.
 or application to development/production. Retain existing isolated proposals
 without applying or deleting them. Do not interpret this as permission to undo
 existing app behavior or to start another workstream.
+
+Indiana should reuse the Savannah inventory application's functionality and
+material catalog, but start its own inventory quantities at zero. The intended
+entry flow is login → authorized branch or Central Management selection →
+authorized Field/Admin mode selection.
+
+**Why:** The user explicitly described these goals when requesting review of the
+multi-branch architecture prompt. Regional servers and databases remain separate.
+
+**How to apply:** Treat this as target scope, not an assertion that the attached
+architecture has been implemented or that its implementation is authorized.
+Preserve Savannah data and keep price work deferred. Resolve catalog acquisition
+and authentication design safely before any environment creation or integration.

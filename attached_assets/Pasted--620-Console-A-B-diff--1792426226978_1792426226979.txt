@@ -1,0 +1,95 @@
+#620 — 실제 Console 기록을 반영한 오류 수집 경로 조사
+
+설정 보존 A·B 격리 검사는 통과한 것으로 정리하고 반복하지 마라. 해당 diff는 여전히 실제 프로젝트에 미적용이다.
+
+이동유형과 재고 ‘전체 상태’ 선택창 오류는 미해결이다. 이번에는 사용자가 확보한 실제 Chrome Console 기록을 근거로, 오류가 어디서 수집되고 Start application 오류 화면으로 전달되는지 읽기 전용으로 조사해라.
+
+1. 새로 확보한 기록과 해석
+
+① React.Fragment 경고
+
+Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`.
+React.Fragment can only have `key` and `children` props.
+at FieldTransactions
+
+앞서 확인한 해당 거래 행의 원본 코드는 <Fragment key={m.id}>이고, 그 지점에는 data-replit-metadata가 직접 작성돼 있지 않았다.
+
+개발 도구의 변환·속성 삽입 경로를 확인할 단서는 있지만, 삽입 주체는 아직 확정하지 않았다. 경고의 컴포넌트 경로에 App과 ErrorBoundary가 나온 것을 ErrorBoundary가 실제 예외를 잡았다는 증거로 해석하지 마라.
+
+이 경고는 FieldTransactions 화면에서 나온 기록이다. 이동유형·전체 상태 클릭에서 직접 발생한 예외로 묶지 마라.
+
+② ResizeObserver 진단
+
+[dev-runtime-diagnostic]
+category: "resize-observer-delivery"
+frame: "embedded"
+valueType: "none"
+source: "other-source"
+line: 0
+column: 0
+
+Console의 출력 위치는 injected.js:37로 표시된다.
+
+앞서 확인한 client/index.html은 알려진 ResizeObserver 메시지를 분류하지만 원문·스택·정확한 URL은 출력하지 않도록 되어 있다. Error 객체가 없는 해당 알림에는 preventDefault()와 stopImmediatePropagation()도 호출한다.
+
+따라서 같은 요약 로그를 다시 조회하거나 사용자에게 같은 Console을 반복 캡처시키는 것으로는 원문과 수집기 순서를 확보할 수 없다.
+
+injected.js:37이 표시된다고 그 파일이 최초 오류 발생 지점이라고 단정하지 마라. console 호출을 감싸는 중간 출력 코드일 수도 있다.
+
+③ 프레임 통신 기록
+
+Failed to execute 'postMessage' on 'DOMWindow':
+The target origin provided (...) does not match the recipient window's origin ('https://replit.com').
+
+개발 Preview 주소와 replit.com 사이의 origin 불일치 기록이 있다. 이것이 오류 보고 경로와 관련된 통신인지, 무관한 플랫폼 기능의 경고인지 확인해야 한다.
+
+④ 별도 오류
+
+/api/field/requests 요청의 HTTP 500과 외부 이미지 주소의 HTTP 404가 있다.
+
+500은 별도 요청 실패로 기록하되 DB 오류나 선택창 장애의 원인으로 단정하지 마라. 이번 조사에서 해당 API를 재호출하거나 DB를 조회하지 마라. 이미지 404, 메시지 채널 종료, 기타 플랫폼 경고도 선택창 장애와 연결되는 근거가 없으면 별도 보류해라.
+
+현재 Console에는 서로 다른 화면·프레임의 기록이 섞여 있다. 캡처에서 위아래로 붙어 있다는 이유로 발생 순서나 인과관계를 확정하지 마라.
+
+2. 이번에 확인할 핵심 경로
+
+우선 injected.js:37의 정체와 역할부터 확인해라.
+
+기존에 접근 가능한 소스와 이미 확보된 브라우저 자료를 이용해 다음을 구분해라.
+
+- 파일의 출처가 앱, Replit 플랫폼, 플러그인, 브라우저 확장 중 어디인지.
+- 해당 줄이 단순 console 래퍼인지, error/unhandledrejection 수집기인지, 부모 프레임으로 오류를 전달하는 코드인지.
+- 아래 문구를 생성하는 실제 코드가 있는지.
+
+An uncaught exception occured but the error was not an error object.
+
+해당 문구의 생성 코드를 찾으면, 무엇을 입력받고 어떤 조건에서 이 문구를 내보내는지 확인해라. 특히 event.error가 없는 브라우저 알림을 어떻게 처리하는지 확인하되, 문구가 비슷하다는 이유만으로 같은 경로라고 판단하지 마라.
+
+postMessage origin 불일치가 이 오류 전달 경로에서 발생하는지도 대조해라. 경고를 없애려고 targetOrigin을 "*"로 바꾸거나 iframe 보안 제한을 완화하지 마라.
+
+Fragment에 data-replit-metadata가 붙는 경로는 관련 변환 코드에서 읽기 전용으로 확인하되, 선택창 장애와 연결되지 않으면 별도 개발 경고로 남겨라. 경고를 없애기 위해 Fragment를 div로 바꾸거나 플러그인을 일괄 제거하지 마라.
+
+3. 실행 경계
+
+이번 승인은 위 범위의 읽기 전용 조사뿐이다.
+
+실제 프로젝트 파일·설정·진단 코드 변경, 커밋, 앱 실행·재시작, 패키지 변경, DB 접근, 업무 API 호출, Preview 조작, 배포는 하지 마라.
+
+사용자의 로그인·쿠키·토큰을 추출하거나 인증을 우회하지 마라. 소스 확인을 위해 내려받은 스크립트를 임의 실행하지 마라.
+
+원본 이벤트 관측을 위해 새 진단 코드나 실제 클릭이 필요하다면, 필요한 관측 항목과 최소 조작을 먼저 제시하고 별도 승인을 기다려라.
+
+공통 Select 교체, 모든 오류 숨김, ResizeObserver 방어 코드 확대, 설정 병합안의 실제 적용은 이번 범위가 아니다.
+
+4. 결과 보고
+
+다음 네 항목으로 보고해라.
+
+- 확인한 발생·수집·전달 경로: 실제 파일과 확인한 코드 위치.
+- 아직 연결하지 못한 지점: 최초 이벤트 → 수집기 → Preview 오류 화면 중 어디인지.
+- 수정 근거가 확보된 경우: 최소 수정 후보와 영향 범위. 적용은 하지 않는다.
+- 접근이 막힌 경우: 정확히 어떤 파일이나 관측 수단이 부족한지 한 가지 다음 행동으로 제시한다.
+
+injected.js의 실제 원문에 접근할 수 없다면 파일명만으로 정체를 추정하거나 같은 일반 로그·모의 검사를 반복하지 마라. 사용자에게 필요한 해당 함수 주변 코드 또는 Sources 위치를 구체적으로 요청하고 멈춰라.
+
+설정 검사 통과, React 경고 제거, 오류 표시가 사라지는 것만으로 #620 해결 완료라고 보고하지 마라.

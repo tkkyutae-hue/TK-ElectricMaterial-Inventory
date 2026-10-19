@@ -93,3 +93,13 @@ requirements do not mean every feature has been implemented.
 **How to apply:** Preserve prior RMS materials/questions without resuming RMS
 work. Classify each requirement as present, needing work, or deferred, and keep
 production verification separate.
+
+Purchase-price work is deferred until the user explicitly resumes it.
+
+**Why:** On 2026-10-19 the user stated “가격은 보류” after purchase-price
+visibility and preservation work was explained.
+
+**How to apply:** Do not continue price-related changes, additional validation,
+or application to development/production. Retain existing isolated proposals
+without applying or deleting them. Do not interpret this as permission to undo
+existing app behavior or to start another workstream.

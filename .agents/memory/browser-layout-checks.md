@@ -15,11 +15,11 @@ When server-rendering a component that imports the PDF viewer, provide a `DOMMat
 
 **How to apply:** Use the Node canvas DOMMatrix implementation in the test setup, then dynamically import the component after assigning it to `globalThis`.
 
-Isolated `setContent` pages do not have the same secure-context APIs as the HTTPS app. Provide synthetic UUIDs only inside the test page when needed.
+Isolated `setContent` or synthetic HTTP pages do not have the same secure-context APIs as the HTTPS app. Prefer a synthetic HTTPS origin whose requests are all intercepted and fulfilled locally when checking the actual application.
 
-**Why:** A missing `crypto.randomUUID` in an about:blank fixture can prevent the actual movement form from rendering and masquerade as a missing-selector application failure.
+**Why:** A missing `crypto.randomUUID` in an insecure fixture can prevent the actual movement form from rendering and masquerade as a missing-selector application failure. The intercepted HTTPS origin exercises the browser's native API without changing application code or exposing a server port.
 
-**How to apply:** Check captured browser errors before waiting for UI selectors. Fail fast on initial render errors instead of repeating missing-selector timeouts across fixtures. Keep any secure-context shim local to synthetic tests; never replace the application's UUID generation.
+**How to apply:** Check captured browser errors before waiting for UI selectors. Fail fast on initial render errors instead of repeating missing-selector timeouts across fixtures. Block every real network destination; this is not access to the real Preview or real TLS/proxy verification. Keep any necessary UUID shim local to synthetic tests; never replace the application's UUID generation.
 
 Avoid nested named function definitions in TypeScript callbacks passed directly to Playwright `evaluate` when running through tsx.
 

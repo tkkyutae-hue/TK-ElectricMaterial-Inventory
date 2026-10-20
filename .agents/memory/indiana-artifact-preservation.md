@@ -18,3 +18,18 @@ follow-on integration. If absent, seek the original preserved archive through an
 authorized recovery channel. Do not recreate code and present it as the tested
 original, infer current test success from old counts, or equate a completed task
 record with source preservation. Keep Savannah resources untouched.
+
+Reconstruction of missing Indiana additions must be treated as new development
+with new validation, never as recovery of the previously tested archive. Secure,
+durable preservation must be established before starting another reconstruction.
+
+**Why:** The user allowed reconstruction only after a preservation path is
+available, while retaining the prohibition on Savannah changes and infrastructure
+creation. Starting with another temporary-only working copy repeats the same risk.
+
+**How to apply:** Retain the common Inventory code rather than rebuilding branch
+features independently. Do not treat a healthy GitHub connection indicator as
+proof that CLI/API access or automation inspection actually works. If the
+documented connection tools fail, report their exact access limitation instead
+of repeatedly asking the user to reconnect, make the repository public, or supply
+the agent's missing generated files.

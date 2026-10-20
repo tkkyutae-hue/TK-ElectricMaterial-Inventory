@@ -1,0 +1,447 @@
+# TK ELECTRIC — Multi-Branch Inventory System
+## Phase 1: Indiana Branch 구축 및 Central Management 준비
+
+### 1. 최종 개발 목표
+
+기존 **[TK Electric] Material Inventory**를 메인 애플리케이션으로 유지하면서 Indiana Branch를 추가한다.
+
+**이번 Phase 1에서 실제 개발할 대상은 Indiana Branch 하나다.**
+
+Central Management는 아이콘과 Coming Soon 화면만 구현한다.
+
+Savannah 운영 시스템은 변경하지 않는다.
+
+**최종 아키텍처 원칙**
+
+- One Shared Inventory Codebase
+- Independent Branch Servers & Databases
+- Unified SKU, Item Name, Specification, Size and Unit
+- Future Centralized Item Management
+- Independent Branch Inventory, Transactions and Purchase Prices
+- Preservation of All Existing Savannah Data
+
+기존 Inventory 기능과 디자인을 처음부터 다시 개발하지 않는다. 검증된 기존 소스코드를 최대한 재사용한다.
+
+---
+
+### 2. 기존 프로젝트 및 개발 기준
+
+**Main Inventory**
+
+https://replit.com/@tkkyutae/TK-ElectricMaterial-Inventory
+
+**GitHub Repository**
+
+https://github.com/tkkyutae-hue/TK-ElectricMaterial-Inventory
+
+위 기존 Inventory 프로젝트와 GitHub 소스를 유일한 개발 기준으로 사용한다.
+
+현재 소스 구조와 기능을 확인한 뒤, 동일한 공통 코드베이스에서 Indiana Branch를 운영할 수 있는 구조를 설계한다.
+
+Indiana의 기능을 별도로 재개발하거나 독립적인 유사 Inventory 소스를 새로 만들지 않는다.
+
+기존 Savannah 프로젝트·DB·설정·배포를 변경하지 않는다.
+
+프로젝트 삭제·초기화·강제 Git 동기화는 금지한다.
+
+---
+
+### 3. 최종 로그인 및 화면 흐름
+
+목표 사용자 흐름:
+
+**TK ELECTRIC INVENTORY**
+
+Login
+
+↓
+
+**SELECT BRANCH / WORKSPACE**
+
+- Savannah, GA
+- Indiana
+- Central Management
+
+↓
+
+지점 선택 시
+
+**SELECT MODE**
+
+- Field Mode
+- Admin Mode
+- 기타 기존 역할 기반 모드
+
+↓
+
+선택한 지점의 Inventory System
+
+**중앙 관리를 선택한 경우에는 Mode 선택 없이 중앙 관리 화면으로 이동한다.**
+
+#### Phase 1 구현 조건
+
+- Indiana 개발 환경에서 로그인 → 지점 선택 → 모드 선택 흐름을 구현한다.
+- 기존 Inventory의 로그인 UI와 Mode 선택 UI를 재사용한다.
+- Savannah 항목은 **미연결 / Coming Soon** 상태로 표시한다.
+- Savannah 버튼을 클릭해도 실제 운영 앱·API·세션·DB에 접근하지 않는다.
+- Central Management는 아이콘과 Coming Soon 화면만 제공한다.
+- 실제 중앙 관리 권한과 지점 간 SSO가 미구현이면 완료된 기능으로 표시하지 않는다.
+- 테스트에서는 합성 계정과 합성 지점으로 권한·전환 동작을 검증한다.
+- 직원에게는 허용된 지점과 모드만 표시한다.
+- URL 또는 branch ID 변경으로 권한을 우회하지 못하도록 서버에서도 검사한다.
+
+기존 Savannah 로그인 화면과 운영 라우팅은 수정하지 않는다.
+
+---
+
+### 4. Central Management — 아이콘만 구현
+
+이번 단계에서는 중앙 관리 시스템 전체를 만들지 않는다.
+
+Branch Selection 화면에 다음 항목을 추가한다.
+
+**Central Management**
+
+클릭 시:
+
+**Central Management — Coming Soon**
+
+향후 개발을 고려한 라우트와 권한 인터페이스만 준비한다.
+
+이번에 만들지 않을 기능:
+
+- 중앙 PostgreSQL DB
+- 중앙 품목 CRUD
+- 중앙 등록 요청 승인
+- 중앙 가격 관리
+- 중앙 → 지점 자동 동기화
+- 중앙과 Savannah 운영 연결
+
+중앙 관리가 실제 작동하는 것처럼 보여주는 가짜 데이터·승인 버튼은 만들지 않는다.
+
+---
+
+### 5. Indiana 독립 시스템 구축
+
+Indiana는 기존 TK Electric Inventory 소스를 재사용한다.
+
+필수 유지 모듈:
+
+- Inventory Management
+- Item Detail
+- Field Mode / Admin Mode
+- Receiving / Issuing / Returning / Transfers
+- Transactions
+- Wire Reel Management
+- Material Requests
+- Projects / PO
+- Dashboard
+- User Roles & Permissions
+- 한국어 / 영어 / 스페인어
+- Light / Dark Theme
+- 기존 UI 컴포넌트와 디자인
+
+Indiana는 별도의 개발 서버와 PostgreSQL 개발 DB를 사용한다.
+
+**Savannah DB를 복사한 뒤 수량만 0으로 수정하는 방식은 금지한다.**
+
+#### 초기 Indiana 상태
+
+- 품목: 승인된 카탈로그 기준자료 또는 합성 품목
+- 품목 재고 수량: 0
+- 위치별 재고 잔액: 0
+- 실물 릴: 없음
+- 입출고·반납 이력: 없음
+- 예약·자재 요청·초안: 없음
+- 실제 PO·프로젝트 업무 기록: 없음
+- 실제 구매가격: Savannah에서 복사하지 않음
+
+필요한 기본 카테고리와 창고 위치 등은 Indiana 전용으로 생성한다.
+
+실제 자재목록 도입은 별도 승인된 기준자료가 있을 때만 진행한다.
+
+---
+
+### 6. 환경·인증·저장소 완전 분리
+
+**DB 분리만으로 독립 환경이라고 판단하지 마라.**
+
+Indiana 개발 환경에서 다음을 모두 확인한다.
+
+- PostgreSQL DB
+- Session Store
+- Authentication Configuration
+- Object / File Storage
+- Uploaded Images
+- Environment Variables / Secrets
+- Monday.com Integration
+- Jibble Integration
+- Scheduled Jobs
+- Background Workers
+- External API Connections
+
+기존 Savannah 환경변수·비밀번호·토큰·세션 DB·업로드 저장소 설정을 통째로 복사하지 않는다.
+
+외부 연동과 자동 동기화는 기본적으로 비활성화한다.
+
+독립적으로 승인된 설정이 없는 기능은 차단하거나 합성 데이터로 모의 처리한다.
+
+기존 로그인 UI는 재사용할 수 있지만 Savannah 인증 세션·비밀번호·계정 DB를 복제해서 사용하지 않는다.
+
+실제 공통 인증이 구축되지 않은 경우에는 인증 통합 미완료로 표시한다.
+
+기존 앱의 seed, migration, backfill, 자동 동기화 기능이 Indiana DB 또는 Savannah 환경에 영향을 주지 않는지 실행 전에 확인한다.
+
+환경 격리를 확인하지 못하면 서버·DB 실행을 중단하고 소스와 독립 테스트 환경에서 작업한다.
+
+---
+
+### 7. 회사 전체 품목 정보 표준화
+
+향후 Savannah, Indiana 및 모든 지점에서 **동일한 Master Item은 동일한 SKU·이름·규격·사이즈·단위**를 사용해야 한다.
+
+공통 관리 대상:
+
+- Global Master Item ID
+- SKU
+- Item Name
+- Category / Subcategory
+- Detail Type / Subtype
+- Specification
+- Size / Size Label
+- Material / Rating
+- Unit of Measure
+- Manufacturer / Model
+- Approved Product Images
+- Search Aliases
+
+지점은 향후 중앙에서 승인된 표준 품목 정보를 사용한다.
+
+지점별로 같은 자재를 서로 다른 SKU나 이름으로 정식 등록하지 않도록 설계한다.
+
+#### Phase 1 기준정보
+
+중앙 DB가 아직 없으므로 **버전이 명시된 승인된 카탈로그 스냅샷**을 기준정보로 사용한다.
+
+- 승인된 기존 자재 Export가 있으면 사용 가능 여부와 범위를 먼저 확인한다.
+- 승인된 자료가 없다면 합성 카탈로그로 개발한다.
+- 합성 품목 ID와 정식 Master Item ID를 구분한다.
+- 지점 Local Item ID를 공통 Master Item ID로 간주하지 않는다.
+- 임시 ID를 향후 정식 ID로 자동 확정하지 않는다.
+- 기존 코드에 포함된 자재목록이 Savannah의 실제 전체 품목이라고 가정하지 않는다.
+
+실제 자재 기준자료가 없다면 **구조·기능 검증 완료 / 실제 자재목록 도입 미완료**로 보고한다.
+
+---
+
+### 8. 향후 중앙 수정 → 전 지점 자동 업데이트
+
+**이것은 최종 시스템의 필수 요구사항이다.**
+
+향후 중앙에서 SKU, Item Name, Size, Specification 등을 수정하면 모든 지점의 해당 품목 정보가 동일하게 변경되어야 한다.
+
+예시:
+
+기존:
+
+SKU: `EMT-075-OLD`
+
+Name: `3/4 EMT PIPE`
+
+변경:
+
+SKU: `EMT-075`
+
+Name: `EMT CONDUIT 3/4 IN`
+
+향후 중앙 동기화 적용 결과:
+
+- Savannah의 현재 품목 정보 변경
+- Indiana의 현재 품목 정보 변경
+- 다른 지점도 같은 Master Item 기준으로 변경
+- 재고 수량 유지
+- 구매가격 유지
+- 입출고·릴·PO 이력 유지
+- 기존 Local Item ID 유지
+- 과거 거래 스냅샷 유지
+
+#### 설계 요구사항
+
+1. Global Master Item ID로 품목을 식별한다.
+2. 중앙 품목 변경 버전을 기록한다.
+3. 같은 변경을 반복 수신해도 중복 생성하지 않는다.
+4. 이전 버전이 최신 버전을 덮지 않는다.
+5. 일부 지점 실패 시 미반영 상태를 기록한다.
+6. 연결 복구 시 안전하게 재동기화한다.
+7. 중앙 품목 비활성화로 지점의 과거 기록을 삭제하지 않는다.
+8. SKU 중복이나 다른 품목과의 충돌을 확인한다.
+9. 실제 규격·단위가 변경되는 경우 자동 동기화로 기존 재고 의미를 바꾸지 않는다.
+10. 동기화가 수정할 수 있는 필드는 명시적 허용 목록으로 관리한다.
+
+**동기화 변경 금지 항목**
+
+- Quantity On Hand
+- Location Balances
+- Purchase Prices
+- Inventory Movements
+- Wire Reel IDs / Remaining Lengths
+- Reservations
+- Material Requests / Drafts
+- Projects / PO
+- Historical Transaction Snapshots
+
+**Phase 1에서는 실제 중앙 동기화를 만들거나 실행하지 않는다.**
+
+단, Indiana 개발 소스에 향후 공통 필드 업데이트를 구현할 수 있는 데이터 모델·인터페이스를 준비하고 합성 데이터로 검증한다.
+
+---
+
+### 9. 공통 코드베이스 관리
+
+**Savannah와 Indiana의 공통 UI·기능을 각각 따로 개발하지 마라.**
+
+기존 GitHub 소스를 기준으로 다음을 구현한다.
+
+- 공통 기능은 기존 코드 재사용
+- 지점별 차이는 환경 설정으로 분리
+- 지점별 독립 배포 가능
+- 공통 기능 수정은 한 번 개발
+- 지점별 검증 후 동일 버전 적용
+
+기존 코드를 Indiana로 한 번 복사하는 것만으로 공통 코드 관리가 완성됐다고 보고하지 않는다.
+
+공통 Repository 기준 커밋과 Indiana 전용 변경사항을 추적한다.
+
+가능하면 기존 구조를 최소 변경하여 공통 코드를 유지한다. 불필요한 전면 모노레포 재구성은 하지 않는다.
+
+기존 Repository에 대한 쓰기 승인이 없으면 분리된 작업본과 검토 가능한 diff를 제공한다.
+
+GitHub main 자동 병합·push는 금지한다.
+
+---
+
+### 10. 초기 상태 검증과 입출고 검증 분리
+
+Indiana 초기 재고는 0이어야 한다.
+
+그러나 입출고 기능을 검사하면 테스트 DB의 수량과 거래 이력이 변경된다.
+
+따라서 검사 환경을 분리한다.
+
+**A. 초기 상태 검증**
+
+- 품목 수량 0
+- 위치별 수량 0
+- 릴·거래·예약·초안 없음
+- 기존 Savannah 데이터 없음
+
+**B. 거래 기능 검증**
+
+- 별도로 폐기 가능한 합성 데이터 사용
+- 시험 입고·출고·반납
+- 릴·위치별 잔고 검증
+- 데이터 격리 검증
+
+검사 후 수량만 0으로 덮거나 이력을 삭제하여 초기 상태를 위장하지 않는다.
+
+초기 상태 검증용 환경과 거래 시나리오 환경을 명확히 구분한다.
+
+---
+
+### 11. 이번 범위에서 제외
+
+- 실제 중앙 품목 관리 구현
+- 중앙 PostgreSQL DB 생성
+- 중앙 품목 승인·자동 동기화
+- 중앙 구매가격 관리
+- 기존 2A·2B 미적용 수정안 반영
+- Savannah 운영 앱 연결
+- Savannah 운영 DB 접근·변경
+- RMS 및 자동 발주
+- 기존 입출고·릴 저장 구조 재설계
+- #620 드롭다운 오류 수정
+- Vite 설정 변경
+- 기존 데이터 재계산·병합·재번호
+
+기존 시스템의 보호 기능은 소스 존재, 격리 검사 완료, 실제 운영 적용을 구분해서 기록한다.
+
+미적용 수정안을 현재 운영 기능으로 간주하지 않는다.
+
+---
+
+### 12. 실행 순서
+
+**Phase 1-A — 기존 Inventory 소스 확인**
+
+기존 TK Electric Inventory의 소스·UI·업무 기능·DB 구조를 분석하고 공통 개발 기준을 확정한다.
+
+**Phase 1-B — Indiana 독립 개발 환경**
+
+기존 Inventory UI·기능을 재사용하고 독립 DB·세션·파일 저장소·외부 연동 경계를 확인한다.
+
+**Phase 1-C — 지점 선택 및 모드 선택**
+
+Indiana 개발 환경에서 로그인 → Branch Selection → Mode Selection을 구현한다.
+
+Savannah는 미연결로, Central은 Coming Soon으로 표시한다.
+
+**Phase 1-D — 공통 품목 구조 준비**
+
+승인된 카탈로그 스냅샷, 공통 ID 연결 인터페이스, 버전·허용 필드 관리 구조를 준비한다.
+
+**Phase 1-E — 통합 검증**
+
+Indiana 초기 상태와 기능, 권한, 합성 품목 처리, 공통 코드 관리, 데이터 독립성을 검증한다.
+
+작업 중 기술적 판단은 승인 범위 안에서 처리하고, 항목별로 중간 승인을 반복 요청하지 않는다.
+
+---
+
+### 13. 안전 및 승인 조건
+
+이번 작업에서 수정할 수 있는 대상은 **분리된 Indiana 개발 작업본**이다.
+
+Savannah 기존 소스·DB·설정·배포는 변경하지 않는다.
+
+기존 운영 DB 조회·쓰기, seed·migration·backfill 실행, 서버 재시작, 실제 데이터 마이그레이션은 별도 승인 없이는 하지 않는다.
+
+새 개발 환경에서도 DB·세션·외부 연동의 대상이 독립적이라는 근거를 확인한 뒤 실행한다.
+
+신규 유료 리소스나 인증정보 변경이 필요하면 해당 부분만 승인 대기로 남긴다.
+
+관련 없는 기능을 개선한다는 이유로 작업 범위를 확대하지 않는다.
+
+---
+
+### 14. Phase 1 완료 기준
+
+다음 결과를 통합 보고한다.
+
+1. Indiana 앱이 기존 Inventory 코드를 실제로 재사용하는지
+2. 공통 코드 관리 방식과 기준 커밋
+3. Indiana 독립 개발 DB 및 환경 구성
+4. 초기 수량 0·업무기록 없음 검증
+5. 로그인 → 지점 선택 → 모드 선택 구현
+6. Savannah 미연결 및 Central Coming Soon 확인
+7. 주요 기존 Inventory 화면과 기능 보존
+8. SKU·자재명·규격·사이즈 공통 관리 구조
+9. 향후 중앙 수정 → 전 지점 업데이트 인터페이스
+10. 실제 검사 결과 및 미검증 사항
+11. Savannah 기존 프로젝트·DB·배포 미변경 확인
+12. Phase 2 중앙 품목 관리 구축 시 연결해야 할 부분
+
+실제 구현되지 않은 SSO, 중앙 품목 관리, Savannah 연결, 자동 동기화는 완료 항목으로 보고하지 않는다.
+
+**최종 목표**
+
+One Shared Inventory Codebase.
+
+Unified Item Definitions.
+
+Independent Branch Operations.
+
+Indiana Development First.
+
+Central Management Placeholder Only.
+
+Zero Unauthorized Changes to Savannah Production.

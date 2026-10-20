@@ -116,3 +116,18 @@ multi-branch architecture prompt. Regional servers and databases remain separate
 architecture has been implemented or that its implementation is authorized.
 Preserve Savannah data and keep price work deferred. Resolve catalog acquisition
 and authentication design safely before any environment creation or integration.
+
+The approved first multi-branch implementation phase is Indiana development only.
+Central Management is a permission-separated Coming Soon placeholder; Savannah
+is unconnected. Actual SSO, central catalog CRUD/approval/synchronization, price
+work, Savannah integration and deployment are outside this phase.
+
+**Why:** The user approved the narrowed Indiana-first prompt and allowed splitting
+the work into smaller units. Existing Savannah development data must be protected
+alongside production data.
+
+**How to apply:** Work in a separate source copy without modifying or migrating
+the running Savannah project. Use only new synthetic test resources; do not copy
+accounts, sessions, environment secrets, operational records or database dumps.
+Real item catalogs require approved exports. Label synthetic UI/SQL checks and
+unconnected authentication accurately rather than calling them a running branch.

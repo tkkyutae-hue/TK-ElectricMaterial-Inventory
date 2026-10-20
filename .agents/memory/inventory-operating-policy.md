@@ -131,3 +131,18 @@ the running Savannah project. Use only new synthetic test resources; do not copy
 accounts, sessions, environment secrets, operational records or database dumps.
 Real item catalogs require approved exports. Label synthetic UI/SQL checks and
 unconnected authentication accurately rather than calling them a running branch.
+
+The requested next Indiana development phase connects the existing inventory
+features and independent authentication/session flow using synthetic data only.
+Actual Savannah catalogs and photos remain deferred to a later phase.
+
+**Why:** The user's Phase 2 requirements explicitly separate initial synthetic
+inventory validation from real catalog onboarding and require startup isolation
+before any server execution.
+
+**How to apply:** A verified new Indiana development resource may receive explicit
+initial schema and synthetic fixtures in the implementation phase; no existing
+Savannah resource may be accessed. Missing independent OAuth or infrastructure
+blocks that portion, not all isolated work. Never equate a plan, mock login or
+one-time source copy with completed authentication, deployment or shared-code
+maintenance.

@@ -9,3 +9,4 @@
 - [Field draft safety](field-draft-safety.md) — distinguish local drafts from saved requests; validate with isolated mocks, not existing business databases or app startup.
 - [Request receipt privacy](request-receipt-privacy.md) — historical success is not current viewing permission; deleted targets permit only restricted minimal confirmation.
 - [Inventory operating policy](inventory-operating-policy.md) — agreed flow, roles, reservation/return/reel rules and deferred scope; requirements are not implementation claims.
+- [Indiana artifact preservation](indiana-artifact-preservation.md) — verify durable source/evidence before relying on old temporary copies or historical test results.

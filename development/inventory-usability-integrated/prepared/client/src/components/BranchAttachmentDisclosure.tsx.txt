@@ -1,0 +1,16 @@
+import { useState } from "react";
+import { documentBranchPrefix } from "@/lib/branchTransport";
+import { useLanguage } from "@/hooks/use-language";
+import { mediaMessages } from "@/lib/branchMedia";
+import { BranchAttachments } from "./BranchAttachments";
+
+/** No hidden list request for every row. Fetch only after the employee opens this record's attachments. */
+export function BranchAttachmentDisclosure({ kind, targetId, canWrite }: { kind: string; targetId: number; canWrite?: boolean }) {
+  const { lang } = useLanguage();
+  const [open, setOpen] = useState(false);
+  if (!documentBranchPrefix) return null;
+  return <details className="my-2 min-w-0" onToggle={event => setOpen(event.currentTarget.open)}>
+    <summary className="cursor-pointer min-h-11 py-3 text-sm font-semibold">{mediaMessages[lang].attachments}</summary>
+    {open && <BranchAttachments key={`${kind}:${targetId}`} kind={kind} targetId={targetId} canWrite={canWrite} />}
+  </details>;
+}

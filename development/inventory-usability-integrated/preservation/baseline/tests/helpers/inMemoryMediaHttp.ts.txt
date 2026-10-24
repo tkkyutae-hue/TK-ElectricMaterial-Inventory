@@ -1,0 +1,37 @@
+import { IncomingMessage, ServerResponse } from "node:http";
+import { Socket } from "node:net";
+import { Duplex } from "node:stream";
+import type { Express } from "express";
+
+/** Real raw/JSON parsing and binary responses; no server socket/session store. */
+export async function inMemoryMediaHttp(app: Express, url: string, options: {
+  method?: string; body?: unknown; userId?: string; headers?: Record<string, string>;
+  realSession?: boolean;
+} = {}): Promise<{ status: number; body: any; headers: Record<string, any> }> {
+  const req = new IncomingMessage(new Socket());
+  req.url = url; req.method = options.method ?? "GET";
+  const binary = Buffer.isBuffer(options.body);
+  const bytes = binary ? options.body as Buffer : options.body === undefined ? Buffer.alloc(0) : Buffer.from(JSON.stringify(options.body));
+  req.headers = { host: "synthetic.invalid", "content-length": String(bytes.length),
+    "content-type": binary ? "application/pdf" : "application/json", ...options.headers };
+  if (!options.realSession) (req as any).session = { userId: options.userId ?? "synthetic-admin" };
+  Object.defineProperty(req.socket, "remoteAddress", { value: "127.0.0.1" });
+  const chunks: Buffer[] = [];
+  const socket = new Duplex({ read() {}, write(chunk, _encoding, done) { chunks.push(Buffer.from(chunk)); done(); } });
+  const res = new ServerResponse(req);
+  res.assignSocket(socket as Socket);
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(Error("IN_MEMORY_MEDIA_TIMEOUT")), 20000);
+    res.on("finish", () => {
+      clearTimeout(timer);
+      const raw = Buffer.concat(chunks), split = raw.indexOf("\r\n\r\n") + 4;
+      const body = raw.subarray(split);
+      try { resolve({ status: res.statusCode, headers: res.getHeaders(),
+        body: String(res.getHeader("content-type")).includes("application/json") ? JSON.parse(body.toString()) : body }); }
+      catch (e) { reject(e); }
+      socket.destroy();
+    });
+    app(req, res);
+    queueMicrotask(() => { req.push(bytes); req.push(null); });
+  });
+}

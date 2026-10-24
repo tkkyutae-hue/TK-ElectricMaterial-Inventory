@@ -1,0 +1,192 @@
+import { apiRequest } from "@/lib/queryClient";
+import { requestDocumentContext } from "./branchTransport";
+import { transitionMessages } from "./transitionMessages";
+
+export class RequestCommandFailure extends Error {
+  constructor(public code: string, public uncertain = false) { super(code); }
+}
+export interface RequestIntent {
+  method: string;
+  url: string;
+  payload: Record<string, unknown>;
+  expectedRevision?: number;
+  sourceOperationId?: string;
+}
+interface Pending {
+  operationId: string;
+  context: string;
+  target: string;
+  intent: RequestIntent;
+  signature: string;
+  channel?: string;
+  inFlight?: Promise<any>;
+  uncertain: boolean;
+  retryBlocked: boolean;
+  lastCode?: string;
+}
+export interface PendingRequest {
+  operationId: string;
+  target: string;
+  intent: RequestIntent;
+  phase: "processing" | "checking";
+  lastCode?: string;
+  writeRetryAllowed: boolean;
+}
+const pending = new Map<string, Pending>();
+const listeners = new Set<() => void>();
+const notify = () => { for (const listener of listeners) listener(); };
+const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
+const definiteCodes = new Set([
+  "BRANCH_SELECTION_REQUIRED", "FORBIDDEN", "AUTH_REQUIRED", "REVISION_REQUIRED",
+  "OPERATION_ID_REQUIRED", "OPERATION_REUSED", "REQUEST_CHANGED", "STATE_CHANGED",
+  "UNDO_UNAVAILABLE", "INVALID_ITEMS", "INVALID_ITEM", "INVALID_PROJECT", "INVALID_TEXT",
+  "INVALID_REQUEST_TYPE", "INSUFFICIENT_STOCK", "TRANSFER_DESTINATION_REQUIRED",
+  "LOCATION_UNRESOLVED", "LOCATION_BALANCE_MISSING", "FULFILLMENT_CHANGED",
+  "COMMAND_ROLLED_BACK", "INVALID_STATUS",
+]);
+const deniedCodes = new Set(["FORBIDDEN", "AUTH_REQUIRED", "BRANCH_SELECTION_REQUIRED"]);
+function targetOf(url: string): string {
+  if (url === "/api/field/requests") return "new";
+  const match = /^\/api\/field\/requests\/([1-9]\d*)(?:\/(?:status|undo-edit|undo-complete))?$/.exec(url);
+  if (!match) throw new RequestCommandFailure("INVALID_REQUEST_TARGET");
+  return match[1];
+}
+function codeOf(error: any): string {
+  if (typeof error?.code === "string") return error.code;
+  try {
+    const code = JSON.parse(String(error?.message).slice(String(error?.message).indexOf("{"))).code;
+    if (typeof code === "string") return code;
+  } catch {}
+  return "RESULT_UNKNOWN";
+}
+function owned(operation: Pending): boolean {
+  return requestDocumentContext() === operation.context && pending.get(operation.target) === operation;
+}
+function assertOwned(operation: Pending) {
+  if (!owned(operation)) throw new RequestCommandFailure("BRANCH_CONTEXT_CHANGED", true);
+}
+function validResult(result: any, operation: Pending): boolean {
+  return result?.operationId === operation.operationId
+    && Number.isSafeInteger(result?.request?.id) && result.request.id > 0
+    && Number.isSafeInteger(result?.request?.revision) && result.request.revision >= 0
+    && (operation.target === "new" || String(result.request.id) === operation.target)
+    && (!result.request.deleted || operation.intent.method === "DELETE");
+}
+function accept(result: any, operation: Pending) {
+  assertOwned(operation);
+  if (!validResult(result, operation)) throw new RequestCommandFailure("RESULT_UNKNOWN", true);
+  pending.delete(operation.target);
+  // A deletion receipt is minimal even if a malformed service includes old fields.
+  return result.request.deleted ? { operationId: result.operationId,
+    request: { id: result.request.id, revision: result.request.revision, deleted: true } } : result;
+}
+function reject(error: any, operation: Pending): never {
+  assertOwned(operation);
+  const code = codeOf(error);
+  // A later refusal cannot prove that an earlier uncertain attempt did not commit.
+  const definite = !operation.uncertain && definiteCodes.has(code);
+  if (definite) pending.delete(operation.target);
+  else {
+    operation.uncertain = true;
+    operation.lastCode = code;
+    operation.retryBlocked ||= deniedCodes.has(code);
+  }
+  throw new RequestCommandFailure(code, !definite);
+}
+function run(operation: Pending, recover: boolean): Promise<any> {
+  assertOwned(operation);
+  if (operation.inFlight) return operation.inFlight;
+  // Defer work until after assigning the synchronous duplicate-click guard.
+  operation.inFlight = Promise.resolve().then(async () => {
+    try {
+      if (recover) {
+        const response = await apiRequest("GET", `/api/field/request-operations/${operation.operationId}`);
+        const receipt = await response.json();
+        assertOwned(operation); // body parsing may finish after auth/context invalidation
+        if (receipt?.state === "committed") return accept(receipt.result, operation);
+        if (receipt?.state !== "unknown" || operation.retryBlocked) {
+          throw new RequestCommandFailure(operation.lastCode ?? "RESULT_UNKNOWN", true);
+        }
+        // An absent receipt is NOT failure proof. Retry only the captured intent.
+      }
+      const intent = operation.intent;
+      const response = await apiRequest(intent.method, intent.url, {
+        payload: clone(intent.payload), operationId: operation.operationId,
+        ...(intent.expectedRevision !== undefined ? { expectedRevision: intent.expectedRevision } : {}),
+        ...(intent.sourceOperationId ? { sourceOperationId: intent.sourceOperationId } : {}),
+      });
+      const result = await response.json();
+      return accept(result, operation);
+    } catch (error) { return reject(error, operation); }
+    finally { operation.inFlight = undefined; notify(); }
+  });
+  notify();
+  return operation.inFlight;
+}
+export function subscribePendingRequests(listener: () => void) {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+}
+/** A detached local intent, never a historical server response or permission grant. */
+export function getPendingRequest(target: string): PendingRequest | null {
+  const operation = pending.get(target);
+  if (!operation || !owned(operation)) return null;
+  return { operationId: operation.operationId, target, intent: clone(operation.intent),
+    phase: operation.inFlight ? "processing" : "checking", lastCode: operation.lastCode,
+    writeRetryAllowed: !operation.retryBlocked };
+}
+/** Optional presentation channel locates cart Undo after its disposable panel closes. */
+export function getPendingRequestForChannel(channel: string): PendingRequest | null {
+  for (const operation of pending.values()) {
+    if (operation.channel === channel && owned(operation)) return getPendingRequest(operation.target);
+  }
+  return null;
+}
+export function retryPendingRequest(target: string, operationId: string) {
+  const operation = pending.get(target);
+  if (!operation || !owned(operation) || operation.operationId !== operationId) {
+    return Promise.reject(new RequestCommandFailure("RESULT_UNKNOWN", true));
+  }
+  return run(operation, true);
+}
+export async function requestCommand(
+  method: string, url: string, payload: Record<string, unknown>,
+  expectedRevision?: number, sourceOperationId?: string, channel?: string,
+): Promise<{ request: any; operationId: string }> {
+  const context = requestDocumentContext();
+  if (!context) throw new RequestCommandFailure("BRANCH_ACCOUNT_REQUIRED", true);
+  const target = targetOf(url);
+  // Serialize immediately: later caller mutation must not change the original intent.
+  const intent = clone({ method, url, payload, expectedRevision, sourceOperationId });
+  const signature = JSON.stringify(intent);
+  let operation = pending.get(target);
+  if (operation && !owned(operation)) {
+    // An old identity's unresolved command must never become a new identity's write.
+    throw new RequestCommandFailure("BRANCH_CONTEXT_CHANGED", true);
+  }
+  if (operation && operation.signature !== signature) throw new RequestCommandFailure("RESULT_UNKNOWN", true);
+  if (!operation) {
+    operation = { operationId: crypto.randomUUID(), context, target, intent, signature,
+      channel, uncertain: false, retryBlocked: false };
+    pending.set(target, operation);
+  }
+  return run(operation, operation.uncertain);
+}
+if (typeof window !== "undefined") {
+  window.addEventListener("inventory:branch-session-ended", () => {
+    // The existing transport permanently invalidates this document. Do not retain
+    // private intentions for a future account, or let late bodies restore them.
+    pending.clear();
+    notify();
+  });
+}
+
+export function requestCommandMessage(error: any, t: {
+  requestConflict: string; requestResultUnknown: string; requestActionBlocked: string;
+  branchSelectionRequired?: string;
+}) {
+  if (error?.uncertain) return t.requestResultUnknown;
+  if (error?.code === "BRANCH_SELECTION_REQUIRED") return t.branchSelectionRequired ?? transitionMessages.en.selection;
+  if (["REQUEST_CHANGED", "STATE_CHANGED", "UNDO_UNAVAILABLE", "FULFILLMENT_CHANGED"].includes(error?.code)) return t.requestConflict;
+  return `${t.requestActionBlocked} (${error?.code ?? "UNKNOWN"})`;
+}

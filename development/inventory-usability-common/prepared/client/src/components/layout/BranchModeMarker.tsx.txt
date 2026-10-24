@@ -1,0 +1,52 @@
+import { documentBranchPrefix } from "@/lib/branchTransport";
+import { useCommonMessages } from "@/hooks/use-common-messages";
+import { useLanguage } from "@/hooks/use-language";
+
+type BranchModeMarkerProps = {
+  mode: "field" | "admin";
+  className?: string;
+  color?: string;
+  mutedColor?: string;
+};
+
+/** Reads immutable document context only; it does not offer branch selection. */
+export function BranchModeMarker({ mode, className = "", color, mutedColor }: BranchModeMarkerProps) {
+  const m = useCommonMessages();
+  const { t } = useLanguage();
+  const branch = documentBranchPrefix.endsWith("/savannah")
+    ? "Savannah"
+    : documentBranchPrefix.endsWith("/indiana") ? "Indiana" : null;
+
+  if (!branch) return null;
+  const modeLabel = mode === "field" ? t.fieldModeChip : t.adminModeChip;
+  return (
+    <span
+      className={`branch-mode-marker ${className}`}
+      aria-label={`${m.branchLabel}: ${branch}. ${modeLabel}`}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 5, flexWrap: "wrap",
+        minWidth: 0, color: color ?? "inherit", fontSize: 12, lineHeight: 1.3,
+      }}
+    >
+      <span style={{ fontWeight: 700 }}>{m.branchLabel}: {branch}</span>
+      <span aria-hidden="true" style={{ color: mutedColor ?? "currentColor", opacity: 0.75 }}>·</span>
+      <span>{modeLabel}</span>
+    </span>
+  );
+}
+
+export function BranchExitGuidance({ className = "", color }: { className?: string; color?: string }) {
+  const m = useCommonMessages();
+  return (
+    <span
+      className={`branch-exit-guidance text-muted-foreground ${className}`}
+      role="note"
+      style={{
+        display: "block", maxWidth: 280, color,
+        fontSize: 12, lineHeight: 1.4, whiteSpace: "normal", overflowWrap: "anywhere",
+      }}
+    >
+      {m.branchExitGuidance}
+    </span>
+  );
+}

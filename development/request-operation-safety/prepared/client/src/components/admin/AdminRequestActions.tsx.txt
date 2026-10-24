@@ -1,0 +1,119 @@
+import { useRef } from "react";
+import { useLanguage } from "@/hooks/use-language";
+import { useFieldTheme } from "@/hooks/use-field-theme";
+import { useAuth } from "@/hooks/use-auth";
+import { requestCommand } from "@/lib/requestCommands";
+import { useFieldCommandFeedback } from "@/pages/field/FieldCommandFeedback";
+import type { MaterialRequest } from "@shared/schema";
+
+type Intent = { method: string; url: string; payload: Record<string, unknown>; revision: number;
+  source?: string; previousStatus?: string; nextStatus?: string; undo?: boolean };
+const NEXT: Record<string, string[]> = {
+  requested: ["preparing", "cancelled"],
+  preparing: ["ready", "cancelled"],
+  ready: ["completed", "cancelled"],
+};
+
+/** Manager controls only. Existing commands, revisions and completion Undo are unchanged. */
+export function AdminRequestActions({ req, onStatusChanged }: {
+  req: MaterialRequest; onStatusChanged: () => void;
+}) {
+  const { t } = useLanguage(), { F } = useFieldTheme(), { user } = useAuth();
+  const feedback = useFieldCommandFeedback(`admin-status:${req.id}`);
+  const attempt = useRef<Intent | null>(null), undo = useRef<Intent | null>(null);
+  const conflictRevision = useRef<number | null>(null);
+  const allowed = user?.role === "admin" || user?.role === "manager";
+  const labels: Record<string, string> = {
+    requested: t.reqStatus_requested, preparing: t.reqStatus_preparing, ready: t.reqStatus_ready,
+    completed: t.reqStatus_completed, cancelled: t.reqStatus_cancelled,
+  };
+  const actions = NEXT[req.status] ?? [];
+  const errorCode = (feedback.error as any)?.code;
+  const explanation = errorCode === "INSUFFICIENT_STOCK" ? t.adminInsufficientStock
+    : ["LOCATION_UNRESOLVED", "LOCATION_BALANCE_MISSING", "TRANSFER_DESTINATION_REQUIRED"].includes(errorCode)
+      ? t.adminLocationsRequired
+    : ["REQUEST_CHANGED", "STATE_CHANGED", "FULFILLMENT_CHANGED", "UNDO_UNAVAILABLE"].includes(errorCode)
+      ? t.adminRequestChanged
+    : ["FORBIDDEN", "AUTH_REQUIRED"].includes(errorCode) ? t.adminPermissionDenied
+    : errorCode === "BRANCH_SELECTION_REQUIRED" ? t.branchSelectionRequired : t.adminNotAppliedHint;
+  const needsRefresh = conflictRevision.current === req.revision;
+  const denied = feedback.phase === "failed" && ["FORBIDDEN", "AUTH_REQUIRED", "BRANCH_SELECTION_REQUIRED"].includes(errorCode);
+  const disabled = feedback.locked || feedback.blocked || needsRefresh || denied;
+  const buttonStyle = {
+    minHeight: 44, padding: "8px 12px", borderRadius: 8, fontSize: 13, fontWeight: 700,
+    border: `1px solid ${F.borderStrong}`, background: F.surface2, color: F.text,
+    cursor: disabled ? "default" : "pointer", overflowWrap: "anywhere" as const,
+  };
+
+  async function run(intent: Intent) {
+    if (!allowed || !feedback.begin()) return;
+    attempt.current = intent;
+    try {
+      const saved = await requestCommand(intent.method, intent.url, intent.payload, intent.revision, intent.source);
+      if (!feedback.succeed()) return;
+      conflictRevision.current = null;
+      attempt.current = null;
+      if (intent.undo || intent.nextStatus === "cancelled") undo.current = null;
+      else undo.current = intent.nextStatus === "completed"
+        ? { method: "POST", url: `/api/field/requests/${req.id}/undo-complete`, payload: {},
+          revision: saved.request.revision, source: saved.operationId, undo: true }
+        : { method: "PATCH", url: `/api/field/requests/${req.id}/status`,
+          payload: { status: intent.previousStatus }, revision: saved.request.revision, undo: true };
+      onStatusChanged();
+    } catch (error: any) {
+      if (!feedback.current()) return;
+      if (["REQUEST_CHANGED", "STATE_CHANGED", "FULFILLMENT_CHANGED", "UNDO_UNAVAILABLE"].includes(error?.code)) {
+        conflictRevision.current = req.revision;
+      }
+      feedback.fail(error);
+    }
+  }
+
+  if (!allowed) return null;
+  return <section aria-label={`${t.reqChangeStatus} #${req.id}`} data-testid={`admin-actions-${req.id}`}
+    style={{ color: F.text, overflowWrap: "anywhere" }}>
+    <p style={{ fontSize: 13, fontWeight: 700, margin: "0 0 8px" }}>
+      #{req.id} · {labels[req.status] ?? req.status}
+    </p>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      {actions.map(status => <button key={status} type="button" disabled={disabled}
+        data-testid={`btn-status-${status}-${req.id}`}
+        style={{ ...buttonStyle, opacity: disabled ? 0.6 : 1,
+          color: status === "cancelled" ? F.danger : F.text }}
+        onClick={() => run({ method: "PATCH", url: `/api/field/requests/${req.id}/status`,
+          payload: { status }, revision: req.revision, previousStatus: req.status, nextStatus: status })}>
+        {labels[status]}
+      </button>)}
+      {undo.current && <button type="button" disabled={disabled} style={buttonStyle}
+        data-testid={`admin-undo-${req.id}`} onClick={() => { if (undo.current) void run(undo.current); }}>{t.undoRequest}</button>}
+    </div>
+    {feedback.phase !== "writing" && feedback.current() && <div
+      role={feedback.phase === "failed" ? "alert" : "status"} aria-live="polite"
+      aria-busy={feedback.phase === "processing"} data-testid={`admin-result-${req.id}`}
+      style={{ marginTop: 10, padding: 12, border: `1px solid ${F.borderStrong}`, borderRadius: 8, fontSize: 13 }}>
+      <strong>{feedback.phase === "processing" ? t.adminProcessing
+        : feedback.phase === "success" ? t.adminServerConfirmed
+        : feedback.phase === "failed" ? t.adminNotApplied : t.adminCheckingResult}</strong>
+      {feedback.phase === "failed" && <p>{explanation}</p>}
+      {feedback.phase === "checking" && <p>{t.requestResultUnknown}</p>}
+      {feedback.phase === "checking" && (!feedback.retry || feedback.confirmationOnly) && <p>{t.adminContactBeforeRetry}</p>}
+      {feedback.phase === "checking" && feedback.retry && <button type="button" style={buttonStyle}
+        data-testid={`admin-retry-${req.id}`} onClick={() => {
+          if (feedback.restored) void feedback.recover((saved, original) => {
+            // Only completion has a server-defined original-source Undo.
+            // Do not guess a pre-remount status for other reverse transitions.
+            const intent = original.intent;
+            undo.current = intent.payload.status === "completed"
+              ? { method: "POST", url: `/api/field/requests/${req.id}/undo-complete`, payload: {},
+                revision: saved.request.revision, source: saved.operationId, undo: true } : null;
+            onStatusChanged();
+          });
+          else if (attempt.current) void run(attempt.current);
+        }}>
+        {t.adminRetrySameAction}
+      </button>}
+      {needsRefresh && feedback.phase === "failed" && <button type="button" style={buttonStyle}
+        onClick={onStatusChanged} data-testid={`admin-reload-${req.id}`}>{t.adminReloadRecord}</button>}
+    </div>}
+  </section>;
+}

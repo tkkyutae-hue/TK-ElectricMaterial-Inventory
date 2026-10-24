@@ -1,0 +1,73 @@
+import { catalogDigest, type CatalogApproval } from "./catalogIntroduction";
+import { createHash } from "node:crypto";
+import type { StartupPlan } from "./startupPlan";
+import type { CatalogImageSelection } from "./catalogPrivateAssets";
+import { createMediaStorage } from "./sharedMediaStorage";
+
+/** Pinned private catalog definition snapshot. No user ID, URL or credential
+ * is copied into development settings or Git. */
+export type CatalogDeployment = {
+  version: 1; reviewId: string; operationId: string;
+  sourceTargetId: string; targetId: string;
+  sourceEndpointSha256: string; targetEndpointSha256: string;
+  masterDesignationRef: string; newEmptyTargetReviewed: true;
+  relationshipPolicy: "unassigned";
+  groupPolicy?: "preserve-null-manufacturer-groups";
+  input: unknown; inputSha256: string;
+  assets: CatalogApproval["assets"];
+};
+
+export function bindCatalogDeployment(
+  document: CatalogDeployment, plan: Exclude<StartupPlan, { mode: "legacy" }>,
+  images: CatalogImageSelection, masterDesignationRef: string,
+) {
+  const d = document;
+  if (!d || d.version !== 1 || d.relationshipPolicy !== "unassigned" || d.newEmptyTargetReviewed !== true ||
+    (d.groupPolicy !== undefined && d.groupPolicy !== "preserve-null-manufacturer-groups") ||
+    d.masterDesignationRef !== masterDesignationRef || !/^activation-designations\/[a-f0-9-]{36}\.json$/.test(masterDesignationRef) ||
+    d.sourceTargetId !== plan.approval.savannah.targetId || d.targetId !== plan.approval.indiana.targetId ||
+    d.sourceEndpointSha256 !== plan.approval.savannah.endpointSha256 ||
+    d.targetEndpointSha256 !== plan.approval.indiana.endpointSha256 ||
+    !/^[A-Za-z0-9._:-]{1,128}$/.test(d.reviewId) ||
+    !/^[a-f0-9-]{36}$/.test(d.operationId) ||
+    catalogDigest(d.input) !== d.inputSha256 ||
+    catalogDigest(d.assets) !== catalogDigest(images.assets) ||
+    images.photos.targetId !== d.targetId) throw Error("CATALOG_DEPLOYMENT_INVALID");
+  const approval: CatalogApproval = {
+    reviewId: d.reviewId, sourceTargetId: d.sourceTargetId, targetId: d.targetId,
+    inputSha256: d.inputSha256, masterAccountId: plan.approval.masterAccountId,
+    newEmptyTargetReviewed: true, relationshipPolicy: "unassigned",
+    groupPolicy: d.groupPolicy,
+    assets: images.assets, sharedCatalogPhotosReviewed: true,
+    photoReviewId: images.photos.reviewEvidenceId,
+  };
+  return { catalog: { approval, photos: images.photos } };
+}
+
+/** Read-only startup. The explicit operator invokes execute separately; boot
+ * never imports catalog rows or adds locations, suppliers, accounts or schema. */
+export async function loadDevelopmentCatalogDeployment(
+  plan: StartupPlan, env: Record<string, string | undefined>, images?: CatalogImageSelection,
+) {
+  const reference = env.TK_CATALOG_IMPORT_APPROVAL_REFERENCE;
+  if (plan.mode !== "shared" || !reference) return {};
+  if (env.NODE_ENV !== "development" || !images ||
+    !/^catalog-introductions\/[a-f0-9-]{36}\/approval\.json$/.test(reference) ||
+    !/^[a-f0-9]{64}$/.test(env.TK_CATALOG_IMPORT_APPROVAL_SHA256 ?? "")) throw Error("CATALOG_DEPLOYMENT_CONFIGURATION_INVALID");
+  const parts = (env.PRIVATE_OBJECT_DIR ?? "").replace(/^\/+|\/+$/g, "").split("/");
+  if (parts.length < 2 || parts.some(p => !p || p === "." || p === ".." || /[\\%\u0000-\u001f]/.test(p))) {
+    throw Error("CATALOG_DEPLOYMENT_CONFIGURATION_INVALID");
+  }
+  const [bucket, ...prefix] = parts;
+  const { objectStorageClient } = await import("../replit_integrations/object_storage/objectStorage");
+  const bytes = await createMediaStorage(objectStorageClient).read(bucket, [...prefix, reference].join("/"), 4 * 1024 * 1024);
+  if (!bytes || createHash("sha256").update(bytes).digest("hex") !== env.TK_CATALOG_IMPORT_APPROVAL_SHA256) {
+    throw Error("CATALOG_DEPLOYMENT_CHANGED");
+  }
+  let document: CatalogDeployment, designation: string;
+  try {
+    document = JSON.parse(bytes.toString("utf8"));
+    designation = JSON.parse(env.TK_SHARED_APPROVAL_JSON ?? "").masterDesignationRef;
+  } catch { throw Error("CATALOG_DEPLOYMENT_INVALID"); }
+  return bindCatalogDeployment(document, plan, images, designation);
+}

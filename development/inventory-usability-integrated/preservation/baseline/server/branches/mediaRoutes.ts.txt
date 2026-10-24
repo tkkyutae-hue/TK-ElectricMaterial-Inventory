@@ -1,0 +1,132 @@
+import express, { type Express } from "express";
+import type { BranchMedia } from "./media";
+import { mediaTarget, validMediaId, MEDIA_MAX_BYTES } from "./media";
+import { BranchAccessError, type BranchId } from "./runtime";
+
+export function registerBranchMediaRoutes(app: Express, service: BranchMedia | undefined, branch: BranchId) {
+  // Exact route allow-list; the legacy media/integration gate stays in place.
+  const route = (handler: (req: any, res: any) => Promise<unknown>) => async (req: any, res: any) => {
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("Vary", "Cookie");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    try {
+      if (!service) throw new BranchAccessError("BRANCH_MEDIA_NOT_CONFIGURED", 503);
+      if (!req.currentUser?.id) throw new BranchAccessError("BRANCH_ACCOUNT_REQUIRED", 401);
+      await handler(req, res);
+    } catch (e) {
+      const known = e instanceof BranchAccessError;
+      res.status(known ? e.status : 503).json({ code: known ? e.code : "BRANCH_MEDIA_UNAVAILABLE" });
+    }
+  };
+  const actor = (r: any) => r.currentUser.id as string;
+  app.get("/api/legacy-media/items/:targetId/images/:imageId/:operation", route(async (req, res) => {
+    if (!["content", "download", "thumbnail"].includes(req.params.operation)) throw new BranchAccessError("BRANCH_MEDIA_NOT_FOUND", 404);
+    const result = await service!.legacyContent(actor(req), mediaTarget("item", req.params.targetId), Number(req.params.imageId));
+    res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+    if (req.params.operation === "download") res.setHeader("Content-Disposition", `attachment; filename="${result.id}.${result.type.split("/")[1]}"`);
+    res.type(result.type).send(result.data);
+  }));
+  app.get("/api/media/operations/:mediaId", route(async (req, res) => {
+    res.json(await service!.operation(actor(req), req.params.mediaId));
+  }));
+  app.get("/api/media/targets/:kind/:targetId", route(async (req, res) => {
+    res.json(await service!.list(actor(req), mediaTarget(req.params.kind, req.params.targetId)));
+  }));
+  app.get("/api/media/targets/:kind/:targetId/export", route(async (req, res) => {
+    const data = await service!.archive(actor(req), mediaTarget(req.params.kind, req.params.targetId));
+    res.setHeader("Content-Disposition", 'attachment; filename="attachments.zip"');
+    res.type("application/zip").send(data);
+  }));
+  app.post("/api/media/targets/:kind/:targetId", express.raw({ type: () => true, limit: MEDIA_MAX_BYTES }),
+    route(async (req, res) => {
+      const id = req.headers["x-media-operation"];
+      if (typeof id !== "string" || !validMediaId(id)) throw new BranchAccessError("BRANCH_MEDIA_ID_INVALID", 400);
+      res.status(201).json(await service!.upload(actor(req), mediaTarget(req.params.kind, req.params.targetId),
+        id, req.body, req.headers["content-type"]?.split(";")[0] ?? ""));
+    }));
+  for (const operation of ["content", "download", "thumbnail"] as const) {
+    app.get(`/api/media/:mediaId/${operation}`, route(async (req, res) => {
+      const result = await service!.content(actor(req), req.params.mediaId, operation === "thumbnail");
+      res.setHeader("Content-Type", result.type);
+      // Never inline executable attachments, even with a misleading filename.
+      res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+      if (operation === "download" || result.type === "application/pdf") {
+        res.setHeader("Content-Disposition", `attachment; filename="${result.id}.${result.type === "application/pdf" ? "pdf" : "jpg"}"`);
+      }
+      res.send(result.data);
+    }));
+  }
+  app.delete("/api/media/:mediaId", route(async (req, res) => {
+    res.json(await service!.remove(actor(req), req.params.mediaId));
+  }));
+  app.get("/api/inventory/:id/images", route(async (req, res) => {
+    res.json(await service!.gallery(actor(req), mediaTarget("item", req.params.id)));
+  }));
+  app.get("/api/inventory/:id/primary-image", route(async (req, res) => {
+    const images = await service!.gallery(actor(req), mediaTarget("item", req.params.id));
+    if (!images.length) throw new BranchAccessError("BRANCH_MEDIA_NOT_FOUND", 404);
+    // Internal authorized streaming only; no redirect to arbitrary saved URLs.
+    const image = images[0];
+    const data = image.source === "catalog"
+      ? await service!.catalogContent(actor(req), image.imageUrl)
+      : image.source === "legacy"
+      ? await service!.legacyContent(actor(req), mediaTarget("item", req.params.id), image.id)
+      : await service!.content(actor(req), image.imageUrl.split("/").at(-2)!);
+    res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+    res.type(data.type).send(data.data);
+  }));
+  // Existing gallery's upload-then-append contract: upload already attached the
+  // object atomically; this is a verified replay, not a second metadata insert.
+  app.post("/api/inventory/:id/images", route(async (req, res) => {
+    const target = mediaTarget("item", req.params.id);
+    const assets = await service!.list(actor(req), target);
+    if (typeof req.body?.imageUrl !== "string" || !assets.some(a => a.url === req.body.imageUrl)) {
+      throw new BranchAccessError("BRANCH_MEDIA_LINK_INVALID", 400);
+    }
+    // Must also recheck current write authority, even for this no-op contract.
+    await service!.verifyLink(actor(req), target, req.body.imageUrl);
+    res.json(await service!.gallery(actor(req), target));
+  }));
+  app.delete("/api/inventory/:id/images/:imageId", route(async (req, res) => {
+    const target = mediaTarget("item", req.params.id), imageId = Number(req.params.imageId);
+    if (!Number.isSafeInteger(imageId) || imageId <= 0) throw new BranchAccessError("BRANCH_MEDIA_ID_INVALID", 400);
+    const asset = await service!.galleryAsset(actor(req), target, imageId);
+    await service!.remove(actor(req), asset.id, target);
+    res.json(await service!.gallery(actor(req), target));
+  }));
+  app.patch("/api/inventory/:id/images/:imageId/primary", route(async (req, res) => {
+    const target = mediaTarget("item", req.params.id), imageId = Number(req.params.imageId);
+    if (!Number.isSafeInteger(imageId) || imageId <= 0) throw new BranchAccessError("BRANCH_MEDIA_ID_INVALID", 400);
+    await service!.primary(actor(req), target, imageId);
+    res.json(await service!.gallery(actor(req), target));
+  }));
+  app.patch("/api/inventory/:id/images/reorder", route(async (req, res) => {
+    const target = mediaTarget("item", req.params.id);
+    if (!Array.isArray(req.body?.imageIds)) throw new BranchAccessError("BRANCH_MEDIA_LINK_INVALID", 400);
+    await service!.reorder(actor(req), target, req.body.imageIds);
+    res.json(await service!.gallery(actor(req), target));
+  }));
+  app.use((error: any, _req: any, res: any, _next: any) => {
+    res.setHeader("Cache-Control", "private, no-store");
+    res.status(error?.type === "entity.too.large" ? 413 : 503).json({
+      code: error?.type === "entity.too.large" ? "BRANCH_MEDIA_SIZE_INVALID" : "BRANCH_MEDIA_UNAVAILABLE",
+    });
+  });
+  // Generic business writes cannot attach arbitrary URLs/blobs, or recycle a
+  // valid file from another parent. Use the target-aware endpoints above.
+  app.use((req, res, next) => {
+    if (!["POST", "PATCH", "PUT"].includes(req.method)) return next();
+    // Unsupported legacy media/export paths must retain their capability gate,
+    // including its before-business-SQL denial; this guard covers generic CRUD.
+    if (/(?:upload|photo|image|drawing|quotation|pptx|extract|import|generate|export|download)/i.test(req.path)) return next();
+    const unsafe = (body: unknown, depth = 0): boolean => {
+      if (depth > 20) return true;
+      if (!body || typeof body !== "object") return false;
+      return Object.entries(body).some(([key, value]) =>
+        (/(?:imageurl|photourl|photodata|attachment|drawingurl|quotationurl)/i.test(key) && value != null && value !== "")
+          || unsafe(value, depth + 1));
+    };
+    if (unsafe(req.body)) return res.status(400).json({ code: "BRANCH_MEDIA_TARGET_REQUIRED" });
+    next();
+  });
+}

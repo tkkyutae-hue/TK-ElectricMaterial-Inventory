@@ -1,0 +1,37 @@
+import type { Express, Request, Response } from "express";
+import { BranchAccessError } from "./runtime";
+import { CatalogPreparationError } from "./catalogPreparation";
+import type { CatalogIntroduction } from "./catalogIntroduction";
+
+export function registerCatalogIntroductionRoutes(app: Express, service: CatalogIntroduction) {
+  const actor = (r: Request) => {
+    const id = (r as any).currentUser?.id;
+    if (typeof id !== "string") throw new BranchAccessError("BRANCH_ACCOUNT_REQUIRED",401);
+    return id;
+  };
+  const route = (work: (req: Request,res: Response)=>Promise<unknown>, command = false) =>
+    async (req: Request,res: Response) => {
+      res.setHeader("Cache-Control","private, no-store");
+      res.setHeader("X-Content-Type-Options","nosniff");
+      try { await work(req,res); }
+      catch(e) {
+        const known = e instanceof BranchAccessError || e instanceof CatalogPreparationError;
+        res.status(e instanceof BranchAccessError ? e.status : e instanceof CatalogPreparationError ? 400 : 503)
+          .json({ code: known ? e.code : command ? "CATALOG_RESULT_UNKNOWN" : "CATALOG_UNAVAILABLE" });
+      }
+    };
+  app.post("/api/admin/catalog-preparation/preview",route(async (req,res) => {
+    res.json(await service.preview(actor(req),req.body));
+  }));
+  app.post("/api/admin/catalog-preparation/import",route(async (req,res) => {
+    res.json(await service.execute(actor(req),req.body?.operationId,req.body?.catalog));
+  },true));
+  app.get("/api/admin/catalog-preparation/operations/:operationId",route(async (req,res) => {
+    res.json(await service.result(actor(req),String(req.params.operationId)));
+  }));
+  app.get("/api/catalog-images/:kind/:targetId/:slot",route(async (req,res) => {
+    const file = await service.image(actor(req),req.params.kind as any,Number(req.params.targetId),Number(req.params.slot));
+    res.setHeader("Content-Security-Policy","default-src 'none'; sandbox");
+    res.type(file.type).send(file.data);
+  }));
+}

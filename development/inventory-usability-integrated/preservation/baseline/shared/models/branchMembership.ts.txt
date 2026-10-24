@@ -1,0 +1,13 @@
+import { sql } from "drizzle-orm";
+import { pgTable, varchar, boolean, primaryKey, check } from "drizzle-orm/pg-core";
+import { users } from "./auth";
+
+/** COMMON identity database only. Never migrate this into branch business DBs. */
+export const branchMemberships = pgTable("branch_memberships", {
+  userId: varchar("user_id").notNull().references(() => users.id),
+  branch: varchar("branch", { enum: ["savannah", "indiana"] }).notNull(),
+  active: boolean("active").notNull().default(false),
+}, table => [
+  primaryKey({ name: "branch_memberships_user_id_branch_pk", columns: [table.userId, table.branch] }),
+  check("branch_memberships_branch_check", sql`${table.branch} in ('savannah','indiana')`),
+]);

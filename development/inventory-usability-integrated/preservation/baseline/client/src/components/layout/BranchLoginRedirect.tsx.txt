@@ -1,0 +1,8 @@
+import { useEffect } from "react";
+import { redirectBranchLogin } from "@/lib/branchTransport";
+
+/** A branch document must never host an in-place login after authentication loss. */
+export function BranchLoginRedirect() {
+  useEffect(() => { redirectBranchLogin(); }, []);
+  return null;
+}

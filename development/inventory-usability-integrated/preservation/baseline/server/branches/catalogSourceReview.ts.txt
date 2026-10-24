@@ -1,0 +1,248 @@
+import type { PoolClient } from "pg";
+import type { CommonBranchAuthority } from "./application";
+import { BranchAccessError } from "./runtime";
+import { prepareIndianaCatalog } from "./catalogPreparation";
+import { catalogDigest } from "./catalogIntroduction";
+import { createHash } from "node:crypto";
+import type { CatalogImageSelection } from "./catalogPrivateAssets";
+
+type ImageKind = "item" | "category" | "group";
+type Link = Readonly<{ sourceKey: string; targetId: number }>;
+export type CatalogSourceMappings = Readonly<{
+  locations: readonly Link[];
+  suppliers: readonly Link[];
+  images: readonly Readonly<{ kind: ImageKind; sourceKey: string; sourceImageKey: string; slot: number; assetKey: string }>[];
+  approvedAssetKeys: readonly string[];
+}>;
+type Issue = { code: string; sourceKey: string };
+const keyPattern = /^[A-Za-z0-9._:-]{1,128}$/;
+const sourceKey = (kind: string, id: number) => `${kind}:${id}`;
+function fail(code: string, status = 409): never { throw new BranchAccessError(code, status); }
+
+/**
+ * Trusted server capability, NOT a public route or CLI. No env/DB singleton,
+ * storage provider, HTTP fetch, startup hook or target writer is imported.
+ * A source label is not physical endpoint evidence; every result is review-only.
+ */
+export function createCatalogSourceReview(options: {
+  source: { targetId: string; connect(): Promise<PoolClient> };
+  sourceTargetId: string; targetId: string; masterAccountId: string;
+  authority: Pick<CommonBranchAuthority, "withCatalogLock">;
+  sourceSchema?: string; maxRowsPerTable?: number;
+  imageSelection?: CatalogImageSelection;
+  /** Separately approved catalog-only introduction; never read from HTTP. */
+  relationshipPolicy?: "unassigned";
+}) {
+  const schema = options.sourceSchema ?? "public";
+  const cap = options.maxRowsPerTable ?? 5000;
+  const { sourceTargetId, targetId, masterAccountId } = options;
+  if (!/^[a-z_][a-z0-9_]{0,62}$/.test(schema)
+    || !Number.isSafeInteger(cap) || cap < 1 || cap > 10000
+    || !keyPattern.test(options.sourceTargetId) || !keyPattern.test(options.targetId)
+    || !keyPattern.test(options.masterAccountId)
+    || options.source.targetId !== options.sourceTargetId
+    || options.targetId === options.sourceTargetId) fail("CATALOG_SOURCE_CAPABILITY_INVALID", 503);
+  const lock = options.authority.withCatalogLock?.bind(options.authority);
+  if (!lock) fail("CATALOG_SOURCE_AUTHORITY_REQUIRED", 503);
+  const connect = options.source.connect.bind(options.source);
+  const columns = {
+    categories: `id,name,code,description,sort_order AS "sortOrder",is_active AS "isActive",
+      coalesce(image_url,'')<>'' AS "hasImage"${options.imageSelection ? ',image_url AS "imageReference"' : ""}`,
+    items: `id,sku,name,category_id AS "categoryId",unit_of_measure AS "unitOfMeasure",
+      description,brand,manufacturer,subcategory,detail_type AS "detailType",sub_type AS "subType",
+      base_item_name AS "baseItemName",size_label AS "sizeLabel",size_sort_value AS "sizeSortValue",
+      minimum_stock AS "minimumStock",reorder_point AS "reorderPoint",reorder_quantity AS "reorderQuantity",
+      tracking_mode AS "trackingMode",is_active AS "isActive",
+      primary_location_id AS "primaryLocationId",supplier_id AS "supplierId"`,
+    item_groups: `id,category_id AS "categoryId",base_item_name AS "baseItemName",
+      manufacturer_name AS "manufacturerName",sort_order AS "sortOrder",
+      coalesce(image_url,'')<>'' AS "hasImage"${options.imageSelection ? ',image_url AS "imageReference"' : ""}`,
+    locations: `id,name,code,location_type AS "locationType",is_active AS "isActive"`,
+    suppliers: "id,name",
+    item_images: `id,item_id AS "itemId",sort_order AS "sortOrder",coalesce(image_url,'')<>'' AS "hasImage"${options.imageSelection ? ',image_url AS "imageReference"' : ""}`,
+  } as const;
+  function mappings(value: readonly Link[], allowed: Set<string>) {
+    if (!Array.isArray(value) || value.length > 10000) fail("CATALOG_SOURCE_MAPPING_INVALID", 400);
+    const result = new Map<string, number>();
+    for (const row of value) {
+      if (!row || !allowed.has(row.sourceKey) || result.has(row.sourceKey)
+        || !Number.isSafeInteger(row.targetId) || row.targetId <= 0) fail("CATALOG_SOURCE_MAPPING_INVALID", 400);
+      result.set(row.sourceKey, row.targetId);
+    }
+    return result;
+  }
+  return {
+    async prepare(actor: string, review: CatalogSourceMappings) {
+      if (actor !== masterAccountId) fail("CATALOG_MASTER_REQUIRED", 403);
+      // Freeze caller-owned mappings before any async boundary.
+      let approved: CatalogSourceMappings;
+      try { approved = structuredClone(review); }
+      catch { return fail("CATALOG_SOURCE_MAPPING_INVALID", 400); }
+      return lock(actor, async () => {
+        let client: PoolClient;
+        try { client = await connect(); }
+        catch { return fail("CATALOG_SOURCE_READ_FAILED", 503); }
+        const snapshot: Record<keyof typeof columns, any[]> = {} as any;
+        let inTransaction = false;
+        try {
+          await client.query("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
+          inTransaction = true;
+          await client.query("SET LOCAL statement_timeout='2500ms'; SET LOCAL lock_timeout='500ms'; SET LOCAL idle_in_transaction_session_timeout='5000ms'");
+          const safety = (await client.query(
+            "SELECT current_setting('transaction_read_only') AS read_only, current_setting('transaction_isolation') AS isolation",
+          )).rows[0];
+          if (safety?.read_only !== "on" || safety?.isolation !== "repeatable read") {
+            fail("CATALOG_SOURCE_TRANSACTION_NOT_SAFE", 503);
+          }
+          for (const table of Object.keys(columns) as (keyof typeof columns)[]) {
+            // Constant allowlisted identifiers; PK-order bounded read, no COUNT,
+            // stock/reel aggregates, OFFSET or date ordering.
+            const rows = (await client.query(
+              `SELECT ${columns[table]} FROM "${schema}"."${table}" ORDER BY id LIMIT $1`, [cap + 1],
+            )).rows;
+            if (rows.length > cap) fail("CATALOG_SOURCE_LIMIT_EXCEEDED");
+            snapshot[table] = rows;
+          }
+          await client.query("COMMIT");
+          inTransaction = false;
+        } catch (error) {
+          if (inTransaction) await client.query("ROLLBACK").catch(() => {});
+          // Unknown driver errors may contain connection/internal details.
+          if (error instanceof BranchAccessError) throw error;
+          fail("CATALOG_SOURCE_READ_FAILED", 503);
+        } finally { client.release(); }
+
+        const { categories, items, item_groups: groups, locations, suppliers, item_images: photos } = snapshot;
+        const issues: Issue[] = [];
+        if (!categories.length || !items.length) issues.push({ code: "CATALOG_SOURCE_EMPTY", sourceKey: "catalog" });
+        if ([...categories, ...items].some(row => typeof row.isActive !== "boolean")) {
+          fail("CATALOG_SOURCE_ACTIVE_FLAG_REQUIRED");
+        }
+        const locationKeys = new Set(locations.map(r => sourceKey("location", r.id)));
+        const supplierKeys = new Set(suppliers.map(r => sourceKey("supplier", r.id)));
+        if (!approved || !Array.isArray(approved.images) || approved.images.length > 10000
+          || !Array.isArray(approved.approvedAssetKeys) || approved.approvedAssetKeys.length > 10000
+          || approved.approvedAssetKeys.some(k => typeof k !== "string" || !keyPattern.test(k))) {
+          fail("CATALOG_SOURCE_MAPPING_INVALID", 400);
+        }
+        const locationMap = mappings(approved.locations, locationKeys);
+        const supplierMap = mappings(approved.suppliers, supplierKeys);
+        const unassigned = options.relationshipPolicy === "unassigned";
+        if (unassigned && (locationMap.size || supplierMap.size)) fail("CATALOG_UNASSIGNED_RELATIONSHIPS_REQUIRED", 400);
+        let approvedAssets = new Set(approved.approvedAssetKeys);
+        const expectedImages: { kind: ImageKind; sourceKey: string; sourceImageKey: string; slot: number }[] = [];
+        const referenceHashes = new Map<string, string>();
+        const identity = (r: { kind: string; sourceKey: string; slot: number }) => JSON.stringify([r.kind, r.sourceKey, r.slot]);
+        const noteReference = (kind: ImageKind, key: string, slot: number, raw: unknown) => {
+          if (options.imageSelection) {
+            if (typeof raw !== "string") fail("CATALOG_IMAGE_SOURCE_CHANGED");
+            referenceHashes.set(identity({ kind, sourceKey: key, slot }), createHash("sha256").update(raw).digest("hex"));
+          }
+        };
+        for (const [kind, list] of [["category", categories], ["group", groups]] as const) {
+          for (const row of list) if (row.hasImage) {
+            expectedImages.push({ kind, sourceKey: sourceKey(kind, row.id), sourceImageKey: sourceKey(kind, row.id), slot: 0 });
+            noteReference(kind, sourceKey(kind, row.id), 0, row.imageReference);
+          }
+        }
+        const itemIds = new Set(items.map(r => r.id));
+        const itemSlots = new Map<number, number>();
+        photos.sort((a, b) => a.itemId - b.itemId || (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id - b.id);
+        for (const photo of photos) {
+          if (!itemIds.has(photo.itemId)) fail("CATALOG_SOURCE_IMAGE_REFERENCE_INVALID");
+          if (!photo.hasImage) continue;
+          const slot = itemSlots.get(photo.itemId) ?? 0;
+          itemSlots.set(photo.itemId, slot + 1);
+          if (slot >= 4) issues.push({ code: "CATALOG_SOURCE_IMAGE_CAPACITY_EXCEEDED", sourceKey: sourceKey("item", photo.itemId) });
+          else expectedImages.push({ kind: "item", sourceKey: sourceKey("item", photo.itemId),
+            sourceImageKey: sourceKey("item-image", photo.id), slot });
+          if (slot < 4) noteReference("item", sourceKey("item", photo.itemId), slot, photo.imageReference);
+        }
+        const selected = options.imageSelection?.select(expectedImages.map(r => ({
+          ...r, referenceSha256: referenceHashes.get(identity(r))!,
+        })));
+        if (selected) {
+          // The browser may not reinterpret a trusted omission or substitute a
+          // different asset. An empty mapping requests the server-held selection.
+          if (approved.images.length && catalogDigest(approved.images) !== catalogDigest(selected.images)) {
+            fail("CATALOG_SOURCE_IMAGE_MAPPING_INVALID", 400);
+          }
+          approved = { ...approved, images: selected.images,
+            approvedAssetKeys: options.imageSelection!.assets.map(a => a.key) };
+          approvedAssets = new Set(approved.approvedAssetKeys);
+        }
+        const omitted = new Set(selected?.omitted.map(identity) ?? []);
+        const imageIdentity = (r: { kind: string; sourceKey: string; slot: number }) =>
+          JSON.stringify([r.kind, r.sourceKey, r.slot]);
+        const expected = new Map(expectedImages.map(image => [imageIdentity(image), image.sourceImageKey]));
+        const images: { kind: ImageKind; sourceKey: string; slot: number; assetKey: string }[] = [];
+        const seen = new Set<string>();
+        for (const image of approved.images) {
+          if (!image || !expected.has(imageIdentity(image)) || expected.get(imageIdentity(image)) !== image.sourceImageKey || seen.has(imageIdentity(image))
+            || !approvedAssets.has(image.assetKey)) fail("CATALOG_SOURCE_IMAGE_MAPPING_INVALID", 400);
+          seen.add(imageIdentity(image));
+          images.push({ kind: image.kind, sourceKey: image.sourceKey, slot: image.slot, assetKey: image.assetKey });
+        }
+        for (const image of expectedImages) if (!seen.has(imageIdentity(image)) && !omitted.has(imageIdentity(image))) {
+          issues.push({ code: "CATALOG_IMAGE_REVIEW_REQUIRED", sourceKey: image.sourceKey });
+        }
+        const itemLinks = items.map(row => {
+          const result: { sourceKey: string; locationSourceKey?: string; supplierSourceKey?: string } = {
+            sourceKey: sourceKey("item", row.id),
+          };
+          if (!unassigned && row.primaryLocationId != null) {
+            result.locationSourceKey = sourceKey("location", row.primaryLocationId);
+            if (!locationMap.has(result.locationSourceKey)) issues.push({ code: "CATALOG_LOCATION_MAPPING_REQUIRED", sourceKey: result.sourceKey });
+          }
+          if (!unassigned && row.supplierId != null) {
+            result.supplierSourceKey = sourceKey("supplier", row.supplierId);
+            if (!supplierMap.has(result.supplierSourceKey)) issues.push({ code: "CATALOG_SUPPLIER_MAPPING_REQUIRED", sourceKey: result.sourceKey });
+          }
+          return result;
+        });
+        const sourceItems = items.map(row => {
+          if (row.categoryId == null) fail("CATALOG_SOURCE_CATEGORY_REQUIRED");
+          const { id, categoryId, ...fields } = row;
+          return { ...fields, ...(unassigned ? { primaryLocationId: null, supplierId: null } : {}),
+            sourceKey: sourceKey("item", id), categorySourceKey: sourceKey("category", categoryId),
+            ...((selected ? images.some(i => i.kind === "item" && i.sourceKey === sourceKey("item", id)) : itemSlots.has(id))
+              ? { imageUrl: "SOURCE_PHOTO_REVIEW_REQUIRED" } : {}) };
+        });
+        const input = {
+          ...(unassigned ? { relationshipPolicy: "unassigned" as const,
+            unassignedSourceLinks: { locations: items.filter(r => r.primaryLocationId != null).length,
+              suppliers: items.filter(r => r.supplierId != null).length } } : {}),
+          categories: categories.map(({ id, hasImage, imageReference: _ref, ...row }) => ({ ...row, sourceKey: sourceKey("category", id),
+            ...(hasImage && !omitted.has(identity({ kind: "category", sourceKey: sourceKey("category", id), slot: 0 }))
+              ? { imageUrl: "SOURCE_PHOTO_REVIEW_REQUIRED" } : {}) })),
+          items: sourceItems,
+          groups: groups.map(({ id, categoryId, hasImage, imageReference: _ref, ...row }) => ({ ...row, sourceKey: sourceKey("group", id),
+            categorySourceKey: sourceKey("category", categoryId),
+            ...(hasImage && !omitted.has(identity({ kind: "group", sourceKey: sourceKey("group", id), slot: 0 }))
+              ? { imageUrl: "SOURCE_PHOTO_REVIEW_REQUIRED" } : {}) })),
+          mappings: { locations: [...locationMap].map(([sourceKey, targetId]) => ({ sourceKey, targetId })),
+            suppliers: [...supplierMap].map(([sourceKey, targetId]) => ({ sourceKey, targetId })), items: itemLinks },
+          images,
+        };
+        const preview = prepareIndianaCatalog({ ...input, sourceBranch: "savannah", targetBranch: "indiana",
+          targetState: "new-empty", previewOnly: true, sourceTargetId, targetId });
+        return {
+          kind: "indiana-source-catalog-review" as const, executable: false as const,
+          sourceTargetId, targetId,
+          readyForIndependentReview: issues.length === 0, issues, input, inputSha256: catalogDigest(input), preview,
+          photoReferences: expectedImages,
+          omittedPhotoReferences: selected?.omitted ?? [],
+          references: {
+            locations: locations.map(({ id, ...row }) => ({ ...row, sourceKey: sourceKey("location", id) })),
+            suppliers: suppliers.map(({ id, ...row }) => ({ ...row, sourceKey: sourceKey("supplier", id) })),
+          },
+          notices: ["PHYSICAL_SOURCE_TARGET_AND_EMPTY_STATE_NOT_ATTESTED",
+            "TARGET_LOCATION_AND_SUPPLIER_IDS_REQUIRE_INDEPENDENT_VERIFICATION",
+            options.imageSelection ? "SOURCE_PHOTO_REFERENCES_HASHED_NOT_EXPORTED" : "SOURCE_PHOTO_URLS_AND_BYTES_NOT_READ",
+            "APPROVED_ASSET_CONTENT_VALIDATION_DEFERRED_TO_EXISTING_IMPORTER",
+            "PRICES_CONTACTS_STOCK_REELS_HISTORY_AND_ACCOUNTS_NOT_EXPORTED"],
+        };
+      });
+    },
+  };
+}

@@ -1,0 +1,25 @@
+import { LoadState } from "@/components/shared/LoadState";
+
+/** Keep failed queries distinct from genuinely empty results. No raw error text is rendered. */
+export function adminLoadKind(error: unknown): "forbidden" | "unconfigured" | "error" {
+  const value = error as { status?: number; code?: string; message?: string } | undefined;
+  let code = value?.code;
+  try { code ??= JSON.parse(value?.message?.slice(value.message.indexOf("{")) ?? "").code; } catch {}
+  if (value?.status === 401 || value?.status === 403 || /^(401|403):/.test(value?.message ?? "") ||
+      ["FORBIDDEN", "AUTH_REQUIRED"].includes(code ?? "")) return "forbidden";
+  if (["FEATURE_NOT_CONFIGURED", "MEDIA_NOT_CONFIGURED", "STORAGE_NOT_CONFIGURED"].includes(code ?? "")) return "unconfigured";
+  return "error";
+}
+
+export function AdminLoadState({ isLoading, error, count, filtered, onRetry, onClearFilters }: {
+  isLoading?: boolean; error?: unknown; count: number; filtered?: boolean;
+  onRetry: () => void; onClearFilters?: () => void;
+}) {
+  if (error) {
+    const state = adminLoadKind(error);
+    return state === "error" ? <LoadState state="error" onRetry={onRetry} /> : <LoadState state={state} />;
+  }
+  if (isLoading) return <LoadState state="loading" />;
+  if (!count) return filtered ? <LoadState state="filtered" onClearFilters={onClearFilters} /> : <LoadState state="empty" />;
+  return null;
+}

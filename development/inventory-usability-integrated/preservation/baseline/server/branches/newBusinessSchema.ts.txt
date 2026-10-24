@@ -1,0 +1,67 @@
+import { is, SQL } from "drizzle-orm";
+import { PgDialect, PgTable, getTableConfig } from "drizzle-orm/pg-core";
+import * as source from "../../shared/schema";
+
+/**
+ * Pure REVIEW renderer for a NEW empty branch DB. No connection, executor,
+ * environment, DROP, ALTER-existing, accounts, sessions or automatic startup.
+ */
+export function prepareNewBusinessSchema() {
+  const quote = (s: string) => `"${s.replaceAll('"', '""')}"`;
+  const dialect = new PgDialect();
+  const values: unknown[] = Object.values(source);
+  const configs = [...new Set(values.filter((v): v is PgTable => is(v, PgTable)))]
+    .map(table => getTableConfig(table)).filter(t => !["users", "sessions"].includes(t.name));
+  const names = new Set(configs.map(t => t.name));
+  const externalUsers: { table: string; columns: string[]; onDelete: string }[] = [];
+  const statements: string[] = [];
+  const rawSQL = (s: SQL) => {
+    const query = dialect.sqlToQuery(s);
+    if (query.params.length) throw Error("BRANCH_SCHEMA_PARAMETERIZED_DDL_REQUIRES_REVIEW");
+    return query.sql;
+  };
+  for (const table of configs) {
+    if (table.enableRLS || table.policies.length || (table.schema && table.schema !== "public")) {
+      throw Error("BRANCH_SCHEMA_POLICY_REQUIRES_REVIEW");
+    }
+    const columns = table.columns.map(c => {
+      if (c.generated || c.generatedIdentity) throw Error("BRANCH_SCHEMA_GENERATED_COLUMN_REQUIRES_REVIEW");
+      const value = c.default;
+      const literal = value === undefined ? "" : is(value, SQL) ? rawSQL(value)
+        : typeof value === "number" || typeof value === "boolean" ? String(value)
+        : "'" + (typeof value === "string" ? value : JSON.stringify(value)).replaceAll("'", "''") + "'";
+      return `${quote(c.name)} ${c.getSQLType()}${c.primary ? " PRIMARY KEY" : ""}${c.notNull ? " NOT NULL" : ""}${c.isUnique && !c.primary ? " UNIQUE" : ""}${literal ? " DEFAULT " + literal : ""}`;
+    });
+    for (const key of table.primaryKeys) columns.push(`CONSTRAINT ${quote(key.getName())} PRIMARY KEY (${key.columns.map(c => quote(c.name)).join(",")})`);
+    for (const constraint of table.uniqueConstraints) {
+      const name = constraint.getName();
+      if (!name || constraint.nullsNotDistinct) throw Error("BRANCH_SCHEMA_UNIQUE_REQUIRES_REVIEW");
+      columns.push(`CONSTRAINT ${quote(name)} UNIQUE (${constraint.columns.map(c => quote(c.name)).join(",")})`);
+    }
+    for (const check of table.checks) columns.push(`CONSTRAINT ${quote(check.name)} CHECK (${rawSQL(check.value)})`);
+    statements.push(`CREATE TABLE ${quote(table.name)} (\n  ${columns.join(",\n  ")}\n);`);
+  }
+  for (const table of configs) {
+    for (const fk of table.foreignKeys) {
+      const ref = fk.reference(), foreign = getTableConfig(ref.foreignTable).name;
+      if (foreign === "users") {
+        externalUsers.push({ table: table.name, columns: ref.columns.map(c => c.name), onDelete: fk.onDelete ?? "no action" });
+        continue;
+      }
+      if (!names.has(foreign)) throw Error("BRANCH_SCHEMA_UNMAPPED_REFERENCE");
+      statements.push(`ALTER TABLE ${quote(table.name)} ADD CONSTRAINT ${quote(fk.getName())}
+        FOREIGN KEY (${ref.columns.map(c => quote(c.name)).join(",")}) REFERENCES ${quote(foreign)}
+        (${ref.foreignColumns.map(c => quote(c.name)).join(",")}) ON UPDATE ${fk.onUpdate ?? "no action"} ON DELETE ${fk.onDelete ?? "no action"};`);
+    }
+    for (const index of table.indexes) {
+      const config = index.config;
+      if (!config.name || config.with || config.concurrently || (config.method && config.method !== "btree")) throw Error("BRANCH_SCHEMA_INDEX_REQUIRES_REVIEW");
+      const cols = config.columns.map(c => is(c, SQL)
+        ? rawSQL(c).replaceAll(quote(table.name) + ".", "")
+        : quote((c as { name: string }).name));
+      statements.push(`CREATE ${config.unique ? "UNIQUE " : ""}INDEX ${quote(config.name)} ON ${quote(table.name)}
+        (${cols.join(",")})${config.where ? " WHERE " + rawSQL(config.where).replaceAll(quote(table.name) + ".", "") : ""};`);
+    }
+  }
+  return Object.freeze({ sql: statements.join("\n\n"), tables: configs.map(t => t.name), externalUsers });
+}

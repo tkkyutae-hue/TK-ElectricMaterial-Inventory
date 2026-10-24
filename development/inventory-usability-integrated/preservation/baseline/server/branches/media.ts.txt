@@ -1,0 +1,345 @@
+import { createHash } from "node:crypto";
+import type { Pool, PoolClient } from "pg";
+import sharp from "sharp";
+import JSZip from "jszip";
+import { BranchAccessError, type BranchId } from "./runtime";
+import type { CommonBranchAuthority } from "./application";
+import type { CatalogIntroduction } from "./catalogIntroduction";
+
+export type MediaTarget = { kind: "item" | "category" | "request" | "project" | "movement"; id: number };
+export type MediaRow = {
+  id: string; branch: BranchId; target_kind: MediaTarget["kind"]; target_id: number;
+  uploaded_by: string; fingerprint: string; object_key: string; content_type: string;
+  byte_size: number; content_sha256: string; state: "ready" | "deleted"; gallery_image_id: number | null;
+};
+/** Private adapter only. No signed/public URL or local-file fallback. */
+export interface PrivateMediaObjects {
+  /** Immutable conditional creation. Existing identical bytes may be replayed. */
+  put(key: string, data: Buffer, type: string, hash: string): Promise<void>;
+  get(key: string): Promise<Buffer | null>;
+}
+/** Explicit, owner-reviewed read capability. It receives the exact locked
+ * database row, never a client-provided URL. No resolver/fallback is supplied. */
+export interface LegacyPhotoProvider {
+  sourceTargetId: string;
+  reviewEvidenceId: string;
+  readExact(row: Readonly<{ id: number; itemId: number; imageUrl: string }>): Promise<{ data: Buffer; type: string } | null>;
+}
+export const MEDIA_MAX_BYTES = 5 * 1024 * 1024;
+const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+export const validMediaId = (id: string) => uuid.test(id);
+const tables = { item: "items", category: "categories", request: "material_requests",
+  project: "projects", movement: "inventory_movements" } as const;
+function fail(code: string, status = 403): never { throw new BranchAccessError(code, status); }
+export function mediaTarget(kind: string, raw: unknown): MediaTarget {
+  const id = Number(raw);
+  if (!Object.hasOwn(tables, kind) || !Number.isSafeInteger(id) || id <= 0
+    || !/^[1-9]\d*$/.test(String(raw))) fail("BRANCH_MEDIA_TARGET_INVALID", 400);
+  return { kind: kind as MediaTarget["kind"], id };
+}
+export function mediaUrl(branch: BranchId, id: string) {
+  if (!validMediaId(id)) fail("BRANCH_MEDIA_ID_INVALID", 400);
+  return `/branches/${branch}/api/media/${id}/content`;
+}
+const hash = (b: Buffer | string) => createHash("sha256").update(b).digest("hex");
+
+/** Validates actual content; images are normalized before immutable storage. */
+export async function prepareMedia(data: Buffer, declared: string) {
+  if (!Buffer.isBuffer(data) || !data.length || data.length > MEDIA_MAX_BYTES) fail("BRANCH_MEDIA_SIZE_INVALID", 413);
+  if (declared === "application/pdf") {
+    if (data.subarray(0, 5).toString() !== "%PDF-"
+      || !data.subarray(Math.max(0, data.length - 1024)).includes(Buffer.from("%%EOF"))) {
+      fail("BRANCH_MEDIA_TYPE_INVALID", 415);
+    }
+    // PDFs are attachments only, never inline HTML or server-executed content.
+    return { data, type: "application/pdf" };
+  }
+  if (declared === "image/jpg") declared = "image/jpeg";
+  if (!["image/png", "image/jpeg", "image/webp"].includes(declared)) fail("BRANCH_MEDIA_TYPE_INVALID", 415);
+  try {
+    const input = sharp(data, { limitInputPixels: 16_000_000, animated: false });
+    const meta = await input.metadata();
+    if (meta.format !== ({ "image/png": "png", "image/jpeg": "jpeg", "image/webp": "webp" } as Record<string, string>)[declared]
+      || (meta.pages ?? 1) > 1) fail("BRANCH_MEDIA_TYPE_INVALID", 415);
+    const output = await input.rotate().resize({ width: 1200, height: 1200,
+      fit: "inside", withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer();
+    return { data: output, type: "image/jpeg" };
+  } catch (e) {
+    if (e instanceof BranchAccessError) throw e;
+    return fail("BRANCH_MEDIA_TYPE_INVALID", 415);
+  }
+}
+
+/** All handles are explicit; this module does not import DB/env/bootstrap/storage. */
+export function createBranchMedia(options: {
+  branch: BranchId; pool: Pool; authority: CommonBranchAuthority; objects: PrivateMediaObjects;
+  objectTimeoutMs?: number;
+  targetId?: string;
+  legacyPhotos?: LegacyPhotoProvider;
+  catalog?: CatalogIntroduction;
+}) {
+  const { branch, pool, authority, objects } = options;
+  const legacy = options.legacyPhotos;
+  if (legacy && (branch !== "savannah" || !options.targetId
+    || legacy.sourceTargetId !== options.targetId || !/^[a-zA-Z0-9._:-]{1,128}$/.test(legacy.reviewEvidenceId))) {
+    fail("LEGACY_MEDIA_REVIEW_REQUIRED", 503);
+  }
+  const timeout = options.objectTimeoutMs ?? 15_000;
+  if (!Number.isInteger(timeout) || timeout < 1 || timeout > 15_000) fail("BRANCH_MEDIA_TIMEOUT_INVALID", 400);
+  async function objectWork<T>(promise: Promise<T>, writing = false): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([promise, new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new BranchAccessError(writing ? "BRANCH_MEDIA_RESULT_UNKNOWN" : "BRANCH_MEDIA_UNAVAILABLE", 503)), timeout);
+      })]);
+    } finally { if (timer) clearTimeout(timer); }
+  }
+  async function guarded<T>(actorId: string, target: MediaTarget, write: boolean,
+    work: (client: PoolClient, actor: { id: string; role: string }) => Promise<T>) {
+    return authority.withMembershipLock(actorId, branch, async () => {
+      const actor = await authority.accounts.getUser(actorId);
+      if (!actor || actor.id !== actorId || actor.status !== "active") fail("BRANCH_ACCOUNT_REQUIRED", 401);
+      if (!(await authority.hasMembership(actorId, branch))) fail("BRANCH_ACCESS_DENIED");
+      const c = await pool.connect();
+      try {
+        await c.query("BEGIN");
+        await c.query("SET LOCAL statement_timeout='8s'; SET LOCAL lock_timeout='3s'");
+        // Lock the actual parent through the metadata transaction. No dynamic SQL identifier from a URL.
+        const parent = (await c.query(`SELECT * FROM ${tables[target.kind]} WHERE id=$1 FOR ${write ? "UPDATE" : "SHARE"}`, [target.id])).rows[0];
+        if (!parent) fail("BRANCH_MEDIA_NOT_FOUND", 404);
+        const manager = actor.role === "admin" || actor.role === "manager";
+        const managerRead = manager || actor.role === "manager_viewer";
+        const ownRequest = target.kind === "request" && actor.role === "staff" && parent.submitted_by === actorId;
+        const catalogRead = !write && ["item", "category"].includes(target.kind)
+          && ["viewer", "staff", "manager_viewer"].includes(actor.role ?? "");
+        if (write ? !(manager || (ownRequest && parent.status === "requested"))
+          : !(managerRead || ownRequest || catalogRead)) fail("BRANCH_MEDIA_ACCESS_DENIED");
+        const value = await work(c, { id: actor.id, role: actor.role! });
+        await c.query("COMMIT");
+        return value;
+      } catch (e) { await c.query("ROLLBACK").catch(() => {}); throw e; }
+      finally { c.release(); }
+    });
+  }
+  const matches = (row: MediaRow | undefined, target: MediaTarget) => row?.branch === branch
+    && row.target_kind === target.kind && row.target_id === target.id;
+  async function row(id: string): Promise<MediaRow> {
+    if (!validMediaId(id)) fail("BRANCH_MEDIA_ID_INVALID", 400);
+    const r = (await pool.query("SELECT * FROM branch_media_assets WHERE id=$1 AND branch=$2", [id, branch])).rows[0];
+    if (!r) fail("BRANCH_MEDIA_NOT_FOUND", 404);
+    return r;
+  }
+  function safe(r: MediaRow) {
+    return { id: r.id, imageId: r.gallery_image_id, url: mediaUrl(branch, r.id),
+      contentType: r.content_type, size: r.byte_size, state: r.state };
+  }
+  async function galleryRows(c: PoolClient, target: MediaTarget) {
+    const rows = (await c.query(`SELECT i.*, a.id AS managed_asset_id,
+      a.branch AS managed_branch, a.target_kind AS managed_kind,
+      a.target_id AS managed_target, a.state AS managed_state FROM item_images i
+      LEFT JOIN branch_media_assets a ON a.gallery_image_id=i.id
+      WHERE i.item_id=$1 ORDER BY i.sort_order,i.id LIMIT 101 FOR SHARE OF i`, [target.id])).rows;
+    if (rows.length > 100) fail("BRANCH_MEDIA_GALLERY_LIMIT", 503);
+    if (new Set(rows.map(r => r.id)).size !== rows.length || rows.some(r => r.managed_asset_id
+      && (r.managed_branch !== branch || r.managed_kind !== "item"
+        || r.managed_target !== target.id || r.managed_state !== "ready"))) fail("BRANCH_MEDIA_GALLERY_INVALID", 503);
+    return rows;
+  }
+  async function requireMutableGallery(c: PoolClient, target: MediaTarget) {
+    if ((await galleryRows(c, target)).some(r => !r.managed_asset_id)) fail("LEGACY_MEDIA_READ_ONLY", 405);
+  }
+  return {
+    async legacyContent(actor: string, target: MediaTarget, imageId: number) {
+      if (branch !== "savannah") fail("LEGACY_MEDIA_BRANCH_DENIED");
+      if (!legacy) fail("LEGACY_MEDIA_REVIEW_REQUIRED", 503);
+      if (!Number.isSafeInteger(imageId) || imageId < 1) fail("BRANCH_MEDIA_ID_INVALID", 400);
+      return guarded(actor, target, false, async c => {
+        const r = (await galleryRows(c, target)).find(r => r.id === imageId && !r.managed_asset_id);
+        if (!r) fail("BRANCH_MEDIA_NOT_FOUND", 404);
+        const result = await objectWork(legacy.readExact(Object.freeze({
+          id: r.id, itemId: r.item_id, imageUrl: r.image_url,
+        })));
+        if (!result) fail("BRANCH_MEDIA_OBJECT_MISSING", 404);
+        if (!Buffer.isBuffer(result.data) || !result.data.length || result.data.length > MEDIA_MAX_BYTES) fail("BRANCH_MEDIA_SIZE_INVALID", 413);
+        // Inspect the image without rewriting original bytes or saving thumbnails.
+        if (!["image/png", "image/jpeg", "image/webp"].includes(result.type)) fail("BRANCH_MEDIA_TYPE_INVALID", 415);
+        const meta = await sharp(result.data, { limitInputPixels: 16_000_000, animated: false }).metadata();
+        if (meta.format !== ({ "image/png": "png", "image/jpeg": "jpeg", "image/webp": "webp" } as Record<string, string>)[result.type]
+          || (meta.pages ?? 1) > 1) fail("BRANCH_MEDIA_TYPE_INVALID", 415);
+        return { data: Buffer.from(result.data), type: result.type, id: `legacy-${imageId}` };
+      });
+    },
+    async operation(actor: string, id: string) {
+      const r = await row(id);
+      // A receipt belongs to the uploader AND requires current parent access.
+      if (r.uploaded_by !== actor) fail("BRANCH_MEDIA_NOT_FOUND", 404);
+      return guarded(actor, { kind: r.target_kind, id: r.target_id }, false, async c =>
+        safe((await c.query("SELECT * FROM branch_media_assets WHERE id=$1 AND branch=$2", [id, branch])).rows[0]));
+    },
+    async archive(actor: string, target: MediaTarget) {
+      return guarded(actor, target, false, async c => {
+        const rows = (await c.query(`SELECT * FROM branch_media_assets WHERE branch=$1
+          AND target_kind=$2 AND target_id=$3 AND state='ready' ORDER BY id LIMIT 101`, [branch, target.kind, target.id])).rows as MediaRow[];
+        if (rows.length > 100 || rows.reduce((sum, r) => sum + r.byte_size, 0) > 20 * 1024 * 1024) fail("BRANCH_MEDIA_EXPORT_TOO_LARGE", 413);
+        const zip = new JSZip();
+        for (const r of rows) {
+          const expected = `branches/${branch}/media/v1/${r.id}`;
+          if (r.object_key !== expected) fail("BRANCH_MEDIA_PATH_INVALID");
+          const bytes = await objectWork(objects.get(expected));
+          if (!bytes) fail("BRANCH_MEDIA_OBJECT_MISSING", 404);
+          if (bytes.length !== r.byte_size || hash(bytes) !== r.content_sha256) fail("BRANCH_MEDIA_INTEGRITY_FAILED", 503);
+          zip.file(`${r.id}.${r.content_type === "application/pdf" ? "pdf" : "jpg"}`, bytes);
+        }
+        return zip.generateAsync({ type: "nodebuffer", compression: "STORE" });
+      });
+    },
+    async list(actor: string, target: MediaTarget) {
+      return guarded(actor, target, false, async c => {
+        const rows = (await c.query("SELECT * FROM branch_media_assets WHERE branch=$1 AND target_kind=$2 AND target_id=$3 AND state='ready' ORDER BY created_at,id LIMIT 101",
+          [branch, target.kind, target.id])).rows as MediaRow[];
+        return rows.map(safe);
+      });
+    },
+    async upload(actor: string, target: MediaTarget, id: string, body: Buffer, declared: string) {
+      if (!validMediaId(id)) fail("BRANCH_MEDIA_ID_INVALID", 400);
+      // Bind to the original bytes, type, actor, parent and branch, not a lossy transformation.
+      const prepared = await prepareMedia(body, declared);
+      const fingerprint = hash(JSON.stringify([branch, actor, target.kind, target.id, declared, hash(body)]));
+      return guarded(actor, target, true, async c => {
+        const previous = (await c.query("SELECT * FROM branch_media_assets WHERE id=$1", [id])).rows[0] as MediaRow | undefined;
+        if (previous) {
+          if (!matches(previous, target) || previous.uploaded_by !== actor || previous.fingerprint !== fingerprint) fail("BRANCH_MEDIA_OPERATION_CONFLICT", 409);
+          // A deleted operation is never revived, even by a matching upload retry.
+          return { ...safe(previous), replayed: true };
+        }
+        if ((await c.query(`SELECT id FROM branch_media_assets WHERE branch=$1
+          AND target_kind=$2 AND target_id=$3 AND state='ready' LIMIT 100`, [branch, target.kind, target.id])).rows.length >= 100) {
+          fail("BRANCH_MEDIA_LIMIT_REACHED", 409);
+        }
+        if (prepared.type.startsWith("image/") && target.kind === "item") {
+          const count = (await c.query("SELECT id FROM item_images WHERE item_id=$1 LIMIT 4", [target.id])).rows.length;
+          if (count >= 4) fail("BRANCH_MEDIA_GALLERY_FULL", 409);
+        }
+        const key = `branches/${branch}/media/v1/${id}`;
+        // A provider error rolls back SQL. A successful object followed by SQL
+        // failure can leave an unlinked private blob; same-ID retry is immutable.
+        await objectWork(objects.put(key, prepared.data, prepared.type, hash(prepared.data)), true);
+        let galleryId: number | null = null;
+        if (prepared.type.startsWith("image/") && target.kind === "item") {
+          const inserted = await c.query(`INSERT INTO item_images(item_id,image_url,sort_order)
+            SELECT $1,$2,COALESCE(MAX(sort_order),-1)+1 FROM item_images WHERE item_id=$1 RETURNING id`,
+          [target.id, mediaUrl(branch, id)]);
+          galleryId = inserted.rows[0].id;
+        }
+        if (prepared.type.startsWith("image/") && target.kind === "category") {
+          await c.query("UPDATE categories SET image_url=$1 WHERE id=$2", [mediaUrl(branch, id), target.id]);
+        }
+        const saved = (await c.query(`INSERT INTO branch_media_assets
+          (id,branch,target_kind,target_id,uploaded_by,fingerprint,object_key,content_type,byte_size,gallery_image_id,content_sha256)
+          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+        [id, branch, target.kind, target.id, actor, fingerprint, key, prepared.type, prepared.data.length, galleryId, hash(prepared.data)])).rows[0];
+        return { ...safe(saved), replayed: false };
+      });
+    },
+    async content(actor: string, id: string, thumbnail = false) {
+      const r = await row(id);
+      return guarded(actor, { kind: r.target_kind, id: r.target_id }, false, async c => {
+        const current = (await c.query("SELECT * FROM branch_media_assets WHERE id=$1 AND branch=$2 AND state='ready' FOR SHARE", [id, branch])).rows[0] as MediaRow | undefined;
+        if (!current) fail("BRANCH_MEDIA_NOT_FOUND", 404);
+        const expected = `branches/${branch}/media/v1/${id}`;
+        if (current.object_key !== expected) fail("BRANCH_MEDIA_PATH_INVALID");
+        const data = await objectWork(objects.get(expected));
+        if (!data) fail("BRANCH_MEDIA_OBJECT_MISSING", 404);
+        if (data.length !== current.byte_size || hash(data) !== current.content_sha256) fail("BRANCH_MEDIA_INTEGRITY_FAILED", 503);
+        if (thumbnail && !current.content_type.startsWith("image/")) fail("BRANCH_MEDIA_TYPE_INVALID", 415);
+        return { data: thumbnail ? await sharp(data).resize({ width: 240, height: 240, fit: "inside" }).jpeg().toBuffer() : data,
+          type: current.content_type, id };
+      });
+    },
+    async remove(actor: string, id: string, expectedTarget?: MediaTarget) {
+      const r = await row(id);
+      const target = { kind: r.target_kind, id: r.target_id };
+      if (expectedTarget && !matches(r, expectedTarget)) fail("BRANCH_MEDIA_NOT_FOUND", 404);
+      return guarded(actor, target, true, async c => {
+        const current = (await c.query("SELECT * FROM branch_media_assets WHERE id=$1 AND branch=$2 FOR UPDATE", [id, branch])).rows[0] as MediaRow;
+        if (current.state !== "deleted") {
+          await c.query("UPDATE branch_media_assets SET state='deleted',deleted_at=now(),deleted_by=$2 WHERE id=$1", [id, actor]);
+          if (current.gallery_image_id) await c.query("DELETE FROM item_images WHERE id=$1 AND item_id=$2",
+            [current.gallery_image_id, current.target_id]);
+          if (target.kind === "category") await c.query("UPDATE categories SET image_url=NULL WHERE id=$1 AND image_url=$2",
+            [target.id, mediaUrl(branch, id)]);
+        }
+        // Retain tombstone/creator/fingerprint and private blob. No public URL,
+        // immediate physical deletion or lost-reply retry can resurrect a file.
+        return { id, state: "deleted" as const };
+      });
+    },
+    async gallery(actor: string, target: MediaTarget) {
+      return guarded(actor, target, false, async c => {
+        const rows = await galleryRows(c, target);
+        const result = [];
+        for (const r of rows) {
+          if (r.managed_asset_id) {
+            result.push({ id: r.id, itemId: r.item_id, imageUrl: mediaUrl(branch, r.managed_asset_id),
+              sortOrder: r.sort_order, altText: r.alt_text, source: "branch_media_assets", readOnly: false });
+            continue;
+          }
+          if (options.catalog && branch === "indiana" && await options.catalog.linkedImage(c,target.id,r.image_url)) {
+            result.push({id:r.id,itemId:r.item_id,imageUrl:r.image_url,sortOrder:r.sort_order,
+              altText:r.alt_text,source:"catalog",readOnly:true});
+            continue;
+          }
+          if (branch !== "savannah" || !legacy) fail("LEGACY_MEDIA_REVIEW_REQUIRED", 503);
+          result.push({ id: r.id, itemId: r.item_id,
+            imageUrl: `/branches/savannah/api/legacy-media/items/${target.id}/images/${r.id}/content`,
+            sortOrder: r.sort_order, altText: r.alt_text, source: "legacy", readOnly: true });
+        }
+        return result;
+      });
+    },
+    async catalogContent(actor: string, url: string) {
+      const match = /^\/branches\/indiana\/api\/catalog-images\/item\/([1-9]\d*)\/([0-3])$/.exec(url);
+      if (!options.catalog || branch !== "indiana" || !match) fail("CATALOG_IMAGE_MAPPING_INVALID",400);
+      return options.catalog.image(actor,"item",Number(match[1]),Number(match[2]));
+    },
+    async galleryAsset(actor: string, target: MediaTarget, imageId: number) {
+      return guarded(actor, target, false, async c => {
+        const r = (await c.query(`SELECT * FROM branch_media_assets WHERE branch=$1
+          AND target_kind='item' AND target_id=$2 AND gallery_image_id=$3`, [branch, target.id, imageId])).rows[0] as MediaRow | undefined;
+        if (!r) fail("BRANCH_MEDIA_NOT_FOUND", 404);
+        return safe(r);
+      });
+    },
+    async verifyLink(actor: string, target: MediaTarget, url: string) {
+      return guarded(actor, target, true, async c => {
+        const rows = (await c.query(`SELECT * FROM branch_media_assets WHERE branch=$1
+          AND target_kind=$2 AND target_id=$3 AND state='ready' LIMIT 100`, [branch, target.kind, target.id])).rows as MediaRow[];
+        if (!rows.some(r => mediaUrl(branch, r.id) === url && r.gallery_image_id)) fail("BRANCH_MEDIA_LINK_INVALID", 400);
+        return { success: true };
+      });
+    },
+    async primary(actor: string, target: MediaTarget, imageId: number) {
+      return guarded(actor, target, true, async c => {
+        await requireMutableGallery(c, target);
+        const r = (await c.query(`SELECT * FROM branch_media_assets WHERE branch=$1
+          AND target_kind='item' AND target_id=$2 AND gallery_image_id=$3 AND state='ready'`, [branch, target.id, imageId])).rows[0];
+        if (!r) fail("BRANCH_MEDIA_NOT_FOUND", 404);
+        await c.query("UPDATE item_images SET sort_order=CASE WHEN id=$2 THEN -1 ELSE sort_order+1 END WHERE item_id=$1", [target.id, imageId]);
+        return { success: true };
+      });
+    },
+    async reorder(actor: string, target: MediaTarget, imageIds: number[]) {
+      return guarded(actor, target, true, async c => {
+        await requireMutableGallery(c, target);
+        const rows = (await c.query(`SELECT gallery_image_id AS id FROM branch_media_assets
+          WHERE branch=$1 AND target_kind='item' AND target_id=$2 AND gallery_image_id IS NOT NULL AND state='ready'`,
+        [branch, target.id])).rows;
+        if (imageIds.length > 4 || new Set(imageIds).size !== imageIds.length || rows.length !== imageIds.length
+          || !imageIds.every(id => Number.isSafeInteger(id) && rows.some(r => r.id === id))) fail("BRANCH_MEDIA_LINK_INVALID", 400);
+        for (const [sort, id] of imageIds.entries()) await c.query("UPDATE item_images SET sort_order=$1 WHERE id=$2 AND item_id=$3", [sort, id, target.id]);
+        return { success: true };
+      });
+    },
+  };
+}
+export type BranchMedia = ReturnType<typeof createBranchMedia>;

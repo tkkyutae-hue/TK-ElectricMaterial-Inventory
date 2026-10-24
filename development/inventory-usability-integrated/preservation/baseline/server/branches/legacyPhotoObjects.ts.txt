@@ -1,0 +1,85 @@
+import type { LegacyPhotoProvider } from "./media";
+import { MEDIA_MAX_BYTES } from "./media";
+import { BranchAccessError } from "./runtime";
+
+export type PhotoRoots = { defaultBucket?: string; privateRoot: string; publicRoots: string[] };
+export type ExactPhotoReader = (bucket: string, key: string, maxBytes: number) => Promise<Buffer | null>;
+
+function root(value: string) {
+  const parts = value.replace(/^\/+|\/+$/g, "").split("/");
+  if (parts.length < 2 || parts.some(p => !p || p === "." || p === ".." || /[\\%\u0000-\u001f]/.test(p))) {
+    throw Error("LEGACY_PHOTO_ROOT_INVALID");
+  }
+  return { bucket: parts[0], prefix: parts.slice(1).join("/") };
+}
+function validKey(key: string) {
+  return key.length <= 2048 && key.split("/").every(p => p && p !== "." && p !== ".." && !/[\\%\u0000-\u001f]/.test(p));
+}
+function imageType(data: Buffer) {
+  if (data.subarray(0, 3).equals(Buffer.from([255, 216, 255]))) return "image/jpeg";
+  if (data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return "image/png";
+  if (data.subarray(0, 4).toString() === "RIFF" && data.subarray(8, 12).toString() === "WEBP") return "image/webp";
+  return null;
+}
+
+/** Only the saved row supplied by createBranchMedia after current authorization.
+ * No HTTP, guessed buckets, disk fallback, URL redirects or metadata backfill. */
+export function createLegacyPhotoObjects(options: {
+  sourceTargetId: string; roots: PhotoRoots; read: ExactPhotoReader;
+}): LegacyPhotoProvider {
+  const privateRoot = root(options.roots.privateRoot);
+  const publicRoots = options.roots.publicRoots.map(root);
+  function resolve(raw: string): { bucket: string; key: string } | null {
+    if (raw.startsWith("/uploads/")) {
+      const name = raw.slice(9);
+      return options.roots.defaultBucket && /^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,250}\.(jpe?g|png|webp)$/i.test(name)
+        ? { bucket: options.roots.defaultBucket, key: `uploads/${name}` } : null;
+    }
+    if (raw.startsWith("/objects/")) {
+      const key = raw.slice(9);
+      return key.startsWith("uploads/") && validKey(key)
+        ? { bucket: privateRoot.bucket, key: `${privateRoot.prefix}/${key}` } : null;
+    }
+    if (raw.startsWith("/public-objects/")) {
+      const key = raw.slice(16);
+      return publicRoots.length === 1 && validKey(key)
+        ? { bucket: publicRoots[0].bucket, key: `${publicRoots[0].prefix}/${key}` } : null;
+    }
+    try {
+      const u = new URL(raw);
+      if (u.protocol !== "https:" || u.hostname !== "storage.googleapis.com" ||
+        u.username || u.password || u.port || u.search || u.hash) return null;
+      const path = decodeURIComponent(u.pathname).replace(/^\/+/, "");
+      if (!validKey(path)) return null;
+      const [bucket, ...pieces] = path.split("/"), key = pieces.join("/");
+      const roots = [...publicRoots, { bucket: privateRoot.bucket, prefix: privateRoot.prefix + "/uploads" },
+        ...(options.roots.defaultBucket ? [{ bucket: options.roots.defaultBucket, prefix: "uploads" }] : [])];
+      return roots.some(r => r.bucket === bucket && key.startsWith(r.prefix + "/")) ? { bucket, key } : null;
+    } catch { return null; }
+  }
+  return {
+    sourceTargetId: options.sourceTargetId,
+    reviewEvidenceId: "approved-development-legacy-photo-read-2026-10-22",
+    async readExact(row) {
+      const raw = row.imageUrl;
+      const unsupported = (): never => { throw new BranchAccessError("LEGACY_MEDIA_REFERENCE_UNSUPPORTED", 503); };
+      if (typeof raw !== "string" || raw !== raw.trim()) return unsupported();
+      let bytes: Buffer | null;
+      if (raw.startsWith("data:image/")) {
+        const match = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(raw);
+        if (!match || match[2].length > Math.ceil(MEDIA_MAX_BYTES / 3) * 4) return unsupported();
+        bytes = Buffer.from(match[2], "base64");
+        if (bytes.toString("base64") !== match[2] || imageType(bytes) !== `image/${match[1]}`) return unsupported();
+      } else {
+        if (raw.length > 4096) return unsupported();
+        const location = resolve(raw);
+        if (!location) return unsupported();
+        bytes = await options.read(location.bucket, location.key, MEDIA_MAX_BYTES);
+      }
+      if (!bytes) return null;
+      if (!bytes.length || bytes.length > MEDIA_MAX_BYTES) return unsupported();
+      const type = imageType(bytes);
+      return type ? { data: bytes, type } : unsupported();
+    },
+  };
+}

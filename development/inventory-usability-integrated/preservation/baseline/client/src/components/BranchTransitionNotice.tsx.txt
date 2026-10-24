@@ -1,0 +1,26 @@
+import { useEffect, useState } from "react";
+import { useLanguage } from "@/hooks/use-language";
+import { transitionMessages } from "@/lib/transitionMessages";
+
+/** Additive notice only. Never submits, clears, reloads or transfers a draft. */
+export function BranchTransitionNotice() {
+  const [visible, show] = useState(false);
+  const { lang } = useLanguage();
+  useEffect(() => {
+    const open = () => show(true);
+    const end = () => show(false);
+    window.addEventListener("inventory:branch-selection-required", open);
+    window.addEventListener("inventory:branch-session-ended", end);
+    return () => {
+      window.removeEventListener("inventory:branch-selection-required", open);
+      window.removeEventListener("inventory:branch-session-ended", end);
+    };
+  }, []);
+  if (!visible) return null;
+  const t = transitionMessages[lang] ?? transitionMessages.en;
+  return <section role="alert" data-testid="branch-transition-notice"
+    className="border border-current rounded-lg p-3 m-2 bg-background text-foreground">
+    <h2 className="font-semibold">{t.title}</h2><p>{t.selection}</p>
+    <button type="button" className="border rounded px-3 py-2 mt-2" onClick={() => show(false)}>{t.close}</button>
+  </section>;
+}

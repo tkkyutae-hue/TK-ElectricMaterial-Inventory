@@ -1,0 +1,36 @@
+import type { Express } from "express";
+import { BranchAccessError } from "./runtime";
+import { CatalogPreparationError } from "./catalogPreparation";
+import type { createCatalogSourceReview } from "./catalogSourceReview";
+
+/** Read-only review. The browser cannot grant photo approvals or select a DB. */
+export function registerCatalogSourceRoutes(app: Express, options?: {
+  service: ReturnType<typeof createCatalogSourceReview>;
+  approvedAssetKeys: readonly string[];
+}) {
+  const assets = Object.freeze([...(options?.approvedAssetKeys ?? [])]);
+  app.post("/api/admin/catalog-preparation/source-review", async (req, res) => {
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    try {
+      const id = (req as any).currentUser?.id;
+      if (typeof id !== "string" || !id) throw new BranchAccessError("BRANCH_ACCOUNT_REQUIRED", 401);
+      if (!options) throw new BranchAccessError("CATALOG_SOURCE_NOT_CONFIGURED", 503);
+      const body = req.body;
+      if (!body || typeof body !== "object" || Array.isArray(body)
+        || Object.keys(body).some(k => !["locations", "suppliers", "images"].includes(k))
+        || ["locations", "suppliers", "images"].some(k => !Array.isArray(body[k]) || body[k].length > 10000)) {
+        throw new BranchAccessError("CATALOG_SOURCE_MAPPING_INVALID", 400);
+      }
+      const result = await options.service.prepare(id, {
+        locations: body.locations, suppliers: body.suppliers, images: body.images,
+        approvedAssetKeys: assets,
+      });
+      res.json(result);
+    } catch (e) {
+      const known = e instanceof BranchAccessError || e instanceof CatalogPreparationError;
+      res.status(e instanceof BranchAccessError ? e.status : e instanceof CatalogPreparationError ? 400 : 503)
+        .json({ code: known ? e.code : "CATALOG_SOURCE_READ_FAILED" });
+    }
+  });
+}

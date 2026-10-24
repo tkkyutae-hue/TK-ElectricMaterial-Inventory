@@ -1,0 +1,72 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { User } from "@shared/models/auth";
+import { branchFetch as fetch, setBranchAccount, redirectBranchLogin, documentBranchPrefix, protectedBusinessDocument } from "@/lib/branchTransport";
+import { apiRequest } from "@/lib/queryClient";
+import {
+  canAccessAdminMode,
+  canAccessDailyReport,
+  canAccessProjectOperations,
+  canDoMovements,
+  canRequestMaterials,
+  isAdminRole,
+  isManagerOrAbove,
+} from "@/lib/role-access";
+
+async function fetchUser(): Promise<User | null> {
+  const response = await fetch("/api/auth/user", { credentials: "include" });
+  if (response.status === 401) {
+    if (protectedBusinessDocument) redirectBranchLogin();
+    else setBranchAccount(null);
+    return null;
+  }
+  if (!response.ok) throw new Error(`${response.status}: ${response.statusText}`);
+  const user = await response.json();
+  setBranchAccount(user.id);
+  return user;
+}
+
+export function useAuth() {
+  const queryClient = useQueryClient();
+
+  const { data: user, isLoading } = useQuery<User | null>({
+    queryKey: ["/api/auth/user"],
+    queryFn: fetchUser,
+    retry: false,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/auth/logout"),
+    onSuccess: () => {
+      setBranchAccount(null);
+      queryClient.clear();
+      queryClient.setQueryData(["/api/auth/user"], null);
+      window.location.href = "/login";
+    },
+  });
+
+  const role = user?.role ?? "viewer";
+
+  return {
+    user,
+    isLoading,
+    isAuthenticated: !!user,
+    // Admin Tools access (User Approvals, Export Backup) — admin only
+    isAdminRole: isAdminRole(role),
+    // Admin Mode access — admin + manager + manager_viewer (read-only for manager_viewer)
+    canAccessAdminMode: canAccessAdminMode(role),
+    // Daily Report access — admin + manager + staff (manager_viewer excluded)
+    canAccessDailyReport: canAccessDailyReport(role),
+    // Project Operations hub — staff can reach Daily Report, but not worker assignment
+    canAccessProjectOperations: canAccessProjectOperations(role),
+    // Read-only admin mode (no edit/add/delete buttons shown)
+    isManagerViewer: role === "manager_viewer",
+    // Physical stock changes and request drafts are separate permissions.
+    canDoMovements: user?.status === "active" && canDoMovements(role),
+    canRequestMaterials: user?.status === "active" && canRequestMaterials(role),
+    // Can edit/modify data in admin mode — manager + admin (excludes manager_viewer)
+    isManagerOrAbove: isManagerOrAbove(role),
+    logout: logoutMutation.mutate,
+    isLoggingOut: logoutMutation.isPending,
+  };
+}

@@ -1,0 +1,109 @@
+import { createPrivateMediaObjects, type PrivateBucket } from "./privateMediaObjects";
+import { createLegacyPhotoObjects } from "./legacyPhotoObjects";
+import type { PrivateMediaObjects } from "./media";
+import { MEDIA_MAX_BYTES } from "./media";
+import type { StartupPlan } from "./startupPlan";
+
+export interface MediaStorage {
+  /** Generation-pinned and byte-limited; returns null only for not found. */
+  read(bucket: string, key: string, maxBytes: number): Promise<Buffer | null>;
+  privateBucket(bucket: string, prefix: string): PrivateBucket;
+}
+
+/** Explicit private root; never the legacy public upload prefix. Pure wiring. */
+export function createSharedMediaProviders(
+  plan: Exclude<StartupPlan, { mode: "legacy" }>,
+  config: { privateRoot: string; defaultBucket?: string; publicRoots: string[] },
+  storage: MediaStorage,
+) {
+  const parts = config.privateRoot.replace(/^\/+|\/+$/g, "").split("/");
+  if (parts.length < 2 || parts.some(p => !p || p === "." || p === ".." || /[\\%\u0000-\u001f]/.test(p))) {
+    throw Error("SHARED_MEDIA_PRIVATE_ROOT_REQUIRED");
+  }
+  const [bucket, ...prefix] = parts;
+  const media: Record<"savannah" | "indiana", PrivateMediaObjects> = {
+    savannah: createPrivateMediaObjects(storage.privateBucket(bucket, prefix.join("/")), "savannah", { privateAccessVerified: true }),
+    indiana: createPrivateMediaObjects(storage.privateBucket(bucket, prefix.join("/")), "indiana", { privateAccessVerified: true }),
+  };
+  const legacyPhotos = createLegacyPhotoObjects({ sourceTargetId: plan.approval.savannah.targetId,
+    roots: config, read: (b, key, max) => storage.read(b, key, max) });
+  return { media, legacyPhotos };
+}
+
+/** Loaded only after shared-plan validation; never imports the legacy DB/jobs.
+ * No object is created, copied or deleted during startup. */
+export function createMediaStorage(
+  objectStorageClient: Pick<import("@google-cloud/storage").Storage, "bucket">,
+  anonymousHead: (bucket: string, key: string) => Promise<number> = async (bucket, key) => {
+    const response = await fetch(`https://storage.googleapis.com/${encodeURIComponent(bucket)}/${key.split("/").map(encodeURIComponent).join("/")}`,
+      { method: "HEAD", redirect: "manual", credentials: "omit", signal: AbortSignal.timeout(10000) });
+    return response.status;
+  },
+): MediaStorage {
+  const storage: MediaStorage = {
+    async read(bucket, key, max) {
+      try {
+        const object = objectStorageClient.bucket(bucket).file(key);
+        const [meta] = await object.getMetadata();
+        if (!/^\d+$/.test(String(meta.size)) || Number(meta.size) > max || !meta.generation) {
+          throw Error("BRANCH_MEDIA_SIZE_INVALID");
+        }
+        // Pin to the observed generation; bounded streaming also protects
+        // against stale/incorrect size metadata. Never downloads arbitrary URLs.
+        const pinned = objectStorageClient.bucket(bucket).file(key, { generation: meta.generation });
+        return await new Promise<Buffer>((resolve, reject) => {
+          const chunks: Buffer[] = []; let length = 0;
+          const stream = pinned.createReadStream({ start: 0, end: max });
+          stream.on("data", (chunk: Buffer) => {
+            length += chunk.length;
+            if (length > max) stream.destroy(Error("BRANCH_MEDIA_SIZE_INVALID"));
+            else chunks.push(chunk);
+          });
+          stream.on("error", () => reject(Error("BRANCH_MEDIA_STORE_UNAVAILABLE")));
+          stream.on("end", () => resolve(Buffer.concat(chunks)));
+        });
+      } catch (e: any) {
+        if (Number(e.code) === 404) return null;
+        throw Error("BRANCH_MEDIA_STORE_UNAVAILABLE");
+      }
+    },
+    privateBucket(bucket, prefix) {
+      return {
+        file(key) {
+          const objectKey = `${prefix}/${key}`;
+          const object = objectStorageClient.bucket(bucket).file(objectKey);
+          return {
+            // Explicit private ACL. Unsupported ACL settings fail closed:
+            // never retry without privacy controls or mutate an original.
+            async save(data, options) {
+              await object.save(data, { ...(options as object), predefinedAcl: "private" });
+              // Do not commit attachment metadata or report success if storage
+              // unexpectedly permits unauthenticated access. Keep any orphan;
+              // never delete an original as incidental error cleanup.
+              const status = await anonymousHead(bucket, objectKey);
+              if (![403, 404].includes(status)) throw Error("BRANCH_MEDIA_PRIVACY_REQUIRED");
+            },
+            getMetadata: async () => [await object.getMetadata().then(([m]) => ({ metadata: m.metadata }))],
+            download: async () => {
+              const bytes = await storage.read(bucket, objectKey, MEDIA_MAX_BYTES);
+              if (!bytes) throw Object.assign(Error("BRANCH_MEDIA_NOT_FOUND"), { code: 404 });
+              return [bytes];
+            },
+          };
+        },
+      };
+    },
+  };
+  return storage;
+}
+
+export async function loadDevelopmentSharedMedia(plan: StartupPlan, env: Record<string, string | undefined>) {
+  if (plan.mode !== "shared" || env.TK_SHARED_MEDIA_ENABLED !== "true") return {};
+  if (env.NODE_ENV !== "development") throw Error("SHARED_MEDIA_DEVELOPMENT_ONLY");
+  const { objectStorageClient } = await import("../replit_integrations/object_storage/objectStorage");
+  return createSharedMediaProviders(plan, {
+    privateRoot: env.PRIVATE_OBJECT_DIR ?? "",
+    defaultBucket: env.DEFAULT_OBJECT_STORAGE_BUCKET_ID,
+    publicRoots: (env.PUBLIC_OBJECT_SEARCH_PATHS ?? "").split(",").map(s => s.trim()).filter(Boolean),
+  }, createMediaStorage(objectStorageClient));
+}

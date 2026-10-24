@@ -1,0 +1,1229 @@
+{
+  "repository": "tkkyutae-hue/TK-ElectricMaterial-Inventory",
+  "branch": "Indiana",
+  "branchUrl": "https://github.com/tkkyutae-hue/TK-ElectricMaterial-Inventory/tree/Indiana",
+  "observedHead": "40da01ee24d9154166462bc96e295de191f9ae75",
+  "recursiveTreeComplete": true,
+  "files": [
+    {
+      "path": "attached_assets/tk_logo_1772726610288.png",
+      "gitBlobSha": "3a12eac276e0a1c1ee96cce7a3fa7f89426f0348",
+      "size": 442084
+    },
+    {
+      "path": "client/src/App.tsx",
+      "gitBlobSha": "1e282094b29198ffae28481d884cf41bc5cfebaf",
+      "size": 17166
+    },
+    {
+      "path": "client/src/components/EditTransactionDrawer.tsx",
+      "gitBlobSha": "c28625e0dd940cfc4e6aee0aa6dcf02d3167bcba",
+      "size": 28835
+    },
+    {
+      "path": "client/src/components/ErrorBoundary.tsx",
+      "gitBlobSha": "0c742b7953a3d8b7e3469901a3e56a1a56485b9c",
+      "size": 2066
+    },
+    {
+      "path": "client/src/components/ExportRmsDialog.tsx",
+      "gitBlobSha": "4c046549632df886c0acfde6401b7949feb40824",
+      "size": 23103
+    },
+    {
+      "path": "client/src/components/ImageLightbox.tsx",
+      "gitBlobSha": "3f5d539f2eca46d501f5854d37fa8ccd322143a0",
+      "size": 4177
+    },
+    {
+      "path": "client/src/components/MovementForm.tsx",
+      "gitBlobSha": "e1c464f413cddecbbccfe923c25cb4c12e0ef105",
+      "size": 50063
+    },
+    {
+      "path": "client/src/components/ObjectUploader.tsx",
+      "gitBlobSha": "7484ece882c6ae2f78c75e1b44eaf16b1df44ef1",
+      "size": 3327
+    },
+    {
+      "path": "client/src/components/QuickEntryInput.tsx",
+      "gitBlobSha": "035158cc002e2d6c6f0bf128cf1138f279b985d2",
+      "size": 1932
+    },
+    {
+      "path": "client/src/components/RequestWorkflowNotice.tsx",
+      "gitBlobSha": "d6b493a7c4387dbb6cd742b660216daf70e4c0f9",
+      "size": 685
+    },
+    {
+      "path": "client/src/components/StatusBadge.tsx",
+      "gitBlobSha": "8012570bad017dc681a0cd47c9aec8ba4374b04a",
+      "size": 5163
+    },
+    {
+      "path": "client/src/components/UsagePatternBadge.tsx",
+      "gitBlobSha": "165b7e764a3b658e0a1b43c3952873f452101c25",
+      "size": 1514
+    },
+    {
+      "path": "client/src/components/category/AdjustStockDialog.tsx",
+      "gitBlobSha": "1454b5c792acb620004b003e8510df9ceb456035",
+      "size": 10184
+    },
+    {
+      "path": "client/src/components/category/AssetPanel.tsx",
+      "gitBlobSha": "199241bb3f0cde6925590e7e9a8c2a673fe9d76a",
+      "size": 7002
+    },
+    {
+      "path": "client/src/components/category/FamilyEditDialog.tsx",
+      "gitBlobSha": "dcc2a096bdaca8c22caa885aad3d51d413454148",
+      "size": 23270
+    },
+    {
+      "path": "client/src/components/category/FamilyGroupCard.tsx",
+      "gitBlobSha": "fe24f8f5c6e07126399f4802ce63d6143b89c60f",
+      "size": 45401
+    },
+    {
+      "path": "client/src/components/category/FamilyHeaderCard.tsx",
+      "gitBlobSha": "e7b1116f31306ff26138f8edcb9d2ba1202056b3",
+      "size": 9126
+    },
+    {
+      "path": "client/src/components/category/InlineEditRow.tsx",
+      "gitBlobSha": "f9c411ab12f572da4962f159d7a05f83963c79b1",
+      "size": 19540
+    },
+    {
+      "path": "client/src/components/category/LocationCombobox.tsx",
+      "gitBlobSha": "4ec3b056ca5b14c0e1f9be8a7202d66f48f2d36e",
+      "size": 5210
+    },
+    {
+      "path": "client/src/components/category/MoveCategoryDialog.tsx",
+      "gitBlobSha": "9840955929504048c12c689d4b8b688a6a04e0c9",
+      "size": 7372
+    },
+    {
+      "path": "client/src/components/category/WireItemReelSection.tsx",
+      "gitBlobSha": "001f88b3823d14fa980cebb9b824180237007009",
+      "size": 24446
+    },
+    {
+      "path": "client/src/components/category/types.ts",
+      "gitBlobSha": "84b93d915dcb39cffcf27277268776a4206e1dcc",
+      "size": 8937
+    },
+    {
+      "path": "client/src/components/layout/AppLayout.tsx",
+      "gitBlobSha": "3c8cff4ad618e8f30cfffa171fbd90fc1851d8f9",
+      "size": 12001
+    },
+    {
+      "path": "client/src/components/layout/FieldBrandLockup.tsx",
+      "gitBlobSha": "2584dabd1f7bd10632f0fd3f6b4b14f98a82d417",
+      "size": 2175
+    },
+    {
+      "path": "client/src/components/layout/FieldHeader.tsx",
+      "gitBlobSha": "03114c464e14c5327723425f8a690fa85668a512",
+      "size": 6868
+    },
+    {
+      "path": "client/src/components/layout/FieldLayout.tsx",
+      "gitBlobSha": "9c43b98ae8df38ab98e501f3abda06252c358e6a",
+      "size": 3826
+    },
+    {
+      "path": "client/src/components/layout/TkElectricBrand.tsx",
+      "gitBlobSha": "cd9f266373a8efdf8ba33127f04ed766b13fd9da",
+      "size": 1526
+    },
+    {
+      "path": "client/src/components/manpower/ForemanAccountAudit.tsx",
+      "gitBlobSha": "8241c276b38959d783831802a0f365589dd44f8a",
+      "size": 13268
+    },
+    {
+      "path": "client/src/components/movement/ItemRowField.tsx",
+      "gitBlobSha": "8339faa83489f25b5fce5f032c6baed52f3d0a45",
+      "size": 38132
+    },
+    {
+      "path": "client/src/components/movement/MovementTypePillSelector.tsx",
+      "gitBlobSha": "8d0d336c165275c08ba7e6c691a75787af985b81",
+      "size": 2974
+    },
+    {
+      "path": "client/src/components/movement/SearchableItemSelect.tsx",
+      "gitBlobSha": "d0c5f6ec30fc2e7b99ca88c32af3a602be71ccf6",
+      "size": 20029
+    },
+    {
+      "path": "client/src/components/movement/SearchableLocationSelect.tsx",
+      "gitBlobSha": "5e788805e4fb5d9606026facb7ef121fc32bd971",
+      "size": 19798
+    },
+    {
+      "path": "client/src/components/movement/SearchableProjectSelect.tsx",
+      "gitBlobSha": "9e6bde86b0a1df87382ecafbada934af9171b483",
+      "size": 14904
+    },
+    {
+      "path": "client/src/components/movement/types.ts",
+      "gitBlobSha": "a2e05aaa4f20949e165dbe8aae2fbf3247c3eed7",
+      "size": 559
+    },
+    {
+      "path": "client/src/components/project/CompletionReportTab.tsx",
+      "gitBlobSha": "ceab7bc5df8c884bba4ee291247fb7d22c94d1fe",
+      "size": 58528
+    },
+    {
+      "path": "client/src/components/project/EditProjectDialog.tsx",
+      "gitBlobSha": "c46c0f6e7a6b743f247fd948c8fc1da12c0b0c23",
+      "size": 8965
+    },
+    {
+      "path": "client/src/components/project/OverviewTab.tsx",
+      "gitBlobSha": "c9c14352a5811a6f1a02f2ece9835c4e67d0dcae",
+      "size": 7315
+    },
+    {
+      "path": "client/src/components/project/ProgressTab.tsx",
+      "gitBlobSha": "e9805e77d63eaa6f6215ddaa6495ae0116266e87",
+      "size": 17004
+    },
+    {
+      "path": "client/src/components/project/ScopeItemsTab.tsx",
+      "gitBlobSha": "d4d1f94f47fcd8e536b69b49eae43082da1cc030",
+      "size": 33408
+    },
+    {
+      "path": "client/src/components/project/bundleTemplates.ts",
+      "gitBlobSha": "9e20d056006a79f2ce95b16d24b39c7ae280bf4f",
+      "size": 7683
+    },
+    {
+      "path": "client/src/components/project/categoryConfig.ts",
+      "gitBlobSha": "01e6d921affae8c9431e0b7187e651cb1e43b02d",
+      "size": 5753
+    },
+    {
+      "path": "client/src/components/project/overview/DailyReportsTab.tsx",
+      "gitBlobSha": "019d4c2810613afcacafc0e1fba566decf64c550",
+      "size": 14444
+    },
+    {
+      "path": "client/src/components/project/overview/MaterialUsageTab.tsx",
+      "gitBlobSha": "5771004c9ab3307a87f746562228449c73f33ad4",
+      "size": 7867
+    },
+    {
+      "path": "client/src/components/project/overview/OverviewProgressCard.tsx",
+      "gitBlobSha": "8e7d26cea7c5185d454f9035ecef965ef8a752b3",
+      "size": 3766
+    },
+    {
+      "path": "client/src/components/project/overview/OverviewTransactionsTable.tsx",
+      "gitBlobSha": "4978767f061083a4e186b7b5f200100ddd4135d7",
+      "size": 4902
+    },
+    {
+      "path": "client/src/components/project/overview/ProjectDetailsSidebar.tsx",
+      "gitBlobSha": "ee4e42cc2571f0c5ddb1318e1bd7757ea878efa8",
+      "size": 2619
+    },
+    {
+      "path": "client/src/components/project/overview/ProjectSummaryCard.tsx",
+      "gitBlobSha": "24e982aff80a066d30ce0f3e0c38ae83749396e0",
+      "size": 3162
+    },
+    {
+      "path": "client/src/components/project/overview/ReportsSummaryCard.tsx",
+      "gitBlobSha": "0ea1b8a9ad9ff7cab8bd681dd76af6c743b0b6c6",
+      "size": 1953
+    },
+    {
+      "path": "client/src/components/project/scope/BundleSelector.tsx",
+      "gitBlobSha": "0c5349a5de9c8f00d1dbdae6f62fd6a2fb5ac74d",
+      "size": 22069
+    },
+    {
+      "path": "client/src/components/project/scope/InlineScopeRow.tsx",
+      "gitBlobSha": "b2191cf2560b9b69a54e8937e52c86e9cabee54f",
+      "size": 8924
+    },
+    {
+      "path": "client/src/components/project/scope/ScopeCategorySection.tsx",
+      "gitBlobSha": "bf336eb191adb15313a2f4f606c52d53eafa340e",
+      "size": 5766
+    },
+    {
+      "path": "client/src/components/project/scope/ScopeDeleteDialog.tsx",
+      "gitBlobSha": "64114381f5f42d91f9beb0ee3afab1771ef327a3",
+      "size": 2337
+    },
+    {
+      "path": "client/src/components/project/scope/ScopeExtractDialog.tsx",
+      "gitBlobSha": "188f9ace7149cf52fb4dfe6add11704740137c12",
+      "size": 35753
+    },
+    {
+      "path": "client/src/components/project/scope/ScopeItemDialog.tsx",
+      "gitBlobSha": "5ced5ba325c26abf0ffe89376ab771160cacb5eb",
+      "size": 15009
+    },
+    {
+      "path": "client/src/components/project/scope/ScopeItemRow.tsx",
+      "gitBlobSha": "b993d6d4161d264839ab308fe7903c8e4aa8740c",
+      "size": 7168
+    },
+    {
+      "path": "client/src/components/project/scope/useScopeActions.ts",
+      "gitBlobSha": "8322c2fbe8f3cf9029094cd10395ec0aef68f3f8",
+      "size": 6447
+    },
+    {
+      "path": "client/src/components/project/types.ts",
+      "gitBlobSha": "6278aad312b0ec09acbe1a8ebfd797b2f680588c",
+      "size": 3786
+    },
+    {
+      "path": "client/src/components/shared/EmptyState.tsx",
+      "gitBlobSha": "15f8823a4e205eb595bbc76aa05ed4a1b4db806b",
+      "size": 890
+    },
+    {
+      "path": "client/src/components/shared/ErrorState.tsx",
+      "gitBlobSha": "8a88dd0cdbb8e9a12cb3740ae470223905cfcade",
+      "size": 1105
+    },
+    {
+      "path": "client/src/components/shared/FilterBar.tsx",
+      "gitBlobSha": "6a71f1c7f1131c2af54b88e04b5f08409d86ba5c",
+      "size": 2843
+    },
+    {
+      "path": "client/src/components/shared/FilterChip.tsx",
+      "gitBlobSha": "01c4e5d20a97ef2be40537f03bcce4ebf36e7a5a",
+      "size": 723
+    },
+    {
+      "path": "client/src/components/shared/PageHeader.tsx",
+      "gitBlobSha": "18344c2a13b3183df3a7532fa70f9da984b46d1d",
+      "size": 1106
+    },
+    {
+      "path": "client/src/components/shared/PersonPicker.tsx",
+      "gitBlobSha": "3a6c078afc245e17b78624f239ad7532714e2849",
+      "size": 19442
+    },
+    {
+      "path": "client/src/components/shared/SectionCard.tsx",
+      "gitBlobSha": "127c1385d1bf9ff3c0a919d828293c93acfcffd3",
+      "size": 1220
+    },
+    {
+      "path": "client/src/components/shared/StatCard.tsx",
+      "gitBlobSha": "47db67030e68879790ab735ca166034f9fc30324",
+      "size": 1567
+    },
+    {
+      "path": "client/src/components/ui/CreatableDropdown.tsx",
+      "gitBlobSha": "31a5e3a2e76bb6263b364e2cfec38129178eecdd",
+      "size": 8608
+    },
+    {
+      "path": "client/src/components/ui/accordion.tsx",
+      "gitBlobSha": "e6a723d06574ee5cec8b00759b98f3fbe1ac7cc9",
+      "size": 1977
+    },
+    {
+      "path": "client/src/components/ui/alert-dialog.tsx",
+      "gitBlobSha": "8722561cf6bda62d62f9a0c67730aefda971873a",
+      "size": 4420
+    },
+    {
+      "path": "client/src/components/ui/alert.tsx",
+      "gitBlobSha": "41fa7e0561a3fdb5f986c1213a35e563de740e96",
+      "size": 1584
+    },
+    {
+      "path": "client/src/components/ui/aspect-ratio.tsx",
+      "gitBlobSha": "c4abbf37f217c715a0eaade7f45ac78600df419f",
+      "size": 140
+    },
+    {
+      "path": "client/src/components/ui/avatar.tsx",
+      "gitBlobSha": "fc7f9646500e3ffb24ed9de4b290421ef630f57c",
+      "size": 1592
+    },
+    {
+      "path": "client/src/components/ui/badge.tsx",
+      "gitBlobSha": "b59d7adb5423941f5004d812a2780d78a4822305",
+      "size": 1202
+    },
+    {
+      "path": "client/src/components/ui/breadcrumb.tsx",
+      "gitBlobSha": "60e6c96f72f0350d08b47e4730cab8f3975dc853",
+      "size": 2712
+    },
+    {
+      "path": "client/src/components/ui/button.tsx",
+      "gitBlobSha": "409cfbfa02148aab0147bcc13b838b749e4cc45a",
+      "size": 2359
+    },
+    {
+      "path": "client/src/components/ui/calendar.tsx",
+      "gitBlobSha": "2174f7101ba18ec1385eed03f69dbd619feb98aa",
+      "size": 2695
+    },
+    {
+      "path": "client/src/components/ui/card.tsx",
+      "gitBlobSha": "c65c4c6a2afbda6afb947a7e8e21696360adfb3d",
+      "size": 1904
+    },
+    {
+      "path": "client/src/components/ui/carousel.tsx",
+      "gitBlobSha": "9c2b9bf3705d8421bef00704c0c52e83d371ca11",
+      "size": 6210
+    },
+    {
+      "path": "client/src/components/ui/chart.tsx",
+      "gitBlobSha": "39fba6d6fc8509b968824b5076a8791c46650294",
+      "size": 10481
+    },
+    {
+      "path": "client/src/components/ui/checkbox.tsx",
+      "gitBlobSha": "ddbdd01d8d1491ab772790db8d40c5ac0a2630f3",
+      "size": 1056
+    },
+    {
+      "path": "client/src/components/ui/collapsible.tsx",
+      "gitBlobSha": "9fa48946afd1eb56bd932377fd888e3986304676",
+      "size": 329
+    },
+    {
+      "path": "client/src/components/ui/command.tsx",
+      "gitBlobSha": "f0e4e3fb6407b9184a7e1087fb5bebe96a980bdf",
+      "size": 4885
+    },
+    {
+      "path": "client/src/components/ui/context-menu.tsx",
+      "gitBlobSha": "aa3ef7792b866380aa91038beff862aa39ebe5c5",
+      "size": 7428
+    },
+    {
+      "path": "client/src/components/ui/dialog.tsx",
+      "gitBlobSha": "f38593bdcc2e700cd5a24d0b96640ca9ad474476",
+      "size": 3848
+    },
+    {
+      "path": "client/src/components/ui/drawer.tsx",
+      "gitBlobSha": "6a0ef53dde8991d3adeadd791cd262808aaf9ac0",
+      "size": 3021
+    },
+    {
+      "path": "client/src/components/ui/dropdown-menu.tsx",
+      "gitBlobSha": "fc790a80308832379e59b63381cfd5054364f5dc",
+      "size": 7609
+    },
+    {
+      "path": "client/src/components/ui/form.tsx",
+      "gitBlobSha": "4f02ae6a48799a297ae92a9bcfa1f8de4d879be1",
+      "size": 4120
+    },
+    {
+      "path": "client/src/components/ui/hover-card.tsx",
+      "gitBlobSha": "74efa6bee7037d46ea6f1a08a89b68963660cca0",
+      "size": 1251
+    },
+    {
+      "path": "client/src/components/ui/input-otp.tsx",
+      "gitBlobSha": "ebf5c281ee7fbbf86462b33b7b9955d884d57580",
+      "size": 2154
+    },
+    {
+      "path": "client/src/components/ui/input.tsx",
+      "gitBlobSha": "4051300dcd8da5c163f65cac04f7a8a628f16e30",
+      "size": 844
+    },
+    {
+      "path": "client/src/components/ui/label.tsx",
+      "gitBlobSha": "683faa793819982d64e21cb2939666fd6d4a7b13",
+      "size": 710
+    },
+    {
+      "path": "client/src/components/ui/menubar.tsx",
+      "gitBlobSha": "7b3a71b182d16a2655aaf048797b39a5c27f931a",
+      "size": 8605
+    },
+    {
+      "path": "client/src/components/ui/navigation-menu.tsx",
+      "gitBlobSha": "411f51922144bf667c2a5d512ff712d1c37098bd",
+      "size": 5128
+    },
+    {
+      "path": "client/src/components/ui/pagination.tsx",
+      "gitBlobSha": "ea40d196dc72673f36c4084bf56457385edc855e",
+      "size": 2751
+    },
+    {
+      "path": "client/src/components/ui/popover.tsx",
+      "gitBlobSha": "821a32f3701193ec91f9cf2e22e34c6807c09d14",
+      "size": 1280
+    },
+    {
+      "path": "client/src/components/ui/progress.tsx",
+      "gitBlobSha": "5c87ea4865610374cdc591d1619157b4d8909a87",
+      "size": 791
+    },
+    {
+      "path": "client/src/components/ui/radio-group.tsx",
+      "gitBlobSha": "43b43b48b84d3045a442409006d5cb8c5f35adfd",
+      "size": 1467
+    },
+    {
+      "path": "client/src/components/ui/resizable.tsx",
+      "gitBlobSha": "f4bc5586b67f45d3cc35f228e8bac2e4bc2cea16",
+      "size": 1723
+    },
+    {
+      "path": "client/src/components/ui/scroll-area.tsx",
+      "gitBlobSha": "cf253cf17056ce04827219643e484ea99c77cf6b",
+      "size": 1642
+    },
+    {
+      "path": "client/src/components/ui/searchable-select.tsx",
+      "gitBlobSha": "44491149c1d85ba2b57f255b4284edf779da4045",
+      "size": 4367
+    },
+    {
+      "path": "client/src/components/ui/select.tsx",
+      "gitBlobSha": "0ecb100c2adcf634b77982a84dc9efa4260b2155",
+      "size": 5741
+    },
+    {
+      "path": "client/src/components/ui/separator.tsx",
+      "gitBlobSha": "6d7f12265ba0338704f013930ce4d52c56527dd1",
+      "size": 756
+    },
+    {
+      "path": "client/src/components/ui/sheet.tsx",
+      "gitBlobSha": "a37f17ba04055c1c174bd439d58aa3b5b2857cc9",
+      "size": 4281
+    },
+    {
+      "path": "client/src/components/ui/sidebar.tsx",
+      "gitBlobSha": "41362f6f40769bd800e4b1e77dfcc0ca61300636",
+      "size": 21846
+    },
+    {
+      "path": "client/src/components/ui/skeleton.tsx",
+      "gitBlobSha": "01b8b6d4f716ff7c26065bc9e46aebd932729fc1",
+      "size": 261
+    },
+    {
+      "path": "client/src/components/ui/slider.tsx",
+      "gitBlobSha": "e161daec03130190dcfb597c8632f9df4ba407f5",
+      "size": 1077
+    },
+    {
+      "path": "client/src/components/ui/switch.tsx",
+      "gitBlobSha": "aa58baa29c676db7b14a37436a9662107b0111ec",
+      "size": 1139
+    },
+    {
+      "path": "client/src/components/ui/table.tsx",
+      "gitBlobSha": "7f3502f8b2820be1d6f0aa4c1ffaa351799c1ed3",
+      "size": 2765
+    },
+    {
+      "path": "client/src/components/ui/tabs.tsx",
+      "gitBlobSha": "f57fffdb5a07cd21b12f8c014513475a6980a469",
+      "size": 1883
+    },
+    {
+      "path": "client/src/components/ui/textarea.tsx",
+      "gitBlobSha": "4d858bb6b02662c749d3cb334129a9a1977b0c51",
+      "size": 689
+    },
+    {
+      "path": "client/src/components/ui/toast.tsx",
+      "gitBlobSha": "b97200b6d34e3ba044799433f87780714e03087b",
+      "size": 4873
+    },
+    {
+      "path": "client/src/components/ui/toaster.tsx",
+      "gitBlobSha": "6c67edff67a48c6ac1c46f25a6d468dd461e66cb",
+      "size": 772
+    },
+    {
+      "path": "client/src/components/ui/toggle-group.tsx",
+      "gitBlobSha": "1c876bbeecabe59b684719afe58e684f34cdecbf",
+      "size": 1753
+    },
+    {
+      "path": "client/src/components/ui/toggle.tsx",
+      "gitBlobSha": "0da5cb8b74d1b02569a8bf0eaf36d135c97315d5",
+      "size": 1527
+    },
+    {
+      "path": "client/src/components/ui/tooltip.tsx",
+      "gitBlobSha": "e1ae87b9db8d9a636b8185da4ca6868c3b024d63",
+      "size": 1209
+    },
+    {
+      "path": "client/src/features/inventory/utils/movementDisplay.ts",
+      "gitBlobSha": "f9c6cbecd4425e8c79677e8969e2f4eccb6e7d0d",
+      "size": 4016
+    },
+    {
+      "path": "client/src/features/inventory/utils/movementLabels.ts",
+      "gitBlobSha": "1cf7749611d3da058a4f511279ee6c21c56583b9",
+      "size": 1173
+    },
+    {
+      "path": "client/src/hooks/use-admin-auth.ts",
+      "gitBlobSha": "f99dc2738d41f292492bc53300fd8bb173a893e2",
+      "size": 1109
+    },
+    {
+      "path": "client/src/hooks/use-auth.ts",
+      "gitBlobSha": "18891b04d017f3fbfd39ead12f179320a3955c16",
+      "size": 2334
+    },
+    {
+      "path": "client/src/hooks/use-dashboard.ts",
+      "gitBlobSha": "2a4db4009b61e83c21b2858bf3b00ee368d8bb73",
+      "size": 412
+    },
+    {
+      "path": "client/src/hooks/use-field-theme.tsx",
+      "gitBlobSha": "d0d94657e2e23a282c4cd2e42643078ce5701642",
+      "size": 5835
+    },
+    {
+      "path": "client/src/hooks/use-items.ts",
+      "gitBlobSha": "67b90640611ccebade84281250138ea45cf84195",
+      "size": 3143
+    },
+    {
+      "path": "client/src/hooks/use-language.tsx",
+      "gitBlobSha": "d90cef93d41807653d4a123993139347c9205c91",
+      "size": 6003
+    },
+    {
+      "path": "client/src/hooks/use-mobile.tsx",
+      "gitBlobSha": "2b0fe1dfef3b17850bbac040665f514a8ffd0f15",
+      "size": 565
+    },
+    {
+      "path": "client/src/hooks/use-reference-data.ts",
+      "gitBlobSha": "2b91f5a7cc24fe59c188d58fb9dd4b0472b22cc2",
+      "size": 5760
+    },
+    {
+      "path": "client/src/hooks/use-toast.ts",
+      "gitBlobSha": "2c14125ac48b874740770da80d9e424daf1db58b",
+      "size": 3895
+    },
+    {
+      "path": "client/src/hooks/use-transactions.ts",
+      "gitBlobSha": "f94f1cb37eb5dfb94fba619898693b9b9b7ba195",
+      "size": 5906
+    },
+    {
+      "path": "client/src/hooks/use-upload.ts",
+      "gitBlobSha": "4f5cedd6b2ba54996f8c8332e8b68c8161217601",
+      "size": 5309
+    },
+    {
+      "path": "client/src/index.css",
+      "gitBlobSha": "8138bac69397103634531cceb49a43d2b265f991",
+      "size": 20731
+    },
+    {
+      "path": "client/src/lib/auth-utils.ts",
+      "gitBlobSha": "a06807d78a0dede7d55776cd84fb6f3c20e4e204",
+      "size": 517
+    },
+    {
+      "path": "client/src/lib/categoryUtils.ts",
+      "gitBlobSha": "4719a94107120c4a7efc760b85408e30a6b1e989",
+      "size": 596
+    },
+    {
+      "path": "client/src/lib/equipmentCatalogue.ts",
+      "gitBlobSha": "ed9707aabc52bc03cb55f3af19bcbb79db744c56",
+      "size": 1902
+    },
+    {
+      "path": "client/src/lib/fieldCart.tsx",
+      "gitBlobSha": "9e4b83d1c5168368c1a2d9738837265d29b4dc25",
+      "size": 3704
+    },
+    {
+      "path": "client/src/lib/fieldCartDraft.ts",
+      "gitBlobSha": "1f72ee2b3b2a7644e4e72886eb9b1bb3a753389d",
+      "size": 3539
+    },
+    {
+      "path": "client/src/lib/fieldFilterQuery.ts",
+      "gitBlobSha": "5d8204d21d5c1a9691a840790a155f847359869c",
+      "size": 1215
+    },
+    {
+      "path": "client/src/lib/fieldTokens.ts",
+      "gitBlobSha": "76073a091a48a611006eecdf6fd2e1723779c7cd",
+      "size": 5272
+    },
+    {
+      "path": "client/src/lib/i18n.ts",
+      "gitBlobSha": "bb109d35bd07f21b317e12289c056e24d7897eb9",
+      "size": 430983
+    },
+    {
+      "path": "client/src/lib/mock-daily-report.ts",
+      "gitBlobSha": "da539f6f640b814a34e429fb330f37f8f24c9d90",
+      "size": 3324
+    },
+    {
+      "path": "client/src/lib/queryClient.ts",
+      "gitBlobSha": "f315a142495772235f6e5324668ce3bc34ef1871",
+      "size": 1383
+    },
+    {
+      "path": "client/src/lib/reel-utils.ts",
+      "gitBlobSha": "aaa3b524d36b301a6f6d3345c9adf3ce3e00caf7",
+      "size": 4371
+    },
+    {
+      "path": "client/src/lib/reelEligibility.ts",
+      "gitBlobSha": "f1586b2ce5404a550e551c2f7a69238344ec635e",
+      "size": 381
+    },
+    {
+      "path": "client/src/lib/requestCommands.ts",
+      "gitBlobSha": "19301326728e4b2a141f5cbbc970046a9f4a7c0d",
+      "size": 3115
+    },
+    {
+      "path": "client/src/lib/role-access.ts",
+      "gitBlobSha": "74885bdad736b59090ce3c8276aef1c34363c652",
+      "size": 1361
+    },
+    {
+      "path": "client/src/lib/transaction-load-state.ts",
+      "gitBlobSha": "16a9dcebaf808860d009fc83b4ee0f44b4b807be",
+      "size": 445
+    },
+    {
+      "path": "client/src/lib/usagePattern.ts",
+      "gitBlobSha": "30d5e9b389e26bee3c1535f7264dc84957d6f2c7",
+      "size": 812
+    },
+    {
+      "path": "client/src/lib/utils.ts",
+      "gitBlobSha": "bd0c391ddd1088e9067844c48835bf4abcd61783",
+      "size": 166
+    },
+    {
+      "path": "client/src/lib/wire-config-utils.ts",
+      "gitBlobSha": "64f5b3787f92097f5827f589a89d9b027824dfb4",
+      "size": 2456
+    },
+    {
+      "path": "client/src/main.tsx",
+      "gitBlobSha": "5faec740ffbd2ce769b9419788510a93e8c2e71a",
+      "size": 1653
+    },
+    {
+      "path": "client/src/pages/CategoryDetail.tsx",
+      "gitBlobSha": "82163ae497adb2248a563631d6a31839e0517f2b",
+      "size": 41370
+    },
+    {
+      "path": "client/src/pages/CrewDispatch.tsx",
+      "gitBlobSha": "75922f8612f351b9c6033d1021215e669de4b4dd",
+      "size": 5426
+    },
+    {
+      "path": "client/src/pages/CrewDispatchAssignment.tsx",
+      "gitBlobSha": "ca6e5f1501b6a5becdaf9d258789fe750af843be",
+      "size": 98370
+    },
+    {
+      "path": "client/src/pages/DailyReport.tsx",
+      "gitBlobSha": "61ba10ee6a3e8ac4fe5ef9afb97df5b1a38569a1",
+      "size": 40124
+    },
+    {
+      "path": "client/src/pages/DailyReportWorkspace.tsx",
+      "gitBlobSha": "95df06219c7ff4d643908ea49e51a2614834a0b2",
+      "size": 46056
+    },
+    {
+      "path": "client/src/pages/Dashboard.tsx",
+      "gitBlobSha": "8cc77f7d8c78b7eef44480b59717973f0be1ef57",
+      "size": 23069
+    },
+    {
+      "path": "client/src/pages/Equipment.tsx",
+      "gitBlobSha": "959542a12ba816a019084b3b856a402fe2543332",
+      "size": 54795
+    },
+    {
+      "path": "client/src/pages/Home.tsx",
+      "gitBlobSha": "00e2eecbd2bd499fb3b0483e50e4ed1b6231079e",
+      "size": 18146
+    },
+    {
+      "path": "client/src/pages/Inventory.tsx",
+      "gitBlobSha": "3ef690d15375b918d7784d727b9e12753602b883",
+      "size": 35627
+    },
+    {
+      "path": "client/src/pages/ItemDetails.tsx",
+      "gitBlobSha": "132c3a24c6bbe32729eb04113026ff542876e204",
+      "size": 87173
+    },
+    {
+      "path": "client/src/pages/Login.tsx",
+      "gitBlobSha": "e94d05d07a8a4aa5199ce408ea0a171e67d47f82",
+      "size": 17900
+    },
+    {
+      "path": "client/src/pages/Manpower.tsx",
+      "gitBlobSha": "0e43c04e294af51a2ccf40c3d77dde894703b3da",
+      "size": 24205
+    },
+    {
+      "path": "client/src/pages/ProjectDetail.tsx",
+      "gitBlobSha": "7a6efa9efa6abd96a19440de40bedf2d91854791",
+      "size": 6713
+    },
+    {
+      "path": "client/src/pages/Projects.tsx",
+      "gitBlobSha": "72cd310ad2f537f360a32fbf2c9b7b382f5731cd",
+      "size": 34999
+    },
+    {
+      "path": "client/src/pages/Reorder.tsx",
+      "gitBlobSha": "0eab97bf54d140f388eb21d78082ebe9052ae826",
+      "size": 35136
+    },
+    {
+      "path": "client/src/pages/ReorderArea.tsx",
+      "gitBlobSha": "f9ca5e23c39b0f18e73ce1292d61bfea1c7f0175",
+      "size": 2898
+    },
+    {
+      "path": "client/src/pages/ReorderHistory.tsx",
+      "gitBlobSha": "868e79518f83f8e56667270429d569150f342a93",
+      "size": 64228
+    },
+    {
+      "path": "client/src/pages/Reports.tsx",
+      "gitBlobSha": "207cd23af79dc0b0b90f28ec7823682f886a9ac4",
+      "size": 17869
+    },
+    {
+      "path": "client/src/pages/Signup.tsx",
+      "gitBlobSha": "b511dc961da755f64d6a646db10ac442ecb27455",
+      "size": 20220
+    },
+    {
+      "path": "client/src/pages/SupplierDetail.tsx",
+      "gitBlobSha": "1e31d156ff36b6f3b390ddf338ec5a02b3cc670f",
+      "size": 28394
+    },
+    {
+      "path": "client/src/pages/Suppliers.tsx",
+      "gitBlobSha": "bae31bbe135c353197454189e4e4760c2781a72f",
+      "size": 8780
+    },
+    {
+      "path": "client/src/pages/Transactions.tsx",
+      "gitBlobSha": "fa9a8d155fc4b05789d829777df1c1ef3375e89d",
+      "size": 62528
+    },
+    {
+      "path": "client/src/pages/TvDashboard.tsx",
+      "gitBlobSha": "ea2f62bfe4276de11751e10ed435a23941c8eeda",
+      "size": 18005
+    },
+    {
+      "path": "client/src/pages/WorkerDetail.tsx",
+      "gitBlobSha": "437446ae7e60cf8ebd94d0e9c7fee8963e1ee3b3",
+      "size": 83970
+    },
+    {
+      "path": "client/src/pages/admin/Export.tsx",
+      "gitBlobSha": "bcd4948e3a7a461a51b06b41d93627b20972172f",
+      "size": 4297
+    },
+    {
+      "path": "client/src/pages/admin/InactiveItems.tsx",
+      "gitBlobSha": "9f150ec66cd974e7df4430646ec54735cf6d4c0f",
+      "size": 13381
+    },
+    {
+      "path": "client/src/pages/admin/JibbleIntegration.tsx",
+      "gitBlobSha": "bf7f91c8c4570b6227a07d9fc2586194acdbb8cd",
+      "size": 28220
+    },
+    {
+      "path": "client/src/pages/admin/MondayIntegration.tsx",
+      "gitBlobSha": "3b2c0e0eee56ec823435f1b5e5cf2cbe13192af7",
+      "size": 38485
+    },
+    {
+      "path": "client/src/pages/admin/ReelIdCleanup.tsx",
+      "gitBlobSha": "52bd4df657ce83460e0fd6730d96c3276980de3a",
+      "size": 19482
+    },
+    {
+      "path": "client/src/pages/admin/SkuCleanup.tsx",
+      "gitBlobSha": "97f7a6e537080ff743f1f6292886d59fbf465b47",
+      "size": 46052
+    },
+    {
+      "path": "client/src/pages/admin/StockPricing.tsx",
+      "gitBlobSha": "299988b50a0c9b791e2a8968713a4741f9db2c0e",
+      "size": 59523
+    },
+    {
+      "path": "client/src/pages/admin/SupplierCleanup.tsx",
+      "gitBlobSha": "3c02cb496ac805f47c3f0eafb279b4ab90e4c533",
+      "size": 13154
+    },
+    {
+      "path": "client/src/pages/admin/UserApprovals.tsx",
+      "gitBlobSha": "af391f5711d0f8a14d126b77b1fe103a7f30aa0e",
+      "size": 14519
+    },
+    {
+      "path": "client/src/pages/daily-report/ManpowerSummaryBar.tsx",
+      "gitBlobSha": "cc277a103989c79bd7a5bcc8e7de3e442d5da765",
+      "size": 8748
+    },
+    {
+      "path": "client/src/pages/daily-report/MobileMaterialSectionNavigator.tsx",
+      "gitBlobSha": "cdda93f33f3a1e84398ecad3cd9c03f3e4cb7666",
+      "size": 7708
+    },
+    {
+      "path": "client/src/pages/daily-report/NewReportTab.tsx",
+      "gitBlobSha": "8bb03f40ef23a6b9e813c4e854a5190c68d3d3bb",
+      "size": 224517
+    },
+    {
+      "path": "client/src/pages/daily-report/PdfViewer.tsx",
+      "gitBlobSha": "e1506c75a8324840288401ba0e8df0270c8f3343",
+      "size": 6334
+    },
+    {
+      "path": "client/src/pages/daily-report/fieldTicketTheme.ts",
+      "gitBlobSha": "b16b7dfd6e8ed5519d01b27cdea7c5c223afdc1b",
+      "size": 2713
+    },
+    {
+      "path": "client/src/pages/daily-report/projectAssignmentGrouping.ts",
+      "gitBlobSha": "871a8120dbe73fe39f3e551036565e84d4ed7fda",
+      "size": 1619
+    },
+    {
+      "path": "client/src/pages/field/DraftMovementsList.tsx",
+      "gitBlobSha": "a826f69ca2de0660c4923e5f3558f3e357a339bf",
+      "size": 24273
+    },
+    {
+      "path": "client/src/pages/field/FieldCartPanel.tsx",
+      "gitBlobSha": "096e4e57f5b4a8347ab57606cf209a1a2dddd19e",
+      "size": 2677
+    },
+    {
+      "path": "client/src/pages/field/FieldCartReview.tsx",
+      "gitBlobSha": "fc73de5611cdb633736ef4bacaee2e30dec924f1",
+      "size": 27188
+    },
+    {
+      "path": "client/src/pages/field/FieldHome.tsx",
+      "gitBlobSha": "6a0dc5168589cc49e4d31dd96727752c00e2afa2",
+      "size": 7545
+    },
+    {
+      "path": "client/src/pages/field/FieldInventory.tsx",
+      "gitBlobSha": "34994e2a54defee9e4776598edf623b67d80c830",
+      "size": 86135
+    },
+    {
+      "path": "client/src/pages/field/FieldMovement.tsx",
+      "gitBlobSha": "5b5f14caef705147147655d15a31120f37714df8",
+      "size": 2162
+    },
+    {
+      "path": "client/src/pages/field/FieldRequestsList.tsx",
+      "gitBlobSha": "2e945867513096876a7c64569f1cb88a13aecc73",
+      "size": 51713
+    },
+    {
+      "path": "client/src/pages/field/FieldTransactions.tsx",
+      "gitBlobSha": "b12cf615273c359f7a552d30893e3306ab4d2b27",
+      "size": 90083
+    },
+    {
+      "path": "client/src/pages/not-found.tsx",
+      "gitBlobSha": "dba9f8316f8e796e2808090c4f6cf770e6b90c4a",
+      "size": 711
+    },
+    {
+      "path": "package-lock.json",
+      "gitBlobSha": "819f91eecb15db4b0f3a17c0bf7bb210231d1d38",
+      "size": 461275
+    },
+    {
+      "path": "package.json",
+      "gitBlobSha": "1f2cd0146383c6b3df23ae286fcb870f7490b5ec",
+      "size": 5065
+    },
+    {
+      "path": "server/db.ts",
+      "gitBlobSha": "ba7e26ffd0b040b252accc85314407d86a8ab0c1",
+      "size": 2444
+    },
+    {
+      "path": "server/index.ts",
+      "gitBlobSha": "aef3fc07ebf142a20edb51ba3151190e12ff0e5b",
+      "size": 4842
+    },
+    {
+      "path": "server/replit_integrations/auth/googleAuth.ts",
+      "gitBlobSha": "e38fce1b4f8fa2f1bd7158d9dcbac572e1e27cd9",
+      "size": 4500
+    },
+    {
+      "path": "server/replit_integrations/auth/index.ts",
+      "gitBlobSha": "2fd93de5ba08dc867c0de6bcdf86eef1201b92af",
+      "size": 178
+    },
+    {
+      "path": "server/replit_integrations/auth/replitAuth.ts",
+      "gitBlobSha": "ee82e22c676f3ff7302415a147ab89e9cdd960af",
+      "size": 937
+    },
+    {
+      "path": "server/replit_integrations/auth/routes.ts",
+      "gitBlobSha": "d3ee7e66762c08d1c649e89b9c419946449cf0c4",
+      "size": 5296
+    },
+    {
+      "path": "server/replit_integrations/auth/storage.ts",
+      "gitBlobSha": "5b66ec8fb5587762865906aea811ba014092acc0",
+      "size": 3981
+    },
+    {
+      "path": "server/replit_integrations/object_storage/index.ts",
+      "gitBlobSha": "1664af26b190d8200d292005422ff9445f21afa4",
+      "size": 377
+    },
+    {
+      "path": "server/replit_integrations/object_storage/objectAcl.ts",
+      "gitBlobSha": "bfa4c7123b236e27598882f202092d987097988d",
+      "size": 5545
+    },
+    {
+      "path": "server/replit_integrations/object_storage/objectStorage.ts",
+      "gitBlobSha": "3130afc0a2fc75b7dd7a85c52c4f0ca73a342132",
+      "size": 8409
+    },
+    {
+      "path": "server/replit_integrations/object_storage/routes.ts",
+      "gitBlobSha": "5d50b3417c5db4296255250a835978578b5b515e",
+      "size": 2786
+    },
+    {
+      "path": "server/routes.ts",
+      "gitBlobSha": "53f1af2fce595c7536fd8c3e00549c08111b5f63",
+      "size": 300134
+    },
+    {
+      "path": "server/seed.ts",
+      "gitBlobSha": "4f09395bf79bd326359c2e6d141a19918976d7e8",
+      "size": 5845
+    },
+    {
+      "path": "server/services/boqXlsx.ts",
+      "gitBlobSha": "3b6c2993603bb9672c653c1ee965c260cdcb03d3",
+      "size": 11706
+    },
+    {
+      "path": "server/services/completionReportPptx.ts",
+      "gitBlobSha": "3ffe5fbccf5787fc940d197d604f857c62fa3b1c",
+      "size": 27699
+    },
+    {
+      "path": "server/services/inventory/movement-display.ts",
+      "gitBlobSha": "e718c5c9cc6613514e404d20acd62302c0571ef8",
+      "size": 2317
+    },
+    {
+      "path": "server/services/inventory/movement-validation.ts",
+      "gitBlobSha": "0b1de8cd23c3fdbf61205e1182534e75a16ded1f",
+      "size": 3694
+    },
+    {
+      "path": "server/services/inventoryMatcher.ts",
+      "gitBlobSha": "5e8e44dc9081d2dfaaa4e13bf6cc25e314534084",
+      "size": 8416
+    },
+    {
+      "path": "server/services/itemImageContent.ts",
+      "gitBlobSha": "49d6cdd278c67ab2c5fed5511d86a51a636d1ab2",
+      "size": 1878
+    },
+    {
+      "path": "server/services/jibble.ts",
+      "gitBlobSha": "539569a008e4149dcbef7995aebc0e43915e6d5e",
+      "size": 18911
+    },
+    {
+      "path": "server/services/materialRequestCommands.ts",
+      "gitBlobSha": "3c6be3fef7c3b7d9b3d5b7156075385016a62173",
+      "size": 16932
+    },
+    {
+      "path": "server/services/materialRequestRoutes.ts",
+      "gitBlobSha": "ce1d5aa46ae24c64876a3a115d254642e35ab265",
+      "size": 2331
+    },
+    {
+      "path": "server/services/monday.ts",
+      "gitBlobSha": "0c4562ab72542ed013f45613c77e32ae906c45bc",
+      "size": 15105
+    },
+    {
+      "path": "server/services/objectStorageUpload.ts",
+      "gitBlobSha": "ffb2a29b2c839b9a552ba3a814ddd1a61b5788f2",
+      "size": 1391
+    },
+    {
+      "path": "server/services/pdfFirstPage.ts",
+      "gitBlobSha": "88d73a4292705af80ee029e67a9fa11401610274",
+      "size": 5192
+    },
+    {
+      "path": "server/services/requestIdentity.ts",
+      "gitBlobSha": "645de072755e75bb3d9b44ba79c87a341a8b1e63",
+      "size": 823
+    },
+    {
+      "path": "server/services/requestMovementGuard.ts",
+      "gitBlobSha": "2ca976fb134f7e1935519d4c0c4cbbbd8318ec6e",
+      "size": 330
+    },
+    {
+      "path": "server/services/roleAuthorization.ts",
+      "gitBlobSha": "d08c86d9c5826e24f85dff54dfc6a935dd91991f",
+      "size": 1218
+    },
+    {
+      "path": "server/static.ts",
+      "gitBlobSha": "0ac8269bf571d4d11e2826e55af1378d204f9e4e",
+      "size": 554
+    },
+    {
+      "path": "server/storage.ts",
+      "gitBlobSha": "a1c557c2634e0fd85d2edb9c03119f91b8271736",
+      "size": 222432
+    },
+    {
+      "path": "server/vite.ts",
+      "gitBlobSha": "7f25adaa38df0bb78da770870eab71cb25d8f408",
+      "size": 1847
+    },
+    {
+      "path": "shared/classifyItem.ts",
+      "gitBlobSha": "ff52e3bab1f612057c2603966d44b63ea61b3734",
+      "size": 5261
+    },
+    {
+      "path": "shared/models/auth.ts",
+      "gitBlobSha": "f8c0eb1a08555d1d37d73e69a101f4335a748df2",
+      "size": 1063
+    },
+    {
+      "path": "shared/movementDraftSupplier.ts",
+      "gitBlobSha": "283cb6b42b9dd8d1ba0d174001ad8ce37a59da47",
+      "size": 568
+    },
+    {
+      "path": "shared/reelEligibility.ts",
+      "gitBlobSha": "7b76871d1256c1424b441126ea4cad85ca06e7fb",
+      "size": 8638
+    },
+    {
+      "path": "shared/routes.ts",
+      "gitBlobSha": "40edf28d63e0ee9fe3fd678bb3e407b1b02fda18",
+      "size": 1575
+    },
+    {
+      "path": "shared/schema.ts",
+      "gitBlobSha": "683f8a28ff2cb479ab43b5e3c0e17bdcc2e6de68",
+      "size": 41910
+    },
+    {
+      "path": "shared/scopeReportTarget.ts",
+      "gitBlobSha": "c55c08c21fcf50538de3f7cae1432bbaa265b365",
+      "size": 557
+    },
+    {
+      "path": "tailwind.config.ts",
+      "gitBlobSha": "42cda6dde4a969970780ce7e7345f84836b64934",
+      "size": 5434
+    },
+    {
+      "path": "tests/helpers/disposableFieldPg.ts",
+      "gitBlobSha": "ea9fbf0bf01c160d64c773ac94a75dcddbf8a2bd",
+      "size": 5709
+    },
+    {
+      "path": "tests/helpers/disposableMovementPg.ts",
+      "gitBlobSha": "223672504baf6d179e2f4ec261586728e6b2a2dc",
+      "size": 4847
+    },
+    {
+      "path": "tests/helpers/fieldDraftFlowHarness.ts",
+      "gitBlobSha": "c77cece74a9aec75668dcef70e44caf4f833e475",
+      "size": 10194
+    },
+    {
+      "path": "tests/helpers/fieldFiltersHarness.ts",
+      "gitBlobSha": "d6312a91bea1319825ef0a7871d6f428a7de9c06",
+      "size": 6568
+    },
+    {
+      "path": "tests/helpers/fieldSelectScreensHarness.ts",
+      "gitBlobSha": "983eb9cbcd20643a4fccce434aa5758ec7432526",
+      "size": 5079
+    },
+    {
+      "path": "tsconfig.json",
+      "gitBlobSha": "54de26a78a45a176a59c5b28897760be671ee317",
+      "size": 681
+    },
+    {
+      "path": "vite.config.ts",
+      "gitBlobSha": "71d75ac02cea7ff76af2a8d925d031909202ee04",
+      "size": 1018
+    },
+    {
+      "path": "server/assets/tk_logo.png",
+      "gitBlobSha": "3a12eac276e0a1c1ee96cce7a3fa7f89426f0348",
+      "size": 442084
+    }
+  ]
+}

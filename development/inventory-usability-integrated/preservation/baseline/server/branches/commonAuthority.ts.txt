@@ -1,0 +1,74 @@
+import { and, eq, sql } from "drizzle-orm";
+import { branchMemberships } from "../../shared/models/branchMembership";
+import type { BusinessRouteDependencies } from "../routes";
+import type { CommonBranchAuthority } from "./application";
+import type { BranchId } from "./runtime";
+import { BranchAccessError } from "./runtime";
+
+/**
+ * Explicit common-store adapter. No migrations, defaults, memberships inferred
+ * from role, cache or environment reads. Call only at an approved composition
+ * root with the common identity handle, NOT a branch runtime.data() handle.
+ */
+export function pinCommonBranchAuthority(
+  accounts: BusinessRouteDependencies["authStorage"],
+  commonIdentityDb: BusinessRouteDependencies["db"],
+  designation?: { masterAccountId: string },
+): CommonBranchAuthority {
+  // Immutable server composition, never a request header/body/session flag.
+  const masterId = designation?.masterAccountId;
+  if (masterId !== undefined && !/^[a-zA-Z0-9._:-]{1,128}$/.test(masterId)) {
+    throw new BranchAccessError("MASTER_DESIGNATION_INVALID", 503);
+  }
+  return Object.freeze({
+    accounts,
+    async withCatalogLock<T>(userId: string, work: () => Promise<T>) {
+      if (!masterId || userId !== masterId) throw new BranchAccessError("CATALOG_MASTER_REQUIRED",403);
+      return commonIdentityDb.transaction(async tx => {
+        await tx.execute(sql`SET LOCAL lock_timeout='3s'`);
+        await tx.execute(sql`SET LOCAL statement_timeout='8s'`);
+        for (const branch of ["savannah","indiana"]) {
+          const result = await tx.execute(sql`SELECT * FROM public.tk_lock_branch_authority(${userId}::text,${branch}::text)`);
+          if (result.rows.length !== 1 || result.rows[0].id !== masterId
+            || result.rows[0].status !== "active" || result.rows[0].role !== "admin") {
+            throw new BranchAccessError("MASTER_ACCESS_NOT_PROVISIONED",403);
+          }
+        }
+        return work();
+      });
+    },
+    async hasMembership(userId: string, branch: BranchId) {
+      if (userId === masterId) {
+        const actor = await accounts.getUser(userId);
+        if (!actor || actor.id !== masterId || actor.status !== "active" || actor.role !== "admin") {
+          return false;
+        }
+      }
+      const rows = await commonIdentityDb.select({ active: branchMemberships.active })
+        .from(branchMemberships).where(and(
+          eq(branchMemberships.userId, userId),
+          eq(branchMemberships.branch, branch),
+          eq(branchMemberships.active, true),
+        )).limit(1);
+      return rows.length === 1;
+    },
+    async withMembershipLock<T>(userId: string, branch: BranchId, work: () => Promise<T>) {
+      // Keep the common authority rows locked until branch commit/rollback.
+      // Revocation is ordered with the whole command, not a race-prone snapshot.
+      return commonIdentityDb.transaction(async tx => {
+        await tx.execute(sql`SET LOCAL lock_timeout='3s'`);
+        await tx.execute(sql`SET LOCAL statement_timeout='8s'`);
+        // FOR SHARE requires UPDATE privileges in PostgreSQL. The reviewed,
+        // fixed-search-path function locks as its non-login owner, so the
+        // runtime need not receive broad account/membership mutation grants.
+        const result = await tx.execute(sql`SELECT * FROM public.tk_lock_branch_authority(${userId}::text,${branch}::text)`);
+        if (result.rows.length !== 1) throw new BranchAccessError("BRANCH_ACCESS_DENIED", 403);
+        if (userId === masterId && (result.rows[0].id !== masterId
+          || result.rows[0].status !== "active" || result.rows[0].role !== "admin")) {
+          throw new BranchAccessError("MASTER_ACCESS_NOT_PROVISIONED", 403);
+        }
+        return await work();
+      });
+    },
+  });
+}

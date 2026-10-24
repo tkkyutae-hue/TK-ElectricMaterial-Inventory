@@ -1,0 +1,70 @@
+{
+  "candidateOnly": true,
+  "files": [
+    {
+      "path": "client/src/components/BranchAttachmentDisclosure.tsx",
+      "preparedSha256": "6f89014209a28996f774f4d88cec62cd76bfb4bc91c1ecf52eb6ce22fcf43f8e",
+      "currentRootSha256": null
+    },
+    {
+      "path": "client/src/components/BranchAttachments.tsx",
+      "preparedSha256": "ca6e45c2f31b89e21aac52600ae005dadfd6007b50aa23128abe360cbf5cfc71",
+      "currentRootSha256": "29d6f183efde0aa33d74cef1fd795270a64a52e8156b75492c5c1be30d947991"
+    },
+    {
+      "path": "client/src/components/BranchItemGallery.tsx",
+      "preparedSha256": "9f4f45b8c8b8c0376bd757bdc6a89cbde8ee2061e5bae87d7bae58efa4c3540a",
+      "currentRootSha256": null
+    },
+    {
+      "path": "client/src/components/BranchMediaImage.tsx",
+      "preparedSha256": "3e07e572bb707c386f2beaa5f19a0c5c19ec1723552f9c0ce5c8d63541cb2888",
+      "currentRootSha256": null
+    },
+    {
+      "path": "client/src/components/ImageLightbox.tsx",
+      "preparedSha256": "d66d110bfdba635e89283eaf9f86eab618a2b0170c2366451131265b59f00fac",
+      "currentRootSha256": "85af7fbdc082491dc2b63ba973dd80dd36e3f6f7a282572fa11ee8e017a28512"
+    },
+    {
+      "path": "client/src/lib/branchMedia.ts",
+      "preparedSha256": "9f505dce15870878ba72c9685177266c88cc39f933d40219579d911c2f37f6b8",
+      "currentRootSha256": "f553f3ae6c3dfc66810dc67039db6fdfaf36c73626eb317d5e36d642b16a833a"
+    },
+    {
+      "path": "client/src/pages/CategoryDetail.tsx",
+      "preparedSha256": "a86739e16c5b3535b86cfba94886ef47588892a43c418f3688aed077aab319cd",
+      "currentRootSha256": "c80453e41cd52c72c966ef40329d205cfe742a5913636fba80ecaa1a8943e6a6"
+    },
+    {
+      "path": "client/src/pages/ItemDetails.tsx",
+      "preparedSha256": "215f8cd8e9c5efaed3b156e27b35f4f86b6fae4f681cdb6ed069c7541f010a45",
+      "currentRootSha256": "2de38df888e6210fd5eb639ecc70cf073d1a3fe596acdf10c01ac7a8476353a7"
+    },
+    {
+      "path": "client/src/pages/ProjectDetail.tsx",
+      "preparedSha256": "f7f29d468a6523c1d31b557d725efed07df80335b570ea49b95f4727d1ab9bab",
+      "currentRootSha256": "c9b824959d77050dcbebed64ee86a601d1abc9098be8431cfdd6b889eaad3316"
+    },
+    {
+      "path": "client/src/pages/Transactions.tsx",
+      "preparedSha256": "f5c682f45cfd59cdf501562048f980372255d48fc1a54098718bfd2d1272e9b2",
+      "currentRootSha256": "b38fa21473f896d42825abdfede44259a5bc6f9eae6d23520c0ec703c42b0eae"
+    },
+    {
+      "path": "client/src/pages/field/FieldCartReview.tsx",
+      "preparedSha256": "0fa23ab441013f82e78987a57a999b9ef252b6b09b2e430c35d2500d8ad0aed0",
+      "currentRootSha256": "0591d9af92f6f8cd228975c271c57916e720666bd8f85f7ac174bee67f32993c"
+    },
+    {
+      "path": "client/src/pages/field/FieldInventory.tsx",
+      "preparedSha256": "9d7b1c6610e204af67bd556c6651e0b6d618df5e68f8865c3c43847fe314e75d",
+      "currentRootSha256": "48ebc2186c36e4c2cb78c6dd2b8db9e70ed771b6ed742da0d6b4b4f631c3a143"
+    },
+    {
+      "path": "client/src/pages/field/FieldRequestsList.tsx",
+      "preparedSha256": "ffbba145084f5db02c19b7a2be19863119bad70479bc851fb6f415616edd1a65",
+      "currentRootSha256": "b077e700916fb3be65a181a1a7e5db9ca7724bf5bb0337d0b8f4d45a7de504fb"
+    }
+  ]
+}

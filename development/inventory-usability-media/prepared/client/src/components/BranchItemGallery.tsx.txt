@@ -1,0 +1,83 @@
+import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
+import { branchFetch, documentBranchPrefix } from "@/lib/branchTransport";
+import { branchGallery, branchMediaResult, mediaCanRetry, mediaErrorMessage, mediaMessages } from "@/lib/branchMedia";
+import { BranchMediaImage } from "@/components/BranchMediaImage";
+import { ImageLightbox } from "@/components/ImageLightbox";
+import { Button } from "@/components/ui/button";
+
+/** Branch-only gallery. Business fields and quantity calculations remain owned by the host. */
+export function BranchItemGallery({ itemId, name, editable = false }: { itemId: number; name: string; editable?: boolean }) {
+  const { user, isManagerOrAbove } = useAuth();
+  const { lang, t } = useLanguage();
+  const messages = mediaMessages[lang] ?? mediaMessages.en;
+  const client = useQueryClient();
+  const [selected, setSelected] = useState(0);
+  const [lightbox, setLightbox] = useState(false);
+  const [ended, setEnded] = useState(false);
+  const [action, setAction] = useState<{ scope: string; error?: unknown; pending: boolean } | null>(null);
+  const lock = useRef(false);
+  const scope = `${documentBranchPrefix}:${user?.id ?? ""}:${itemId}`;
+  const current = useRef(scope);
+  current.current = scope;
+  const alive = useRef(true);
+  const key = ["/api/inventory", itemId, "images", documentBranchPrefix, user?.id] as const;
+  useEffect(() => {
+    alive.current = true;
+    const end = () => { alive.current = false; setEnded(true); setLightbox(false); };
+    window.addEventListener("inventory:branch-session-ended", end);
+    return () => { alive.current = false; window.removeEventListener("inventory:branch-session-ended", end); };
+  }, []);
+  useEffect(() => { setSelected(0); setLightbox(false); setAction(null); }, [scope]);
+  const query = useQuery<any[]>({
+    queryKey: key, queryFn: () => branchGallery(itemId), retry: false,
+    enabled: !!documentBranchPrefix && !!user?.id && !ended,
+  });
+  const images = !ended && user?.id && query.isSuccess ? query.data : [];
+  const index = Math.min(selected, Math.max(0, images.length - 1));
+  async function primary(id: number) {
+    if (lock.current || !alive.current || current.current !== scope) return;
+    lock.current = true;
+    setAction({ scope, pending: true });
+    try {
+      await branchMediaResult(await branchFetch(`/api/inventory/${itemId}/images/${id}/primary`, { method: "PATCH" }));
+      if (!alive.current || current.current !== scope) return;
+      await client.invalidateQueries({ queryKey: ["/api/inventory", itemId, "images"] });
+      await client.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
+      if (alive.current && current.current === scope) { setSelected(0); setAction(null); }
+    } catch (error) {
+      if (alive.current && current.current === scope) setAction({ scope, pending: false, error });
+    } finally { lock.current = false; }
+  }
+  return <section className="space-y-3 min-w-0" data-testid="branch-item-gallery" aria-busy={query.isFetching || action?.pending}>
+    {ended || !user?.id ? <p role="alert">{messages.forbidden}</p> :
+      query.isPending ? <p role="status">{messages.loading}</p> :
+      query.isError ? <div role="alert" className="space-y-2">
+        <p>{mediaErrorMessage(query.error, lang)}</p>
+        {mediaCanRetry(query.error) && <Button type="button" variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}>{messages.retry}</Button>}
+      </div> : images.length === 0 ? <p role="status">{messages.emptyPhotos}</p> :
+      <>
+        <div className="rounded-xl border bg-muted min-h-40 flex items-center justify-center p-2">
+          <BranchMediaImage key={`${scope}:${images[index]?.imageUrl}`} src={images[index]?.imageUrl} alt={name}
+            className="max-w-full max-h-80 object-contain break-words" data-testid="img-gallery-main"
+            onClick={() => setLightbox(true)} />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {images.map((image, i) => <div key={image.id} className="flex flex-col gap-1">
+            <Button type="button" variant={i === index ? "default" : "outline"} aria-pressed={i === index}
+              aria-label={`${name} ${i + 1}`} onClick={() => setSelected(i)} className="min-h-11 min-w-11">
+              {i + 1}
+            </Button>
+            {editable && isManagerOrAbove && !images.some(value => value.readOnly) && i > 0 &&
+              <Button type="button" variant="outline" className="whitespace-normal h-auto min-h-11 max-w-40"
+                disabled={!!action?.pending} onClick={() => void primary(image.id)}>{t.itemDetailSetPrimary}</Button>}
+          </div>)}
+        </div>
+        {images.some(value => value.readOnly) && <p className="text-sm text-muted-foreground">{messages.readOnly}</p>}
+        <ImageLightbox key={scope} images={images.map(image => image.imageUrl)} initialIndex={index} open={lightbox} onClose={() => setLightbox(false)} />
+      </>}
+    {action?.scope === scope && <p role={action.error ? "alert" : "status"}>{action.error ? mediaErrorMessage(action.error, lang) : messages.updating}</p>}
+  </section>;
+}

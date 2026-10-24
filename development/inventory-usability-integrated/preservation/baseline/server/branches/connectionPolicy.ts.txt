@@ -1,0 +1,48 @@
+import { BranchAccessError } from "./runtime";
+
+interface DatabaseEndpoint {
+  /** To be supplied from independently verified platform metadata. */
+  targetId: string;
+  connectionString: string;
+}
+interface ConnectionInput {
+  savannah: DatabaseEndpoint;
+  indiana?: DatabaseEndpoint;
+  enableIndiana: boolean;
+}
+
+function endpointKey(endpoint: DatabaseEndpoint): string {
+  try {
+    const url = new URL(endpoint.connectionString);
+    if (!["postgres:", "postgresql:"].includes(url.protocol) || !url.hostname || url.pathname.length <= 1 ||
+        !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(endpoint.targetId)) throw Error();
+    // Credentials, TLS flags and pooler options cannot disguise the same
+    // host/port/database as an independent database.
+    return JSON.stringify([url.hostname.toLowerCase(), url.port || "5432", decodeURIComponent(url.pathname)]);
+  } catch {
+    // No URL, credential or driver error text is allowed in the error response.
+    throw new BranchAccessError("BRANCH_CONNECTION_INVALID", 503);
+  }
+}
+
+/**
+ * Pure validation ONLY. No connection, pool creation, env reads, host scanning
+ * or fallback. Distinct strings are NOT proof of distinct physical databases:
+ * aliases/poolers require external target-identity evidence before activation.
+ */
+export function validateBranchConnections(input: ConnectionInput) {
+  const savannahKey = endpointKey(input.savannah);
+  if (!input.enableIndiana) {
+    return Object.freeze({ savannahTargetId: input.savannah.targetId, indianaEnabled: false as const });
+  }
+  if (!input.indiana) throw new BranchAccessError("INDIANA_CONNECTION_REQUIRED", 503);
+  const indianaKey = endpointKey(input.indiana);
+  if (input.savannah.targetId === input.indiana.targetId || savannahKey === indianaKey) {
+    throw new BranchAccessError("BRANCH_DATABASE_NOT_DISTINCT", 503);
+  }
+  return Object.freeze({
+    savannahTargetId: input.savannah.targetId,
+    indianaTargetId: input.indiana.targetId,
+    indianaEnabled: true as const,
+  });
+}

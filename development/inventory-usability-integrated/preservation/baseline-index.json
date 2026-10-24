@@ -1,0 +1,3408 @@
+{
+  "scope": "Reproduction inputs only; no runtime installation or execution",
+  "evidenceCommit": "eef5af763f3c4a69c2339aa1fca58ef735264341",
+  "remoteBase": "40da01ee24d9154166462bc96e295de191f9ae75",
+  "excluded": [
+    ".replit",
+    "environment/secrets",
+    "business records",
+    "employee documents",
+    "uploaded photos",
+    "database dumps",
+    "server/assets/tk_logo.png",
+    "server/templates/rms-template.xlsx",
+    "node_modules",
+    "generated-artifacts"
+  ],
+  "files": [
+    {
+      "path": "attached_assets/tk_logo_1772726610288.png",
+      "evidenceSourcePath": "server/assets/tk_logo.png",
+      "sha256": "94fdddc28d26ac12f3e19bc9048f3b87d5efc895732c44cf495000e22e8c421e",
+      "gitBlobSha": "3a12eac276e0a1c1ee96cce7a3fa7f89426f0348",
+      "bytes": 442084,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/assets/tk_logo.png"
+      }
+    },
+    {
+      "path": "client/src/App.tsx",
+      "evidenceSourcePath": "client/src/App.tsx",
+      "sha256": "bb70cd274c446a268a7ea0f4e6da79bc4eddec6225b82dc629650760b819f91d",
+      "gitBlobSha": "644a5333b9db88ebe1f22fc0081404d64b6a3d92",
+      "bytes": 18211,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/App.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/BranchAttachments.tsx",
+      "evidenceSourcePath": "client/src/components/BranchAttachments.tsx",
+      "sha256": "29d6f183efde0aa33d74cef1fd795270a64a52e8156b75492c5c1be30d947991",
+      "gitBlobSha": "75f398a8f76f1c755aaeb4e76245f97ecc0640ba",
+      "bytes": 4157,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/BranchAttachments.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/BranchTransitionNotice.tsx",
+      "evidenceSourcePath": "client/src/components/BranchTransitionNotice.tsx",
+      "sha256": "c556d1a343285a1d06fdb458f69425ddc86661c53f6f42bce121ddae3906a952",
+      "gitBlobSha": "2bd9a22091fd71327e1788c5cd69fbb2ece7feb6",
+      "bytes": 1233,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/BranchTransitionNotice.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/CatalogPreparationPanel.tsx",
+      "evidenceSourcePath": "client/src/components/CatalogPreparationPanel.tsx",
+      "sha256": "3c3a3f21385656b8a280e9855dfbd298d2c7c82e5d00489a561916a3982d196a",
+      "gitBlobSha": "26b4c0fa6f3069eba6514beb3ec80d891c131155",
+      "bytes": 18559,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/CatalogPreparationPanel.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/EditTransactionDrawer.tsx",
+      "evidenceSourcePath": "client/src/components/EditTransactionDrawer.tsx",
+      "sha256": "7afe5461ba45a5512856e209f24b4abb857a9a8534f0bb53a854eb6ce51d6fcf",
+      "gitBlobSha": "c28625e0dd940cfc4e6aee0aa6dcf02d3167bcba",
+      "bytes": 28835,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/EditTransactionDrawer.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ErrorBoundary.tsx",
+      "evidenceSourcePath": "client/src/components/ErrorBoundary.tsx",
+      "sha256": "5663881771c92968550f01c775845d9a2508e26d1f884a35a13dd4ce60aa7638",
+      "gitBlobSha": "0c742b7953a3d8b7e3469901a3e56a1a56485b9c",
+      "bytes": 2066,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ErrorBoundary.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ExportRmsDialog.tsx",
+      "evidenceSourcePath": "client/src/components/ExportRmsDialog.tsx",
+      "sha256": "3a0f9b98349d4e23394c678805b926eb19c79f3b7c8a8ce409085f900fedd9f6",
+      "gitBlobSha": "016a8989ed0e45bdf0571eb77329d0472ac2df81",
+      "bytes": 23201,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/ExportRmsDialog.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/ImageLightbox.tsx",
+      "evidenceSourcePath": "client/src/components/ImageLightbox.tsx",
+      "sha256": "85af7fbdc082491dc2b63ba973dd80dd36e3f6f7a282572fa11ee8e017a28512",
+      "gitBlobSha": "e3ce3aa739f2853e250fe9ad2945ba278c5c88bc",
+      "bytes": 4251,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/ImageLightbox.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/MovementForm.tsx",
+      "evidenceSourcePath": "client/src/components/MovementForm.tsx",
+      "sha256": "f5f87e069cdf0098bb3b4a1ec03983c61e7306f7988b6d24885608db9be320cb",
+      "gitBlobSha": "4bacd9405f6847435bfa25d75b46e86e175acbb2",
+      "bytes": 50125,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/MovementForm.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/ObjectUploader.tsx",
+      "evidenceSourcePath": "client/src/components/ObjectUploader.tsx",
+      "sha256": "3435557c2c88315a95bb6ddd87c42b81b78bdda6973b9ff26a652169de116932",
+      "gitBlobSha": "7484ece882c6ae2f78c75e1b44eaf16b1df44ef1",
+      "bytes": 3327,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ObjectUploader.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/QuickEntryInput.tsx",
+      "evidenceSourcePath": "client/src/components/QuickEntryInput.tsx",
+      "sha256": "ad0bc1260695d6eb6b85ba119b1464242fa650b7e2a066743f55a3c3c590de0a",
+      "gitBlobSha": "035158cc002e2d6c6f0bf128cf1138f279b985d2",
+      "bytes": 1932,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/QuickEntryInput.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/RequestWorkflowNotice.tsx",
+      "evidenceSourcePath": "client/src/components/RequestWorkflowNotice.tsx",
+      "sha256": "6d97fc92e55892ce62c0456b7d3fc8c12eee8a74f1597b1cfe681f0e7abdbdd1",
+      "gitBlobSha": "d6b493a7c4387dbb6cd742b660216daf70e4c0f9",
+      "bytes": 685,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/RequestWorkflowNotice.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/StatusBadge.tsx",
+      "evidenceSourcePath": "client/src/components/StatusBadge.tsx",
+      "sha256": "170fd0de84060def45251540713b44eec19e4f42442efe5009ecee736f232901",
+      "gitBlobSha": "8012570bad017dc681a0cd47c9aec8ba4374b04a",
+      "bytes": 5163,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/StatusBadge.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/UsagePatternBadge.tsx",
+      "evidenceSourcePath": "client/src/components/UsagePatternBadge.tsx",
+      "sha256": "9ce8e632850f97dd27463c44a327f724f707363c11747143c29ce6960b7227e0",
+      "gitBlobSha": "165b7e764a3b658e0a1b43c3952873f452101c25",
+      "bytes": 1514,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/UsagePatternBadge.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/category/AdjustStockDialog.tsx",
+      "evidenceSourcePath": "client/src/components/category/AdjustStockDialog.tsx",
+      "sha256": "3c9066f37644f566991899927a1c9db15b8a99351df3a85c7d3c2583be67f362",
+      "gitBlobSha": "1454b5c792acb620004b003e8510df9ceb456035",
+      "bytes": 10184,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/category/AdjustStockDialog.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/category/AssetPanel.tsx",
+      "evidenceSourcePath": "client/src/components/category/AssetPanel.tsx",
+      "sha256": "2a2cc5d96480815d3688357a303deb7eeb26286523cd6e03335df36a4788ee98",
+      "gitBlobSha": "8fd2a8997a10e7e0bbab5b493c220780a1ee8a03",
+      "bytes": 7064,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/category/AssetPanel.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/category/FamilyEditDialog.tsx",
+      "evidenceSourcePath": "client/src/components/category/FamilyEditDialog.tsx",
+      "sha256": "aca765074ab401e7fd216f3b43e46413243952f96da1ad1ba2efc62781714e7f",
+      "gitBlobSha": "dcc2a096bdaca8c22caa885aad3d51d413454148",
+      "bytes": 23270,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/category/FamilyEditDialog.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/category/FamilyGroupCard.tsx",
+      "evidenceSourcePath": "client/src/components/category/FamilyGroupCard.tsx",
+      "sha256": "b05efa8e9f86ca1deff45192d920001c2eb8235d97ed9b146d4ab33c1f13b03f",
+      "gitBlobSha": "b04ba639a5dc2239a3b539cca90c112348146703",
+      "bytes": 45594,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/category/FamilyGroupCard.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/category/FamilyHeaderCard.tsx",
+      "evidenceSourcePath": "client/src/components/category/FamilyHeaderCard.tsx",
+      "sha256": "fc2a50aab3ab0fe9320aa983c2088198e4b07d1bf722a44b7b81856bd99a6815",
+      "gitBlobSha": "e7b1116f31306ff26138f8edcb9d2ba1202056b3",
+      "bytes": 9126,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/category/FamilyHeaderCard.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/category/InlineEditRow.tsx",
+      "evidenceSourcePath": "client/src/components/category/InlineEditRow.tsx",
+      "sha256": "d806532853ed1bb5ffbe36cfe70d8bc8e16bad848770670a4cf8b29375e79a5f",
+      "gitBlobSha": "ebd09e39a687fd5bac7ba488f752132b6e55f3b5",
+      "bytes": 19602,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/category/InlineEditRow.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/category/LocationCombobox.tsx",
+      "evidenceSourcePath": "client/src/components/category/LocationCombobox.tsx",
+      "sha256": "95573b69ac66f31ecf8c2843c7da4bc77d8dfbbbc64fa609636421715ec90c88",
+      "gitBlobSha": "4ec3b056ca5b14c0e1f9be8a7202d66f48f2d36e",
+      "bytes": 5210,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/category/LocationCombobox.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/category/MoveCategoryDialog.tsx",
+      "evidenceSourcePath": "client/src/components/category/MoveCategoryDialog.tsx",
+      "sha256": "85435db6ff313abd241628902efc339074c22ca23588833c960ec2cb765dddf1",
+      "gitBlobSha": "abc70e5823b57068152127ef13aaa906984a6ab9",
+      "bytes": 7434,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/category/MoveCategoryDialog.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/category/WireItemReelSection.tsx",
+      "evidenceSourcePath": "client/src/components/category/WireItemReelSection.tsx",
+      "sha256": "11b0390ddba92a1fb6480a48b88812faddbe2b269ccb02d0ac6c693dede06da4",
+      "gitBlobSha": "50760bb8616c7cd1cb445af7803df844795a3b45",
+      "bytes": 24508,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/category/WireItemReelSection.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/category/types.ts",
+      "evidenceSourcePath": "client/src/components/category/types.ts",
+      "sha256": "8e9b7af2f549ba2144170282178178a115ed6d1de1731a640b2f03f69a27cfc8",
+      "gitBlobSha": "84b93d915dcb39cffcf27277268776a4206e1dcc",
+      "bytes": 8937,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/category/types.ts"
+      }
+    },
+    {
+      "path": "client/src/components/layout/AppLayout.tsx",
+      "evidenceSourcePath": "client/src/components/layout/AppLayout.tsx",
+      "sha256": "cbda2f72f84a905d556ccd0d111a4744828a5b15047ba62b2f32fe9c1614d4ef",
+      "gitBlobSha": "edbdca2de40b79fd98052fa791a803c04710555f",
+      "bytes": 12449,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/layout/AppLayout.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/layout/BranchLoginRedirect.tsx",
+      "evidenceSourcePath": "client/src/components/layout/BranchLoginRedirect.tsx",
+      "sha256": "2b39c191086c2dbadacb673ed50ebc8978393a5eef04614ad545a8034f730fde",
+      "gitBlobSha": "1cb7259d14174993dc2b3b65074f75466c326d31",
+      "bytes": 291,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/layout/BranchLoginRedirect.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/layout/BranchSelectorLink.tsx",
+      "evidenceSourcePath": "client/src/components/layout/BranchSelectorLink.tsx",
+      "sha256": "604e68f40e30a982cf42d3230141bdc6589a11f81f723f73b349b75a658ef119",
+      "gitBlobSha": "0cf4c8766cb7e20af1d97b5397da6f2540b1fa02",
+      "bytes": 450,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/layout/BranchSelectorLink.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/layout/FieldBrandLockup.tsx",
+      "evidenceSourcePath": "client/src/components/layout/FieldBrandLockup.tsx",
+      "sha256": "95a3415de161d396488101260a1467a60e127940cb96454a387d8bbcf4a66215",
+      "gitBlobSha": "2584dabd1f7bd10632f0fd3f6b4b14f98a82d417",
+      "bytes": 2175,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/layout/FieldBrandLockup.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/layout/FieldHeader.tsx",
+      "evidenceSourcePath": "client/src/components/layout/FieldHeader.tsx",
+      "sha256": "405ef2b6e55e29b8d03778c86467b1ebeff8e7ad421aada32d1b7e08d3aa8682",
+      "gitBlobSha": "8e799a902adcc2d57ad46d11dec60ba5bd97c635",
+      "bytes": 6980,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/layout/FieldHeader.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/layout/FieldLayout.tsx",
+      "evidenceSourcePath": "client/src/components/layout/FieldLayout.tsx",
+      "sha256": "64d670c672c9eed84a6a787323223c932a513811c55ab5d4430b8dfe823ea839",
+      "gitBlobSha": "9c43b98ae8df38ab98e501f3abda06252c358e6a",
+      "bytes": 3826,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/layout/FieldLayout.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/layout/LazyPage.tsx",
+      "evidenceSourcePath": "client/src/components/layout/LazyPage.tsx",
+      "sha256": "409c154104becb6e57fe3ec8d42c0b487e895a53fca0bfcdb23692b85878d939",
+      "gitBlobSha": "a76d43ff5359e5048037219038262b7f431495f0",
+      "bytes": 1085,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/layout/LazyPage.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/layout/TkElectricBrand.tsx",
+      "evidenceSourcePath": "client/src/components/layout/TkElectricBrand.tsx",
+      "sha256": "47eb39af8cd18936122f9b680468f5326dfdfba866449ea0ecded7a730cc551b",
+      "gitBlobSha": "cd9f266373a8efdf8ba33127f04ed766b13fd9da",
+      "bytes": 1526,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/layout/TkElectricBrand.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/manpower/ForemanAccountAudit.tsx",
+      "evidenceSourcePath": "client/src/components/manpower/ForemanAccountAudit.tsx",
+      "sha256": "2a0afd13438acb5ec13bf1c899a8f56eb354e3433cb1a58367d30ba761d39842",
+      "gitBlobSha": "804d32a6afc9e7e8a7154acf53a0efd2b8c3ddc6",
+      "bytes": 13330,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/manpower/ForemanAccountAudit.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/movement/ItemRowField.tsx",
+      "evidenceSourcePath": "client/src/components/movement/ItemRowField.tsx",
+      "sha256": "15590dfe7ca3b69fc1348a8abc348dd9794158ccfcea51cb9eb34b215346076c",
+      "gitBlobSha": "362c21532e08166a4d410b2298feb5a0810749d1",
+      "bytes": 38230,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/movement/ItemRowField.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/movement/MovementTypePillSelector.tsx",
+      "evidenceSourcePath": "client/src/components/movement/MovementTypePillSelector.tsx",
+      "sha256": "62714eef6caaad8e8db538733cbff2cdaa1b897542b2c1b47339854cb5e3b705",
+      "gitBlobSha": "8d0d336c165275c08ba7e6c691a75787af985b81",
+      "bytes": 2974,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/movement/MovementTypePillSelector.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/movement/SearchableItemSelect.tsx",
+      "evidenceSourcePath": "client/src/components/movement/SearchableItemSelect.tsx",
+      "sha256": "f67bf8ec17f673d65c5ed26f0f9fd0a12619bf79906c892a761c991d425ecbdd",
+      "gitBlobSha": "d0c5f6ec30fc2e7b99ca88c32af3a602be71ccf6",
+      "bytes": 20029,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/movement/SearchableItemSelect.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/movement/SearchableLocationSelect.tsx",
+      "evidenceSourcePath": "client/src/components/movement/SearchableLocationSelect.tsx",
+      "sha256": "a590599fed620c9ce910293713ce8cd5daba4a7399839cde45243b35e37e5886",
+      "gitBlobSha": "498ca10470c52bded6b1f7762381bc22dd343a6f",
+      "bytes": 19860,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/movement/SearchableLocationSelect.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/movement/SearchableProjectSelect.tsx",
+      "evidenceSourcePath": "client/src/components/movement/SearchableProjectSelect.tsx",
+      "sha256": "4d9aa2471a852abbbb715dfa516ac2bf890d8e41870da96252ecde109451490e",
+      "gitBlobSha": "9e6bde86b0a1df87382ecafbada934af9171b483",
+      "bytes": 14904,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/movement/SearchableProjectSelect.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/movement/types.ts",
+      "evidenceSourcePath": "client/src/components/movement/types.ts",
+      "sha256": "7297610fada5d95c92e7cfc6d181f97cc8f6497be85f0aaa6286798776c33fb7",
+      "gitBlobSha": "a2e05aaa4f20949e165dbe8aae2fbf3247c3eed7",
+      "bytes": 559,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/movement/types.ts"
+      }
+    },
+    {
+      "path": "client/src/components/project/CompletionReportTab.tsx",
+      "evidenceSourcePath": "client/src/components/project/CompletionReportTab.tsx",
+      "sha256": "a9e6e6514e43796acb036e2ba276ce3752619ddb9ccd4f92256a42729d8483b2",
+      "gitBlobSha": "a47f796b4e8d7c8982217c22a3a52188cf22110c",
+      "bytes": 58590,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/CompletionReportTab.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/project/EditProjectDialog.tsx",
+      "evidenceSourcePath": "client/src/components/project/EditProjectDialog.tsx",
+      "sha256": "ca2f852ccfbf22c32bd1906cfbf9b282a4506706646192280756f6a1efdea097",
+      "gitBlobSha": "c46c0f6e7a6b743f247fd948c8fc1da12c0b0c23",
+      "bytes": 8965,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/project/EditProjectDialog.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/project/OverviewTab.tsx",
+      "evidenceSourcePath": "client/src/components/project/OverviewTab.tsx",
+      "sha256": "8a76abfcbc36c36c6794b1b609fc1bc8dae4983a56e9a9b51d4d4cf14bbbc17d",
+      "gitBlobSha": "46d916de343291a460c1cf70d3ab3e48382233de",
+      "bytes": 7377,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/OverviewTab.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/project/ProgressTab.tsx",
+      "evidenceSourcePath": "client/src/components/project/ProgressTab.tsx",
+      "sha256": "6f5a20f64a9d51d065a19ec6af4b6c5c07dfe9b25ff8ff544647d6643db370a9",
+      "gitBlobSha": "49d582b821faf8f7bf35ff0c848bc5ac51ac9512",
+      "bytes": 17066,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/ProgressTab.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/project/ScopeItemsTab.tsx",
+      "evidenceSourcePath": "client/src/components/project/ScopeItemsTab.tsx",
+      "sha256": "1a49b8a4907b487daac84f815dc23a4866aa4963977a6a68fb079c4c7be31f6a",
+      "gitBlobSha": "fb804c2dc4a09a11d4a514be0b85029774088c7a",
+      "bytes": 33470,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/ScopeItemsTab.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/project/bundleTemplates.ts",
+      "evidenceSourcePath": "client/src/components/project/bundleTemplates.ts",
+      "sha256": "173741a55762dd188f0b8ac4f257a18460577ffeca9bac1596a6d8705e1e57ca",
+      "gitBlobSha": "9e20d056006a79f2ce95b16d24b39c7ae280bf4f",
+      "bytes": 7683,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/project/bundleTemplates.ts"
+      }
+    },
+    {
+      "path": "client/src/components/project/categoryConfig.ts",
+      "evidenceSourcePath": "client/src/components/project/categoryConfig.ts",
+      "sha256": "12eacd2da9bdb8336398f354fb8e56ff6f5b308c4d1340a4ab13ce6011ff1813",
+      "gitBlobSha": "01e6d921affae8c9431e0b7187e651cb1e43b02d",
+      "bytes": 5753,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/project/categoryConfig.ts"
+      }
+    },
+    {
+      "path": "client/src/components/project/overview/DailyReportsTab.tsx",
+      "evidenceSourcePath": "client/src/components/project/overview/DailyReportsTab.tsx",
+      "sha256": "9f8d0de2b43fce50ba458025264be8055c87d5aca2a94277da4b84160f2123f6",
+      "gitBlobSha": "79b52cfb7e084e122793726b7740ce3d40df8a35",
+      "bytes": 14506,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/overview/DailyReportsTab.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/project/overview/MaterialUsageTab.tsx",
+      "evidenceSourcePath": "client/src/components/project/overview/MaterialUsageTab.tsx",
+      "sha256": "fe2fbe2f2de01f9500dd5fb97ecfe6b97d0cd50b9bd2d0c22541b1d97da645d8",
+      "gitBlobSha": "fcbdf4900719888a049971b5eb4de94a1db917cb",
+      "bytes": 7929,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/overview/MaterialUsageTab.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/project/overview/OverviewProgressCard.tsx",
+      "evidenceSourcePath": "client/src/components/project/overview/OverviewProgressCard.tsx",
+      "sha256": "fbf76641c28de8bc63a43a8f8022d8ba66cfea137ba277424b87ee3721c6d0bc",
+      "gitBlobSha": "8e7d26cea7c5185d454f9035ecef965ef8a752b3",
+      "bytes": 3766,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/project/overview/OverviewProgressCard.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/project/overview/OverviewTransactionsTable.tsx",
+      "evidenceSourcePath": "client/src/components/project/overview/OverviewTransactionsTable.tsx",
+      "sha256": "a7c87fac27db397af65f7ee5037c4eb1e43829be4c3929e031a8badc5ebf4309",
+      "gitBlobSha": "4978767f061083a4e186b7b5f200100ddd4135d7",
+      "bytes": 4902,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/project/overview/OverviewTransactionsTable.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/project/overview/ProjectDetailsSidebar.tsx",
+      "evidenceSourcePath": "client/src/components/project/overview/ProjectDetailsSidebar.tsx",
+      "sha256": "e89ef4999ac1ff924d454339e79fb4637995e4558d28a1e01af22dcb19a4b399",
+      "gitBlobSha": "ee4e42cc2571f0c5ddb1318e1bd7757ea878efa8",
+      "bytes": 2619,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/project/overview/ProjectDetailsSidebar.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/project/overview/ProjectSummaryCard.tsx",
+      "evidenceSourcePath": "client/src/components/project/overview/ProjectSummaryCard.tsx",
+      "sha256": "3f1fbb84c07866a04efe194a7dfb00aa9d78a9bf4faecf6171b40a542ab8ef77",
+      "gitBlobSha": "24e982aff80a066d30ce0f3e0c38ae83749396e0",
+      "bytes": 3162,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/project/overview/ProjectSummaryCard.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/project/overview/ReportsSummaryCard.tsx",
+      "evidenceSourcePath": "client/src/components/project/overview/ReportsSummaryCard.tsx",
+      "sha256": "7f2a315cb426f78550f52db78d2af8cc25def869bf97f9d1720d227e791db13c",
+      "gitBlobSha": "0ea1b8a9ad9ff7cab8bd681dd76af6c743b0b6c6",
+      "bytes": 1953,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/project/overview/ReportsSummaryCard.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/project/scope/BundleSelector.tsx",
+      "evidenceSourcePath": "client/src/components/project/scope/BundleSelector.tsx",
+      "sha256": "ccb63d4942f70fd5485a51d36c8efe611375d934d9a6f531258de2bcbcde1683",
+      "gitBlobSha": "0c5349a5de9c8f00d1dbdae6f62fd6a2fb5ac74d",
+      "bytes": 22069,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/project/scope/BundleSelector.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/project/scope/InlineScopeRow.tsx",
+      "evidenceSourcePath": "client/src/components/project/scope/InlineScopeRow.tsx",
+      "sha256": "e2d67a8520d4f74e4d44af377b78217f2fdb803098616ba4cc47d3b9b7be300f",
+      "gitBlobSha": "b2191cf2560b9b69a54e8937e52c86e9cabee54f",
+      "bytes": 8924,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/project/scope/InlineScopeRow.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/project/scope/ScopeCategorySection.tsx",
+      "evidenceSourcePath": "client/src/components/project/scope/ScopeCategorySection.tsx",
+      "sha256": "d6fafd33bc7b2153430848b99b09d98334e29b2f3e8d4d754f85f932a1034344",
+      "gitBlobSha": "bf336eb191adb15313a2f4f606c52d53eafa340e",
+      "bytes": 5766,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/project/scope/ScopeCategorySection.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/project/scope/ScopeDeleteDialog.tsx",
+      "evidenceSourcePath": "client/src/components/project/scope/ScopeDeleteDialog.tsx",
+      "sha256": "7cb3b13a622ac2e6bab4e134158fd8130b349f14db4bb300669d1af68ee500b6",
+      "gitBlobSha": "64114381f5f42d91f9beb0ee3afab1771ef327a3",
+      "bytes": 2337,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/project/scope/ScopeDeleteDialog.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/project/scope/ScopeExtractDialog.tsx",
+      "evidenceSourcePath": "client/src/components/project/scope/ScopeExtractDialog.tsx",
+      "sha256": "21beaa25b776cd929d54b886d0b32d979f027627b6e943e5cb5266da1e4e335d",
+      "gitBlobSha": "43e74ad4de5bd7ee155786c1b6985c5862630740",
+      "bytes": 35815,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/scope/ScopeExtractDialog.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/project/scope/ScopeItemDialog.tsx",
+      "evidenceSourcePath": "client/src/components/project/scope/ScopeItemDialog.tsx",
+      "sha256": "f74a4cf8f36db8bbb354d9e1147824d50dffe6fe7218c4f10592bd38ca7c89d7",
+      "gitBlobSha": "d36dda4842eee00bcf7b816a8171a2e6cd447c77",
+      "bytes": 15071,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/scope/ScopeItemDialog.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/components/project/scope/ScopeItemRow.tsx",
+      "evidenceSourcePath": "client/src/components/project/scope/ScopeItemRow.tsx",
+      "sha256": "7f590fbf9991476eb6b5916c2fc994f601252e4a261922fd54786b2073c02f2b",
+      "gitBlobSha": "b993d6d4161d264839ab308fe7903c8e4aa8740c",
+      "bytes": 7168,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/project/scope/ScopeItemRow.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/project/scope/useScopeActions.ts",
+      "evidenceSourcePath": "client/src/components/project/scope/useScopeActions.ts",
+      "sha256": "1748eecbabbd238c2ffe079ca43e1808bf50d346a3ad4abfebf0851aa292655b",
+      "gitBlobSha": "8322c2fbe8f3cf9029094cd10395ec0aef68f3f8",
+      "bytes": 6447,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/project/scope/useScopeActions.ts"
+      }
+    },
+    {
+      "path": "client/src/components/project/types.ts",
+      "evidenceSourcePath": "client/src/components/project/types.ts",
+      "sha256": "6b01baeab3e2f24868312793191516487f2fbb0433218a9d4ffe7e8c1978b82e",
+      "gitBlobSha": "6278aad312b0ec09acbe1a8ebfd797b2f680588c",
+      "bytes": 3786,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/project/types.ts"
+      }
+    },
+    {
+      "path": "client/src/components/shared/EmptyState.tsx",
+      "evidenceSourcePath": "client/src/components/shared/EmptyState.tsx",
+      "sha256": "6668a8e0a122aab28fad0548298ab29be775ce05a2b9ec07f6cd52750e1cd525",
+      "gitBlobSha": "15f8823a4e205eb595bbc76aa05ed4a1b4db806b",
+      "bytes": 890,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/shared/EmptyState.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/shared/ErrorState.tsx",
+      "evidenceSourcePath": "client/src/components/shared/ErrorState.tsx",
+      "sha256": "d03942b1593d8ee8e115fd4b0e1011b262de7d37a39acf7a106fedd7f4da8fcf",
+      "gitBlobSha": "8a88dd0cdbb8e9a12cb3740ae470223905cfcade",
+      "bytes": 1105,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/shared/ErrorState.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/shared/FilterBar.tsx",
+      "evidenceSourcePath": "client/src/components/shared/FilterBar.tsx",
+      "sha256": "f90c458f4ac41a86c71cb6c50a828b9ee94f1d179e27eb04101f9d4563352305",
+      "gitBlobSha": "6a71f1c7f1131c2af54b88e04b5f08409d86ba5c",
+      "bytes": 2843,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/shared/FilterBar.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/shared/FilterChip.tsx",
+      "evidenceSourcePath": "client/src/components/shared/FilterChip.tsx",
+      "sha256": "9e388dd411d40d63a117e56327063c19ba5026ad1a2f61ab40f3b834c804e867",
+      "gitBlobSha": "01c4e5d20a97ef2be40537f03bcce4ebf36e7a5a",
+      "bytes": 723,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/shared/FilterChip.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/shared/PageHeader.tsx",
+      "evidenceSourcePath": "client/src/components/shared/PageHeader.tsx",
+      "sha256": "ea26561de51d4968897504b7ff90ac432a558ccaac68469546a40cb90a38d9d5",
+      "gitBlobSha": "18344c2a13b3183df3a7532fa70f9da984b46d1d",
+      "bytes": 1106,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/shared/PageHeader.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/shared/PersonPicker.tsx",
+      "evidenceSourcePath": "client/src/components/shared/PersonPicker.tsx",
+      "sha256": "cd8ce2a6210be7d81c9d0f50dc346605b42049b14bfc86dd87efa867bd22af60",
+      "gitBlobSha": "3a6c078afc245e17b78624f239ad7532714e2849",
+      "bytes": 19442,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/shared/PersonPicker.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/shared/SectionCard.tsx",
+      "evidenceSourcePath": "client/src/components/shared/SectionCard.tsx",
+      "sha256": "af0d0583c5d98f728bb90ea11031fd443ad1730c5d2a0617482db06a175062b5",
+      "gitBlobSha": "127c1385d1bf9ff3c0a919d828293c93acfcffd3",
+      "bytes": 1220,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/shared/SectionCard.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/shared/StatCard.tsx",
+      "evidenceSourcePath": "client/src/components/shared/StatCard.tsx",
+      "sha256": "2e496394fcd4f29ad0055cad0e1e19916bbf47883fbd07e8c11ac2ecb5e52a3f",
+      "gitBlobSha": "47db67030e68879790ab735ca166034f9fc30324",
+      "bytes": 1567,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/shared/StatCard.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/CreatableDropdown.tsx",
+      "evidenceSourcePath": "client/src/components/ui/CreatableDropdown.tsx",
+      "sha256": "22f9ad786a1c22a523198bf4eca6250698a63bce0580d2d057fc0789aa269021",
+      "gitBlobSha": "31a5e3a2e76bb6263b364e2cfec38129178eecdd",
+      "bytes": 8608,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/CreatableDropdown.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/accordion.tsx",
+      "evidenceSourcePath": "client/src/components/ui/accordion.tsx",
+      "sha256": "6b84cb28b5c8e2129d854cffb8c5ba0161758d577db6db30a380cf593a8c0705",
+      "gitBlobSha": "e6a723d06574ee5cec8b00759b98f3fbe1ac7cc9",
+      "bytes": 1977,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/accordion.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/alert-dialog.tsx",
+      "evidenceSourcePath": "client/src/components/ui/alert-dialog.tsx",
+      "sha256": "5ab57317c19d0edd8e2d6d9c98992bcefa1e023a4f90072e40364451dc18456f",
+      "gitBlobSha": "8722561cf6bda62d62f9a0c67730aefda971873a",
+      "bytes": 4420,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/alert-dialog.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/alert.tsx",
+      "evidenceSourcePath": "client/src/components/ui/alert.tsx",
+      "sha256": "ed78a053a9db783f48d5dfab7398b630f87c17ed2e237b6f30a3eb153675960c",
+      "gitBlobSha": "41fa7e0561a3fdb5f986c1213a35e563de740e96",
+      "bytes": 1584,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/alert.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/aspect-ratio.tsx",
+      "evidenceSourcePath": "client/src/components/ui/aspect-ratio.tsx",
+      "sha256": "08b0aa0b05efc573c7d63363c03e83d4b101bfeb54140764e96ddea30659cfcc",
+      "gitBlobSha": "c4abbf37f217c715a0eaade7f45ac78600df419f",
+      "bytes": 140,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/aspect-ratio.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/avatar.tsx",
+      "evidenceSourcePath": "client/src/components/ui/avatar.tsx",
+      "sha256": "f83b4d3f868442e571d9cf8737a9e36ba5de373f6d599c7a6ddd59c1b5c78dfa",
+      "gitBlobSha": "fc7f9646500e3ffb24ed9de4b290421ef630f57c",
+      "bytes": 1592,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/avatar.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/badge.tsx",
+      "evidenceSourcePath": "client/src/components/ui/badge.tsx",
+      "sha256": "f1f149c9db40e787a6c2ae8ee6b0fedceb4ccb68b3944f6fdca10d7fd540312e",
+      "gitBlobSha": "b59d7adb5423941f5004d812a2780d78a4822305",
+      "bytes": 1202,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/badge.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/breadcrumb.tsx",
+      "evidenceSourcePath": "client/src/components/ui/breadcrumb.tsx",
+      "sha256": "c3d3dcb0d82fc5e91d8830bac7fead905686fe876f1f42c3ed872bb0a6b6584e",
+      "gitBlobSha": "60e6c96f72f0350d08b47e4730cab8f3975dc853",
+      "bytes": 2712,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/breadcrumb.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/button.tsx",
+      "evidenceSourcePath": "client/src/components/ui/button.tsx",
+      "sha256": "d6a9b9d04cb882af71199a3cf4cb87f6cfaab44d17f871ff8a78ec2a1830511d",
+      "gitBlobSha": "409cfbfa02148aab0147bcc13b838b749e4cc45a",
+      "bytes": 2359,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/button.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/calendar.tsx",
+      "evidenceSourcePath": "client/src/components/ui/calendar.tsx",
+      "sha256": "a7873d2b249506009a6f018b10a58c7cb38cc583d0d9391e2d90ed288cf6d013",
+      "gitBlobSha": "2174f7101ba18ec1385eed03f69dbd619feb98aa",
+      "bytes": 2695,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/calendar.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/card.tsx",
+      "evidenceSourcePath": "client/src/components/ui/card.tsx",
+      "sha256": "48dfcf29c71644ebe3dd5d70319ac1e663c9094c7c524be0cf492048b2989eb1",
+      "gitBlobSha": "c65c4c6a2afbda6afb947a7e8e21696360adfb3d",
+      "bytes": 1904,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/card.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/carousel.tsx",
+      "evidenceSourcePath": "client/src/components/ui/carousel.tsx",
+      "sha256": "5a4ff73c804e86c873382da80c453f1399006326ef042fb984c24162ec86666e",
+      "gitBlobSha": "9c2b9bf3705d8421bef00704c0c52e83d371ca11",
+      "bytes": 6210,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/carousel.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/chart.tsx",
+      "evidenceSourcePath": "client/src/components/ui/chart.tsx",
+      "sha256": "e30219cedb35c55c2f9069f6470d60514c54c43fe0a3b641615275a2acd25f12",
+      "gitBlobSha": "39fba6d6fc8509b968824b5076a8791c46650294",
+      "bytes": 10481,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/chart.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/checkbox.tsx",
+      "evidenceSourcePath": "client/src/components/ui/checkbox.tsx",
+      "sha256": "60a0084cbdfcb96e54c9f6438e9066dfe7ed0a7e421b33985d5eb57975d110a4",
+      "gitBlobSha": "ddbdd01d8d1491ab772790db8d40c5ac0a2630f3",
+      "bytes": 1056,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/checkbox.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/collapsible.tsx",
+      "evidenceSourcePath": "client/src/components/ui/collapsible.tsx",
+      "sha256": "f4cdd104de29928bfcd40b865c7d08eed9157a537fbb8b5e6d0921f02b63cc04",
+      "gitBlobSha": "9fa48946afd1eb56bd932377fd888e3986304676",
+      "bytes": 329,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/collapsible.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/command.tsx",
+      "evidenceSourcePath": "client/src/components/ui/command.tsx",
+      "sha256": "924fef47d5e04a133ecc700e5881175cef1f71a338eee7c4db5cf5fc46b9c5e1",
+      "gitBlobSha": "f0e4e3fb6407b9184a7e1087fb5bebe96a980bdf",
+      "bytes": 4885,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/command.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/context-menu.tsx",
+      "evidenceSourcePath": "client/src/components/ui/context-menu.tsx",
+      "sha256": "b3abf3bb92fc028dd9a4c5dc6a10093b7f1346be8841fabb214fa08e5f40b181",
+      "gitBlobSha": "aa3ef7792b866380aa91038beff862aa39ebe5c5",
+      "bytes": 7428,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/context-menu.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/dialog.tsx",
+      "evidenceSourcePath": "client/src/components/ui/dialog.tsx",
+      "sha256": "60d5246653c714fc12a67743ee5951331ecd2548cdaef9a599922bcb14da26db",
+      "gitBlobSha": "f38593bdcc2e700cd5a24d0b96640ca9ad474476",
+      "bytes": 3848,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/dialog.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/drawer.tsx",
+      "evidenceSourcePath": "client/src/components/ui/drawer.tsx",
+      "sha256": "774316527ddc577fc54012a0c898ebcf7cf8f11152126e550828b53004a5b70c",
+      "gitBlobSha": "6a0ef53dde8991d3adeadd791cd262808aaf9ac0",
+      "bytes": 3021,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/drawer.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/dropdown-menu.tsx",
+      "evidenceSourcePath": "client/src/components/ui/dropdown-menu.tsx",
+      "sha256": "aca10633792d03bb541e09ea106b5e1f3de429b69b3cade5ccfb7dca20289424",
+      "gitBlobSha": "fc790a80308832379e59b63381cfd5054364f5dc",
+      "bytes": 7609,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/dropdown-menu.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/form.tsx",
+      "evidenceSourcePath": "client/src/components/ui/form.tsx",
+      "sha256": "0d812c11a1afa799fb2bfa8f1e11052eacb64252c4b52be969a5f89aae1f52fb",
+      "gitBlobSha": "4f02ae6a48799a297ae92a9bcfa1f8de4d879be1",
+      "bytes": 4120,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/form.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/hover-card.tsx",
+      "evidenceSourcePath": "client/src/components/ui/hover-card.tsx",
+      "sha256": "dcb793b8b1202b1634d791a993acadca0cfc3043a93b98c91a627fbff794f384",
+      "gitBlobSha": "74efa6bee7037d46ea6f1a08a89b68963660cca0",
+      "bytes": 1251,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/hover-card.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/input-otp.tsx",
+      "evidenceSourcePath": "client/src/components/ui/input-otp.tsx",
+      "sha256": "b06b6294edee39d817586b3cf4766de1720b06e184624d45d2bfd0f38d2a5e72",
+      "gitBlobSha": "ebf5c281ee7fbbf86462b33b7b9955d884d57580",
+      "bytes": 2154,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/input-otp.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/input.tsx",
+      "evidenceSourcePath": "client/src/components/ui/input.tsx",
+      "sha256": "b5c4ff4e0a57cf16c4519165745550029d66a2e25b8b018654b60ac2c5764e79",
+      "gitBlobSha": "4051300dcd8da5c163f65cac04f7a8a628f16e30",
+      "bytes": 844,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/input.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/label.tsx",
+      "evidenceSourcePath": "client/src/components/ui/label.tsx",
+      "sha256": "e69cfc27d78c9ef31b248ab8ea4fa54327c1038843f70efb5cd85d54c0bf1e0e",
+      "gitBlobSha": "683faa793819982d64e21cb2939666fd6d4a7b13",
+      "bytes": 710,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/label.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/menubar.tsx",
+      "evidenceSourcePath": "client/src/components/ui/menubar.tsx",
+      "sha256": "da0c7ace239ead75f7fbc46ffbae8ddf177477445354500d7304a276065ea7b3",
+      "gitBlobSha": "7b3a71b182d16a2655aaf048797b39a5c27f931a",
+      "bytes": 8605,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/menubar.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/navigation-menu.tsx",
+      "evidenceSourcePath": "client/src/components/ui/navigation-menu.tsx",
+      "sha256": "74f3b1b937e42582093a1671cf7f5c7250cd884922d51f201632317af9c24209",
+      "gitBlobSha": "411f51922144bf667c2a5d512ff712d1c37098bd",
+      "bytes": 5128,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/navigation-menu.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/pagination.tsx",
+      "evidenceSourcePath": "client/src/components/ui/pagination.tsx",
+      "sha256": "6d66283fc04f3901772f15f3108bda732efc75ce878e0d8ecf8f9fc3b0c63c26",
+      "gitBlobSha": "ea40d196dc72673f36c4084bf56457385edc855e",
+      "bytes": 2751,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/pagination.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/popover.tsx",
+      "evidenceSourcePath": "client/src/components/ui/popover.tsx",
+      "sha256": "d853c561833e545879a56e2c4de18a92653de1e55e9e7fae463540679924ac0c",
+      "gitBlobSha": "821a32f3701193ec91f9cf2e22e34c6807c09d14",
+      "bytes": 1280,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/popover.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/progress.tsx",
+      "evidenceSourcePath": "client/src/components/ui/progress.tsx",
+      "sha256": "8c036da4baed076de68d27719929dc98151a81b51456bfa6a2488d835303b1d7",
+      "gitBlobSha": "5c87ea4865610374cdc591d1619157b4d8909a87",
+      "bytes": 791,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/progress.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/radio-group.tsx",
+      "evidenceSourcePath": "client/src/components/ui/radio-group.tsx",
+      "sha256": "74f87531da1fde8d3c07dbd7b380ee6508a70d5c0af1c22e2d2c33d66cc79f10",
+      "gitBlobSha": "43b43b48b84d3045a442409006d5cb8c5f35adfd",
+      "bytes": 1467,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/radio-group.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/resizable.tsx",
+      "evidenceSourcePath": "client/src/components/ui/resizable.tsx",
+      "sha256": "70d1e35a5fb0897af7063cdd841d8ed636e1c332ef7ea6469f0f175a5a93dddf",
+      "gitBlobSha": "f4bc5586b67f45d3cc35f228e8bac2e4bc2cea16",
+      "bytes": 1723,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/resizable.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/scroll-area.tsx",
+      "evidenceSourcePath": "client/src/components/ui/scroll-area.tsx",
+      "sha256": "d7d02600effca55d0dcadce8c09c97ebddda3a19c5fa1d52dc9f6f727b26c6b1",
+      "gitBlobSha": "cf253cf17056ce04827219643e484ea99c77cf6b",
+      "bytes": 1642,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/scroll-area.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/searchable-select.tsx",
+      "evidenceSourcePath": "client/src/components/ui/searchable-select.tsx",
+      "sha256": "d9f12557249518a60e545439bc63b5260b31e8c089277d14ae3c7a743b09922f",
+      "gitBlobSha": "44491149c1d85ba2b57f255b4284edf779da4045",
+      "bytes": 4367,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/searchable-select.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/select.tsx",
+      "evidenceSourcePath": "client/src/components/ui/select.tsx",
+      "sha256": "544172f40b3ae1d86d518dbc428e4bed58b3a733644564f4907bbf0b60ba3218",
+      "gitBlobSha": "0ecb100c2adcf634b77982a84dc9efa4260b2155",
+      "bytes": 5741,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/select.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/separator.tsx",
+      "evidenceSourcePath": "client/src/components/ui/separator.tsx",
+      "sha256": "c956c4cca4b8442fa9314d6079b9f975e1ee39d5804aaf2966990f6258ac342a",
+      "gitBlobSha": "6d7f12265ba0338704f013930ce4d52c56527dd1",
+      "bytes": 756,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/separator.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/sheet.tsx",
+      "evidenceSourcePath": "client/src/components/ui/sheet.tsx",
+      "sha256": "9051eb9d885a18c0521c63c945480effcfca29282d2a342cb3ce7f9d080c6d38",
+      "gitBlobSha": "a37f17ba04055c1c174bd439d58aa3b5b2857cc9",
+      "bytes": 4281,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/sheet.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/sidebar.tsx",
+      "evidenceSourcePath": "client/src/components/ui/sidebar.tsx",
+      "sha256": "b023ff6245be1930e152a18c6aaa2b6dd1a11df7b05fcf41bbe483968bfb1c39",
+      "gitBlobSha": "41362f6f40769bd800e4b1e77dfcc0ca61300636",
+      "bytes": 21846,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/sidebar.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/skeleton.tsx",
+      "evidenceSourcePath": "client/src/components/ui/skeleton.tsx",
+      "sha256": "a72a9d8fc1c1999b5411a33391c5e70048863c5865629077280e943ca85689a8",
+      "gitBlobSha": "01b8b6d4f716ff7c26065bc9e46aebd932729fc1",
+      "bytes": 261,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/skeleton.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/slider.tsx",
+      "evidenceSourcePath": "client/src/components/ui/slider.tsx",
+      "sha256": "61e959d046f72e295d73a822b9afc7cc87ec6d1007905f2572e6117d7b2067b6",
+      "gitBlobSha": "e161daec03130190dcfb597c8632f9df4ba407f5",
+      "bytes": 1077,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/slider.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/switch.tsx",
+      "evidenceSourcePath": "client/src/components/ui/switch.tsx",
+      "sha256": "bd29ce723e952bc7f8fab367320347ca82fbb933f4da9872c7120d6765662ebe",
+      "gitBlobSha": "aa58baa29c676db7b14a37436a9662107b0111ec",
+      "bytes": 1139,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/switch.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/table.tsx",
+      "evidenceSourcePath": "client/src/components/ui/table.tsx",
+      "sha256": "1da243956282c040db49d5718d2f0093a705fbbdfa3a25f51c1a31a069c45093",
+      "gitBlobSha": "7f3502f8b2820be1d6f0aa4c1ffaa351799c1ed3",
+      "bytes": 2765,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/table.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/tabs.tsx",
+      "evidenceSourcePath": "client/src/components/ui/tabs.tsx",
+      "sha256": "d9958fd005db42bcca4f2c12ede63500e74f1a9bd82ddc3a6bf6fcb369706f07",
+      "gitBlobSha": "f57fffdb5a07cd21b12f8c014513475a6980a469",
+      "bytes": 1883,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/tabs.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/textarea.tsx",
+      "evidenceSourcePath": "client/src/components/ui/textarea.tsx",
+      "sha256": "aaf46918c590c2bf59e2afb7904dfd8e69317e12ee34ff93ed2746dd06cc994a",
+      "gitBlobSha": "4d858bb6b02662c749d3cb334129a9a1977b0c51",
+      "bytes": 689,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/textarea.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/toast.tsx",
+      "evidenceSourcePath": "client/src/components/ui/toast.tsx",
+      "sha256": "fbe709a15b497db4ed7af88394bf14ba74dc444c7ed42e3e640605fe9f0d2c57",
+      "gitBlobSha": "b97200b6d34e3ba044799433f87780714e03087b",
+      "bytes": 4873,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/toast.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/toaster.tsx",
+      "evidenceSourcePath": "client/src/components/ui/toaster.tsx",
+      "sha256": "1348f1a1f9820e2f1394b93cecc156a7e22f03636ab9270753985549aae2be74",
+      "gitBlobSha": "6c67edff67a48c6ac1c46f25a6d468dd461e66cb",
+      "bytes": 772,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/toaster.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/toggle-group.tsx",
+      "evidenceSourcePath": "client/src/components/ui/toggle-group.tsx",
+      "sha256": "dba95ead40d163af6959198ded9853a2cc9282b2cb534980f99937a65edf4e2d",
+      "gitBlobSha": "1c876bbeecabe59b684719afe58e684f34cdecbf",
+      "bytes": 1753,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/toggle-group.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/toggle.tsx",
+      "evidenceSourcePath": "client/src/components/ui/toggle.tsx",
+      "sha256": "c9a401b2e134f28d870f3f44330b9d91d66bd2ac7ced3ad67039a2bb3d52e8f0",
+      "gitBlobSha": "0da5cb8b74d1b02569a8bf0eaf36d135c97315d5",
+      "bytes": 1527,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/toggle.tsx"
+      }
+    },
+    {
+      "path": "client/src/components/ui/tooltip.tsx",
+      "evidenceSourcePath": "client/src/components/ui/tooltip.tsx",
+      "sha256": "2f26d20816448c630faccbda5ae9b4fe47c36f1fb14dbbd85b6652b7c24c1d51",
+      "gitBlobSha": "e1ae87b9db8d9a636b8185da4ca6868c3b024d63",
+      "bytes": 1209,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/components/ui/tooltip.tsx"
+      }
+    },
+    {
+      "path": "client/src/features/inventory/utils/movementDisplay.ts",
+      "evidenceSourcePath": "client/src/features/inventory/utils/movementDisplay.ts",
+      "sha256": "ad6d8de8b4b6de7c2fb67db2ca51ec341103992a595e17fa022e3249435b3f74",
+      "gitBlobSha": "f9c6cbecd4425e8c79677e8969e2f4eccb6e7d0d",
+      "bytes": 4016,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/features/inventory/utils/movementDisplay.ts"
+      }
+    },
+    {
+      "path": "client/src/features/inventory/utils/movementLabels.ts",
+      "evidenceSourcePath": "client/src/features/inventory/utils/movementLabels.ts",
+      "sha256": "3548348c008585046384d72bbbb8ab924655ce7650aa129f97f42a51b3740e67",
+      "gitBlobSha": "1cf7749611d3da058a4f511279ee6c21c56583b9",
+      "bytes": 1173,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/features/inventory/utils/movementLabels.ts"
+      }
+    },
+    {
+      "path": "client/src/hooks/use-admin-auth.ts",
+      "evidenceSourcePath": "client/src/hooks/use-admin-auth.ts",
+      "sha256": "faa1ebbfd8b723a851a8dfee855f1ac3595d173fc7375cbafc9a8c3eaaacf74f",
+      "gitBlobSha": "f99dc2738d41f292492bc53300fd8bb173a893e2",
+      "bytes": 1109,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/hooks/use-admin-auth.ts"
+      }
+    },
+    {
+      "path": "client/src/hooks/use-auth.ts",
+      "evidenceSourcePath": "client/src/hooks/use-auth.ts",
+      "sha256": "77b34b9cfd046117986331d18ecaac5e2cb3cbd84286f7ae4e0cb316458586f3",
+      "gitBlobSha": "d582951656a2643180a1e0ea3a639ab8fb1d2b85",
+      "bytes": 2698,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/hooks/use-auth.ts.txt"
+      }
+    },
+    {
+      "path": "client/src/hooks/use-dashboard.ts",
+      "evidenceSourcePath": "client/src/hooks/use-dashboard.ts",
+      "sha256": "76f0eb50cbf80f671d6d897306ee8afb5d066826af3ab7281be842bafc421870",
+      "gitBlobSha": "461826f460d25d5307532a88972d7d47fe2496ff",
+      "bytes": 474,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/hooks/use-dashboard.ts.txt"
+      }
+    },
+    {
+      "path": "client/src/hooks/use-field-theme.tsx",
+      "evidenceSourcePath": "client/src/hooks/use-field-theme.tsx",
+      "sha256": "28aebfb5d6c3c38652416fd7cdd851b18161bd7beeefeae04dc9807d901e0318",
+      "gitBlobSha": "418fceb33db433e7f46fd3174ac3ebfb3ef28f25",
+      "bytes": 6463,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/hooks/use-field-theme.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/hooks/use-items.ts",
+      "evidenceSourcePath": "client/src/hooks/use-items.ts",
+      "sha256": "24dda14712f1c016dfa43988bde2da52fec0fa505556d2be32715d58bc3062c8",
+      "gitBlobSha": "167fc4728d7dc2384c0b51267131518b2bf21566",
+      "bytes": 3205,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/hooks/use-items.ts.txt"
+      }
+    },
+    {
+      "path": "client/src/hooks/use-language.tsx",
+      "evidenceSourcePath": "client/src/hooks/use-language.tsx",
+      "sha256": "121c0438a215c2ce5c88756dfde788737797209a49029dd1a927bd4e6ebaa90c",
+      "gitBlobSha": "d90cef93d41807653d4a123993139347c9205c91",
+      "bytes": 6003,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/hooks/use-language.tsx"
+      }
+    },
+    {
+      "path": "client/src/hooks/use-mobile.tsx",
+      "evidenceSourcePath": "client/src/hooks/use-mobile.tsx",
+      "sha256": "ad0936f84f1df79d3697bfbff9c18f8ad58431c1cbaf2359c6a853b0fcc9f28b",
+      "gitBlobSha": "2b0fe1dfef3b17850bbac040665f514a8ffd0f15",
+      "bytes": 565,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/hooks/use-mobile.tsx"
+      }
+    },
+    {
+      "path": "client/src/hooks/use-reference-data.ts",
+      "evidenceSourcePath": "client/src/hooks/use-reference-data.ts",
+      "sha256": "f6e4928ae084c4a3b05c3b22480e6cafc278d2601c4f6365f980eb30a0d157dd",
+      "gitBlobSha": "7f92eee0ad113f6279a31fe16ac23ec7a5205bc9",
+      "bytes": 5822,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/hooks/use-reference-data.ts.txt"
+      }
+    },
+    {
+      "path": "client/src/hooks/use-toast.ts",
+      "evidenceSourcePath": "client/src/hooks/use-toast.ts",
+      "sha256": "5aab0623ee24bddf9420c259a23a06996292e38ea70eccbac2715516f6d01a0b",
+      "gitBlobSha": "2c14125ac48b874740770da80d9e424daf1db58b",
+      "bytes": 3895,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/hooks/use-toast.ts"
+      }
+    },
+    {
+      "path": "client/src/hooks/use-transactions.ts",
+      "evidenceSourcePath": "client/src/hooks/use-transactions.ts",
+      "sha256": "d170f7a7af5e89c3f0faee9031afc0a404f9b9fcf0c8dc5e31715f7fc4c82124",
+      "gitBlobSha": "9e3f24a8dcd5a08652e55174884b43eaea41bb99",
+      "bytes": 5968,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/hooks/use-transactions.ts.txt"
+      }
+    },
+    {
+      "path": "client/src/hooks/use-upload.ts",
+      "evidenceSourcePath": "client/src/hooks/use-upload.ts",
+      "sha256": "172675e1c38e846c039e12b4c0038de7e63f616c744aad90f73da8fd072d7eaf",
+      "gitBlobSha": "4f69f6071c1532d81184a4d99faa31058c3eccb5",
+      "bytes": 5371,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/hooks/use-upload.ts.txt"
+      }
+    },
+    {
+      "path": "client/src/index.css",
+      "evidenceSourcePath": "client/src/index.css",
+      "sha256": "eab85a635ba98ee3d26c788bc29723260f223d89ca58c8254caf9c07946f628d",
+      "gitBlobSha": "1630b01d9e566b60103bd56b5ffdd054fa22424b",
+      "bytes": 25758,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/index.css.txt"
+      }
+    },
+    {
+      "path": "client/src/lib/auth-utils.ts",
+      "evidenceSourcePath": "client/src/lib/auth-utils.ts",
+      "sha256": "ca5de7a04a552ff400ae7d47dec3b45258a6a69158c6f8d49fc5650e1b09525d",
+      "gitBlobSha": "a06807d78a0dede7d55776cd84fb6f3c20e4e204",
+      "bytes": 517,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/lib/auth-utils.ts"
+      }
+    },
+    {
+      "path": "client/src/lib/branch-copy.ts",
+      "evidenceSourcePath": "client/src/lib/branch-copy.ts",
+      "sha256": "dfff3e5849b85a650c6570850cbc9d5688b0157456cc06ed80e7f3d247cdb245",
+      "gitBlobSha": "ba0849f4913f5aec1f14983f9138d06f96c6ff95",
+      "bytes": 2480,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/branch-copy.ts.txt"
+      }
+    },
+    {
+      "path": "client/src/lib/branchMedia.ts",
+      "evidenceSourcePath": "client/src/lib/branchMedia.ts",
+      "sha256": "f553f3ae6c3dfc66810dc67039db6fdfaf36c73626eb317d5e36d642b16a833a",
+      "gitBlobSha": "6df32ba3368326a64574e039960a4abc7ceebae0",
+      "bytes": 5643,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/branchMedia.ts.txt"
+      }
+    },
+    {
+      "path": "client/src/lib/branchTransport.ts",
+      "evidenceSourcePath": "client/src/lib/branchTransport.ts",
+      "sha256": "feedbf23efb646faf0d51948810b50096e845e23f0966fe6fcdf1d41f584ad31",
+      "gitBlobSha": "a02515e74e6db08391424c26158f4983b913d26c",
+      "bytes": 5903,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/branchTransport.ts.txt"
+      }
+    },
+    {
+      "path": "client/src/lib/categoryUtils.ts",
+      "evidenceSourcePath": "client/src/lib/categoryUtils.ts",
+      "sha256": "83580e91f8a688af16c588942e26deadf41d87e16cbb47953ee27779f86a0562",
+      "gitBlobSha": "4719a94107120c4a7efc760b85408e30a6b1e989",
+      "bytes": 596,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/lib/categoryUtils.ts"
+      }
+    },
+    {
+      "path": "client/src/lib/equipmentCatalogue.ts",
+      "evidenceSourcePath": "client/src/lib/equipmentCatalogue.ts",
+      "sha256": "d1753dc27567b1e8562edb60ce8fa556b9d2a0127264fcb8b2e4fb271346a484",
+      "gitBlobSha": "ed9707aabc52bc03cb55f3af19bcbb79db744c56",
+      "bytes": 1902,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/lib/equipmentCatalogue.ts"
+      }
+    },
+    {
+      "path": "client/src/lib/fieldCart.tsx",
+      "evidenceSourcePath": "client/src/lib/fieldCart.tsx",
+      "sha256": "3826ae9f18363a731c73729d09cb7e909373559cf9739baafcffeeb1b5609705",
+      "gitBlobSha": "5d3958fb4b0796c2823f38cde7b63bdf0298f05d",
+      "bytes": 3945,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/fieldCart.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/lib/fieldCartDraft.ts",
+      "evidenceSourcePath": "client/src/lib/fieldCartDraft.ts",
+      "sha256": "c8a5f2aeca6d7c59ae386642c8b521cf9d8f2ef5d1f87380cda39d181ebb8d28",
+      "gitBlobSha": "1f72ee2b3b2a7644e4e72886eb9b1bb3a753389d",
+      "bytes": 3539,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/lib/fieldCartDraft.ts"
+      }
+    },
+    {
+      "path": "client/src/lib/fieldFilterQuery.ts",
+      "evidenceSourcePath": "client/src/lib/fieldFilterQuery.ts",
+      "sha256": "0542fac21a427711afaf8cad62abcebf51da8a9463dc410b7be429e19283fdb8",
+      "gitBlobSha": "29624bb3278d6baafd3d323f175730d3aa7636bd",
+      "bytes": 1277,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/fieldFilterQuery.ts.txt"
+      }
+    },
+    {
+      "path": "client/src/lib/fieldTokens.ts",
+      "evidenceSourcePath": "client/src/lib/fieldTokens.ts",
+      "sha256": "bf0c708b71efe5b7dd8bce04936ab546e4c0f44b13d0c15b2383b5a600701032",
+      "gitBlobSha": "76073a091a48a611006eecdf6fd2e1723779c7cd",
+      "bytes": 5272,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/lib/fieldTokens.ts"
+      }
+    },
+    {
+      "path": "client/src/lib/i18n.ts",
+      "evidenceSourcePath": "client/src/lib/i18n.ts",
+      "sha256": "5d2248c44b15443ba68172158f12246d666c8e4328ecd19dbbcd694ce6afaf01",
+      "gitBlobSha": "3b577e4e22bad7ef7b3b64fbedf667dea63f188c",
+      "bytes": 432039,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/i18n.ts.txt"
+      }
+    },
+    {
+      "path": "client/src/lib/mock-daily-report.ts",
+      "evidenceSourcePath": "client/src/lib/mock-daily-report.ts",
+      "sha256": "aca76ce5c8ddffdb29ea7ee0b65d25494493de34b1cf27e6f0929afa709011e2",
+      "gitBlobSha": "da539f6f640b814a34e429fb330f37f8f24c9d90",
+      "bytes": 3324,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/lib/mock-daily-report.ts"
+      }
+    },
+    {
+      "path": "client/src/lib/queryClient.ts",
+      "evidenceSourcePath": "client/src/lib/queryClient.ts",
+      "sha256": "704980c9dd435045ea01aa0880fa9f0582da2ac18362a2094bd40e63840bd5a5",
+      "gitBlobSha": "e38c6d6411b8c4b8c6ce0393e1d39356b2e262b0",
+      "bytes": 1640,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/queryClient.ts.txt"
+      }
+    },
+    {
+      "path": "client/src/lib/reel-utils.ts",
+      "evidenceSourcePath": "client/src/lib/reel-utils.ts",
+      "sha256": "ae5bb0f59cfcc34b647f7d8d4ed0075a7cdf8c769c63da530ce5969e5d29c9ed",
+      "gitBlobSha": "aaa3b524d36b301a6f6d3345c9adf3ce3e00caf7",
+      "bytes": 4371,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/lib/reel-utils.ts"
+      }
+    },
+    {
+      "path": "client/src/lib/reelEligibility.ts",
+      "evidenceSourcePath": "client/src/lib/reelEligibility.ts",
+      "sha256": "796d83f4adb6d1760862c787dc07cc4e119730d9245209edee14f5d5ac6b9d30",
+      "gitBlobSha": "f1586b2ce5404a550e551c2f7a69238344ec635e",
+      "bytes": 381,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/lib/reelEligibility.ts"
+      }
+    },
+    {
+      "path": "client/src/lib/requestCommands.ts",
+      "evidenceSourcePath": "client/src/lib/requestCommands.ts",
+      "sha256": "6f923e75fc39a596867af8244bc3320c78a736de1365aef0be2f1c7163b8d377",
+      "gitBlobSha": "188f744b7001f40a51ab2ed1b267a53fe18acc72",
+      "bytes": 3489,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/requestCommands.ts.txt"
+      }
+    },
+    {
+      "path": "client/src/lib/role-access.ts",
+      "evidenceSourcePath": "client/src/lib/role-access.ts",
+      "sha256": "2578f26065b51a5282e2eeaeb44ca3f1423c3e3237b1aed21b5bd0ab623f0448",
+      "gitBlobSha": "74885bdad736b59090ce3c8276aef1c34363c652",
+      "bytes": 1361,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/lib/role-access.ts"
+      }
+    },
+    {
+      "path": "client/src/lib/transaction-load-state.ts",
+      "evidenceSourcePath": "client/src/lib/transaction-load-state.ts",
+      "sha256": "5a47b7f8cb2ce62520285b72494c3a1ce259e2dbecc075aa9f95f66ea9f74981",
+      "gitBlobSha": "16a9dcebaf808860d009fc83b4ee0f44b4b807be",
+      "bytes": 445,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/lib/transaction-load-state.ts"
+      }
+    },
+    {
+      "path": "client/src/lib/transitionMessages.ts",
+      "evidenceSourcePath": "client/src/lib/transitionMessages.ts",
+      "sha256": "063b78442aa384b9ba7aa86e98be50903693320ca8b95131252d59a23a48cb64",
+      "gitBlobSha": "97e3238a83547986efa048ff1c5486e5efb28453",
+      "bytes": 1124,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/transitionMessages.ts.txt"
+      }
+    },
+    {
+      "path": "client/src/lib/usagePattern.ts",
+      "evidenceSourcePath": "client/src/lib/usagePattern.ts",
+      "sha256": "fa6dfe40a00aecffde6107406c627167c31799c3e7c4ad0e6ccd57dfe4654741",
+      "gitBlobSha": "30d5e9b389e26bee3c1535f7264dc84957d6f2c7",
+      "bytes": 812,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/lib/usagePattern.ts"
+      }
+    },
+    {
+      "path": "client/src/lib/utils.ts",
+      "evidenceSourcePath": "client/src/lib/utils.ts",
+      "sha256": "7c8c3dfc0cdd370d44932828eb067ef771c8fe7996693221d5d4b90af6d54f2d",
+      "gitBlobSha": "bd0c391ddd1088e9067844c48835bf4abcd61783",
+      "bytes": 166,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/lib/utils.ts"
+      }
+    },
+    {
+      "path": "client/src/lib/wire-config-utils.ts",
+      "evidenceSourcePath": "client/src/lib/wire-config-utils.ts",
+      "sha256": "c10ac99dd2dd4143a59c8d5c9134ef0ccfaf28a6fbaa7473681d127b0df53b5a",
+      "gitBlobSha": "64f5b3787f92097f5827f589a89d9b027824dfb4",
+      "bytes": 2456,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/lib/wire-config-utils.ts"
+      }
+    },
+    {
+      "path": "client/src/main.tsx",
+      "evidenceSourcePath": "client/src/main.tsx",
+      "sha256": "3355b03ad1b9dc52c6274455f21e4022c92c95d61828f1ca9fce963fcbf90025",
+      "gitBlobSha": "5faec740ffbd2ce769b9419788510a93e8c2e71a",
+      "bytes": 1653,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/main.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/CategoryDetail.tsx",
+      "evidenceSourcePath": "client/src/pages/CategoryDetail.tsx",
+      "sha256": "c80453e41cd52c72c966ef40329d205cfe742a5913636fba80ecaa1a8943e6a6",
+      "gitBlobSha": "42ffaac6d6f18f3ab1756a680b26c65d04983560",
+      "bytes": 41468,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/CategoryDetail.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/CrewDispatch.tsx",
+      "evidenceSourcePath": "client/src/pages/CrewDispatch.tsx",
+      "sha256": "2ea038bf680b42504ecc074f6371bcf51ef515957183eb93b2e68f9e7d6afda2",
+      "gitBlobSha": "75922f8612f351b9c6033d1021215e669de4b4dd",
+      "bytes": 5426,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/CrewDispatch.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/CrewDispatchAssignment.tsx",
+      "evidenceSourcePath": "client/src/pages/CrewDispatchAssignment.tsx",
+      "sha256": "197f4f1c0c5222ce961a4b122a4997bee75bfd14427e9201599d176c3e899103",
+      "gitBlobSha": "ece18d3a99c59f31288835f7e4ffb8a916f28026",
+      "bytes": 98468,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/CrewDispatchAssignment.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/DailyReport.tsx",
+      "evidenceSourcePath": "client/src/pages/DailyReport.tsx",
+      "sha256": "29c9343cca03ed4a5b7bf7950f9380396eeb440633bccc478a31068b51a621e0",
+      "gitBlobSha": "a2519d1570c6556b8d7c2d4aff1879f52f3f0785",
+      "bytes": 40222,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/DailyReport.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/DailyReportWorkspace.tsx",
+      "evidenceSourcePath": "client/src/pages/DailyReportWorkspace.tsx",
+      "sha256": "3110f65594014c4f4214eec2eab0bae8eb32ced7877618af7d59c922dca6749b",
+      "gitBlobSha": "5e6af673582054755d1258bd59c1fb49dc25a208",
+      "bytes": 46118,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/DailyReportWorkspace.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/Dashboard.tsx",
+      "evidenceSourcePath": "client/src/pages/Dashboard.tsx",
+      "sha256": "ef810afe3deb5ee5c76e1af6e45cad532118d5bfd92bdfb22c208f6cc7cfcfbe",
+      "gitBlobSha": "8cc77f7d8c78b7eef44480b59717973f0be1ef57",
+      "bytes": 23069,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/Dashboard.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/Equipment.tsx",
+      "evidenceSourcePath": "client/src/pages/Equipment.tsx",
+      "sha256": "fa763cf07d27adcf4767f4f525e5fedcc51b3b84a4a85edc6a029f14e40188c0",
+      "gitBlobSha": "959542a12ba816a019084b3b856a402fe2543332",
+      "bytes": 54795,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/Equipment.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/Home.tsx",
+      "evidenceSourcePath": "client/src/pages/Home.tsx",
+      "sha256": "6923545f57d01bb1d798c09c9812e5bbe45bee1464d55b5a4ef3b0fadbd31f6b",
+      "gitBlobSha": "b713e78948ab477b182a92b1b496f99ad40a3d86",
+      "bytes": 27319,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/Home.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/Inventory.tsx",
+      "evidenceSourcePath": "client/src/pages/Inventory.tsx",
+      "sha256": "2fafa7ec9db9086d83844fc69184f32632796abe35f91e5fc5ffbd3b8cc28dac",
+      "gitBlobSha": "3e61d2e9abd12632f7f13b9deb85f7ca02ed2f45",
+      "bytes": 35934,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/Inventory.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/ItemDetails.tsx",
+      "evidenceSourcePath": "client/src/pages/ItemDetails.tsx",
+      "sha256": "2de38df888e6210fd5eb639ecc70cf073d1a3fe596acdf10c01ac7a8476353a7",
+      "gitBlobSha": "d4b2253dbaa9c8add84c6b223b68dc3ef60acf2e",
+      "bytes": 88439,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/ItemDetails.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/Login.tsx",
+      "evidenceSourcePath": "client/src/pages/Login.tsx",
+      "sha256": "e03e319c95033f797529e3d930693b256bd5d85d1d880ffda2c60dc03862241e",
+      "gitBlobSha": "49d5b5ef6562178e3608502ee426a23530c01c18",
+      "bytes": 18002,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/Login.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/Manpower.tsx",
+      "evidenceSourcePath": "client/src/pages/Manpower.tsx",
+      "sha256": "1caf494ce83ea7bcb165b5924ed7a79eaebb5ce541b2af7cd43a447ff60d1781",
+      "gitBlobSha": "0e43c04e294af51a2ccf40c3d77dde894703b3da",
+      "bytes": 24205,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/Manpower.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/ProjectDetail.tsx",
+      "evidenceSourcePath": "client/src/pages/ProjectDetail.tsx",
+      "sha256": "c9b824959d77050dcbebed64ee86a601d1abc9098be8431cfdd6b889eaad3316",
+      "gitBlobSha": "7a6efa9efa6abd96a19440de40bedf2d91854791",
+      "bytes": 6713,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/ProjectDetail.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/Projects.tsx",
+      "evidenceSourcePath": "client/src/pages/Projects.tsx",
+      "sha256": "f3010a4dbb71398e33c2f79358807e2036fc544c0964d8dc57c91411b0afc78e",
+      "gitBlobSha": "6c7c39f09e363b55cfef262cf8996d24cc412e34",
+      "bytes": 35075,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/Projects.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/Reorder.tsx",
+      "evidenceSourcePath": "client/src/pages/Reorder.tsx",
+      "sha256": "398ec88a3e3d68077dc303b7a692376dbe409cac45a596fa0eee6c89a4bba772",
+      "gitBlobSha": "5420c2e1f2850f0d82f96703b667617a0bda6c23",
+      "bytes": 35254,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/Reorder.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/ReorderArea.tsx",
+      "evidenceSourcePath": "client/src/pages/ReorderArea.tsx",
+      "sha256": "e00941f304865ff534075d2a902784e27e01913d849bad5bd769f1937c0ad137",
+      "gitBlobSha": "f9ca5e23c39b0f18e73ce1292d61bfea1c7f0175",
+      "bytes": 2898,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/ReorderArea.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/ReorderHistory.tsx",
+      "evidenceSourcePath": "client/src/pages/ReorderHistory.tsx",
+      "sha256": "f59057365e6233c7aaa75f0fe75c14d2139da599d1d538376ae385ce8eaafdaf",
+      "gitBlobSha": "c64b2d3fa3a434e81a7ad27f2a087e7bd5c4032a",
+      "bytes": 64290,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/ReorderHistory.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/Reports.tsx",
+      "evidenceSourcePath": "client/src/pages/Reports.tsx",
+      "sha256": "f4afab27cfc16955692bb12ec9fc5bd52d16b3b9216cf6e372968694d8cab6b5",
+      "gitBlobSha": "2bf702a2b6f5174b3d75d62d2dcbe9120c856dbd",
+      "bytes": 17931,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/Reports.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/Signup.tsx",
+      "evidenceSourcePath": "client/src/pages/Signup.tsx",
+      "sha256": "b8ba2e3bab1d57e68abd98679a74c3980e94874d23974667c3a7eb38eb169137",
+      "gitBlobSha": "b511dc961da755f64d6a646db10ac442ecb27455",
+      "bytes": 20220,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/Signup.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/SupplierDetail.tsx",
+      "evidenceSourcePath": "client/src/pages/SupplierDetail.tsx",
+      "sha256": "3e8368a596f79188b52526560b1b76cf1dbfdc8089ed5b228df3dcda38977489",
+      "gitBlobSha": "1e31d156ff36b6f3b390ddf338ec5a02b3cc670f",
+      "bytes": 28394,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/SupplierDetail.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/Suppliers.tsx",
+      "evidenceSourcePath": "client/src/pages/Suppliers.tsx",
+      "sha256": "cc063d527172d5e8dcdb267a6eb205cb267bb7915966dbfcaf47f4f1999e9dad",
+      "gitBlobSha": "bae31bbe135c353197454189e4e4760c2781a72f",
+      "bytes": 8780,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/Suppliers.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/Transactions.tsx",
+      "evidenceSourcePath": "client/src/pages/Transactions.tsx",
+      "sha256": "b38fa21473f896d42825abdfede44259a5bc6f9eae6d23520c0ec703c42b0eae",
+      "gitBlobSha": "fa9a8d155fc4b05789d829777df1c1ef3375e89d",
+      "bytes": 62528,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/Transactions.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/TvDashboard.tsx",
+      "evidenceSourcePath": "client/src/pages/TvDashboard.tsx",
+      "sha256": "68a9be25092661716720ca8be6f4fe66229a274280ac79d7653d8be94f1bb6c8",
+      "gitBlobSha": "8e9d20c8d27f7260e2dba8e53082d37297d6c65f",
+      "bytes": 18081,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/TvDashboard.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/WorkerDetail.tsx",
+      "evidenceSourcePath": "client/src/pages/WorkerDetail.tsx",
+      "sha256": "edac07b4dd8d930d598f82de5596b6c69f1c5fb06511d7021003f6b0901805a4",
+      "gitBlobSha": "581b9a81943cf2612a772169db49a167851d1966",
+      "bytes": 84032,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/WorkerDetail.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/admin/Export.tsx",
+      "evidenceSourcePath": "client/src/pages/admin/Export.tsx",
+      "sha256": "ed4910c2ea14c1641636f7331c2b404796c8398de91e7b2b3b7d4a132de06cc4",
+      "gitBlobSha": "698e6abdeeebfd0918af4369c660071561d3f420",
+      "bytes": 4359,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/admin/Export.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/admin/InactiveItems.tsx",
+      "evidenceSourcePath": "client/src/pages/admin/InactiveItems.tsx",
+      "sha256": "f822ba7fcb8da64483046e4ec6480177faf11aecefd28cda5766448a5abcae65",
+      "gitBlobSha": "9f150ec66cd974e7df4430646ec54735cf6d4c0f",
+      "bytes": 13381,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/admin/InactiveItems.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/admin/JibbleIntegration.tsx",
+      "evidenceSourcePath": "client/src/pages/admin/JibbleIntegration.tsx",
+      "sha256": "38c6046d2c431167b63f395f59da444d41fd4fcc37bb8176ba38620dd3f7fc42",
+      "gitBlobSha": "bf7f91c8c4570b6227a07d9fc2586194acdbb8cd",
+      "bytes": 28220,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/admin/JibbleIntegration.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/admin/MondayIntegration.tsx",
+      "evidenceSourcePath": "client/src/pages/admin/MondayIntegration.tsx",
+      "sha256": "9a7279237f38f82f295b87da33382f3bacad128a1c79fc12089baa3c3e3a1183",
+      "gitBlobSha": "271150d8ef7b42cb1abc20adb6aeb35329887220",
+      "bytes": 38547,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/admin/MondayIntegration.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/admin/ReelIdCleanup.tsx",
+      "evidenceSourcePath": "client/src/pages/admin/ReelIdCleanup.tsx",
+      "sha256": "c69ec70d93304292dfb0ce71d48876612aa412520ebec494e4afbe3e75c1296b",
+      "gitBlobSha": "52bd4df657ce83460e0fd6730d96c3276980de3a",
+      "bytes": 19482,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/admin/ReelIdCleanup.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/admin/SkuCleanup.tsx",
+      "evidenceSourcePath": "client/src/pages/admin/SkuCleanup.tsx",
+      "sha256": "746ab7b2031e43638722edcc1077ab0b51db79a403e45dd62514f27b5b43769d",
+      "gitBlobSha": "97f7a6e537080ff743f1f6292886d59fbf465b47",
+      "bytes": 46052,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/admin/SkuCleanup.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/admin/StockPricing.tsx",
+      "evidenceSourcePath": "client/src/pages/admin/StockPricing.tsx",
+      "sha256": "638ffc2aef96fe075867283629116480b8d67c5b440fe354537e3d8677b1129b",
+      "gitBlobSha": "3fd9ce74d2bb93c67dfa9bd00c86a37fc3691e8f",
+      "bytes": 59605,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/admin/StockPricing.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/admin/SupplierCleanup.tsx",
+      "evidenceSourcePath": "client/src/pages/admin/SupplierCleanup.tsx",
+      "sha256": "932bde55d4ebe1698c1a51340a456d84731c07dbf159166ca4f767e9dacd6ff1",
+      "gitBlobSha": "3c02cb496ac805f47c3f0eafb279b4ab90e4c533",
+      "bytes": 13154,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/admin/SupplierCleanup.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/admin/UserApprovals.tsx",
+      "evidenceSourcePath": "client/src/pages/admin/UserApprovals.tsx",
+      "sha256": "412a5991f97043375d57a1b9700d77d53afb0c1bddc80336e47878fca1a8e653",
+      "gitBlobSha": "af391f5711d0f8a14d126b77b1fe103a7f30aa0e",
+      "bytes": 14519,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/admin/UserApprovals.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/daily-report/ManpowerSummaryBar.tsx",
+      "evidenceSourcePath": "client/src/pages/daily-report/ManpowerSummaryBar.tsx",
+      "sha256": "32f7ab9c7a71d8499c50dc3d9826f5a1f871f0143401e32bf7164ead36d67146",
+      "gitBlobSha": "cc277a103989c79bd7a5bcc8e7de3e442d5da765",
+      "bytes": 8748,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/daily-report/ManpowerSummaryBar.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/daily-report/MobileMaterialSectionNavigator.tsx",
+      "evidenceSourcePath": "client/src/pages/daily-report/MobileMaterialSectionNavigator.tsx",
+      "sha256": "dc32cd5948df409db1fbfd6a5c72b59b4a7c28ae8b6f79f96e3f0ff6641d1444",
+      "gitBlobSha": "cdda93f33f3a1e84398ecad3cd9c03f3e4cb7666",
+      "bytes": 7708,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/daily-report/MobileMaterialSectionNavigator.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/daily-report/NewReportTab.tsx",
+      "evidenceSourcePath": "client/src/pages/daily-report/NewReportTab.tsx",
+      "sha256": "30fc8beaf6d631900a76077e2f12832f0929972f23a2502c42128ac80d4a6772",
+      "gitBlobSha": "cd5dedd3d3c7195fad198b010585d24d235fdb45",
+      "bytes": 224587,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/daily-report/NewReportTab.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/daily-report/PdfViewer.tsx",
+      "evidenceSourcePath": "client/src/pages/daily-report/PdfViewer.tsx",
+      "sha256": "53ebef460d1712fd0bccd7fbc1c371b5173f5dec968f3068ad06c7e42284d8f1",
+      "gitBlobSha": "e1506c75a8324840288401ba0e8df0270c8f3343",
+      "bytes": 6334,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/daily-report/PdfViewer.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/daily-report/fieldTicketTheme.ts",
+      "evidenceSourcePath": "client/src/pages/daily-report/fieldTicketTheme.ts",
+      "sha256": "7f92a58d86ba2a70bd61cac6edf61a845baedb4d2385e74d1da2685d89f85f49",
+      "gitBlobSha": "b16b7dfd6e8ed5519d01b27cdea7c5c223afdc1b",
+      "bytes": 2713,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/daily-report/fieldTicketTheme.ts"
+      }
+    },
+    {
+      "path": "client/src/pages/daily-report/projectAssignmentGrouping.ts",
+      "evidenceSourcePath": "client/src/pages/daily-report/projectAssignmentGrouping.ts",
+      "sha256": "948ac2f9abff91642e4db3f6429b2124317564296df5ec5aacc45093c4367502",
+      "gitBlobSha": "871a8120dbe73fe39f3e551036565e84d4ed7fda",
+      "bytes": 1619,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/daily-report/projectAssignmentGrouping.ts"
+      }
+    },
+    {
+      "path": "client/src/pages/field/DraftMovementsList.tsx",
+      "evidenceSourcePath": "client/src/pages/field/DraftMovementsList.tsx",
+      "sha256": "fe28aaa807a43e8bd34d000bee7600b70b5af60d7ac9f421078680a65ee6dc36",
+      "gitBlobSha": "f588123430b6a3ecf7823affd948e6d9711b2b65",
+      "bytes": 24335,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/field/DraftMovementsList.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/field/FieldCartPanel.tsx",
+      "evidenceSourcePath": "client/src/pages/field/FieldCartPanel.tsx",
+      "sha256": "d0bf11da5a7b9d8e81f3c1cdd3382a85a5f37231673118b7e4ed4f4e99c98ee4",
+      "gitBlobSha": "096e4e57f5b4a8347ab57606cf209a1a2dddd19e",
+      "bytes": 2677,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/field/FieldCartPanel.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/field/FieldCartReview.tsx",
+      "evidenceSourcePath": "client/src/pages/field/FieldCartReview.tsx",
+      "sha256": "0591d9af92f6f8cd228975c271c57916e720666bd8f85f7ac174bee67f32993c",
+      "gitBlobSha": "fc73de5611cdb633736ef4bacaee2e30dec924f1",
+      "bytes": 27188,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/field/FieldCartReview.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/field/FieldHome.tsx",
+      "evidenceSourcePath": "client/src/pages/field/FieldHome.tsx",
+      "sha256": "a51c75122237e202dfc143edb5690c2a2d78448ab4c363acd28ad5f726425d57",
+      "gitBlobSha": "6a0dc5168589cc49e4d31dd96727752c00e2afa2",
+      "bytes": 7545,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/field/FieldHome.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/field/FieldInventory.tsx",
+      "evidenceSourcePath": "client/src/pages/field/FieldInventory.tsx",
+      "sha256": "48ebc2186c36e4c2cb78c6dd2b8db9e70ed771b6ed742da0d6b4b4f631c3a143",
+      "gitBlobSha": "25fa71dd5743a6b2f935472dfe804e840664a937",
+      "bytes": 86688,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/field/FieldInventory.tsx.txt"
+      }
+    },
+    {
+      "path": "client/src/pages/field/FieldMovement.tsx",
+      "evidenceSourcePath": "client/src/pages/field/FieldMovement.tsx",
+      "sha256": "8d591b6fb676b99c458af20966aa8f2d1a3e36c097d0969e89c55ce5780b3748",
+      "gitBlobSha": "5b5f14caef705147147655d15a31120f37714df8",
+      "bytes": 2162,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/field/FieldMovement.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/field/FieldRequestsList.tsx",
+      "evidenceSourcePath": "client/src/pages/field/FieldRequestsList.tsx",
+      "sha256": "b077e700916fb3be65a181a1a7e5db9ca7724bf5bb0337d0b8f4d45a7de504fb",
+      "gitBlobSha": "2e945867513096876a7c64569f1cb88a13aecc73",
+      "bytes": 51713,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/field/FieldRequestsList.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/field/FieldTransactions.tsx",
+      "evidenceSourcePath": "client/src/pages/field/FieldTransactions.tsx",
+      "sha256": "4384385733ec0de089b4f50e020688ab564784b46d617d99463220c4dab32883",
+      "gitBlobSha": "b12cf615273c359f7a552d30893e3306ab4d2b27",
+      "bytes": 90083,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/field/FieldTransactions.tsx"
+      }
+    },
+    {
+      "path": "client/src/pages/not-found.tsx",
+      "evidenceSourcePath": "client/src/pages/not-found.tsx",
+      "sha256": "718a41bd05a163d1db32480aba013f5fe754894e656b6542a8e4b302275b172e",
+      "gitBlobSha": "dba9f8316f8e796e2808090c4f6cf770e6b90c4a",
+      "bytes": 711,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "client/src/pages/not-found.tsx"
+      }
+    },
+    {
+      "path": "package-lock.json",
+      "evidenceSourcePath": "package-lock.json",
+      "sha256": "99f621e4f82c56ab2a3a80d74a18c250b1051f4b01de9440816b81b06eb750d4",
+      "gitBlobSha": "819f91eecb15db4b0f3a17c0bf7bb210231d1d38",
+      "bytes": 461275,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "package-lock.json"
+      }
+    },
+    {
+      "path": "package.json",
+      "evidenceSourcePath": "package.json",
+      "sha256": "65dc2cd04abca83a3bdcf8ddf9c5438b1e0c0201976cbcb3e698e588c2ea643c",
+      "gitBlobSha": "1f2cd0146383c6b3df23ae286fcb870f7490b5ec",
+      "bytes": 5065,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "package.json"
+      }
+    },
+    {
+      "path": "server/bootstrap.ts",
+      "evidenceSourcePath": "server/bootstrap.ts",
+      "sha256": "0a5560422cd83b2d8283fe8b9c348a70c0f664785abe742c2cfd65b63071657e",
+      "gitBlobSha": "ba22366431b0aab6259eebff5d410ae3f3b09aba",
+      "bytes": 1936,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/bootstrap.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/application.ts",
+      "evidenceSourcePath": "server/branches/application.ts",
+      "sha256": "a0c27ce0ada8909f2b670403764d6a87854aab32c83f4a10c361e40b51bb2299",
+      "gitBlobSha": "8a41d5b462317acd5e604049bde5f096ef67540b",
+      "bytes": 8917,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/application.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/catalogDeployment.ts",
+      "evidenceSourcePath": "server/branches/catalogDeployment.ts",
+      "sha256": "a375dd02dea84528b387b1569f9ba35cfbbbcd2e908e253d2a4ac9ce4749ac0f",
+      "gitBlobSha": "92879bf43eac00fd5b04564c8f556d2d4010aed9",
+      "bytes": 4132,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/catalogDeployment.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/catalogIntroduction.ts",
+      "evidenceSourcePath": "server/branches/catalogIntroduction.ts",
+      "sha256": "6416bc19e92f62e45904d6ecc44926c81d338f0e32cd3b5e32d0ce677766b8d2",
+      "gitBlobSha": "94ca67a5633c634583e7faec35192ae6dd3244e7",
+      "bytes": 20160,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/catalogIntroduction.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/catalogIntroductionRoutes.ts",
+      "evidenceSourcePath": "server/branches/catalogIntroductionRoutes.ts",
+      "sha256": "655c5118a0de18c94e88814e01949e888d7d15e71bbb80ce325498f54c162a62",
+      "gitBlobSha": "a5aa7bb7ab9847324d4038825ac79d0f8777cac8",
+      "bytes": 1985,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/catalogIntroductionRoutes.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/catalogPreparation.ts",
+      "evidenceSourcePath": "server/branches/catalogPreparation.ts",
+      "sha256": "a5d82662d40f90bb3ffa342a721ae6dee206f83ee0338303c2626babcbda7c63",
+      "gitBlobSha": "b26b3ec90629094f26c530f3da5e1130f97a1c22",
+      "bytes": 6662,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/catalogPreparation.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/catalogPrivateAssets.ts",
+      "evidenceSourcePath": "server/branches/catalogPrivateAssets.ts",
+      "sha256": "665425f992e01bfae3ca811773270149feb2d4eebaf2c7bfcc3e156218fd7134",
+      "gitBlobSha": "5a5828ded15464318d8be1f71141cc0badf23c8e",
+      "bytes": 7766,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/catalogPrivateAssets.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/catalogSourceReview.ts",
+      "evidenceSourcePath": "server/branches/catalogSourceReview.ts",
+      "sha256": "4d6fb4196831178c6e18f872c800cff463bc2815296ab5eb1ef0e760a53de959",
+      "gitBlobSha": "9712764f3c3ddb5a7c7bc4c95edd7aa4d8648d42",
+      "bytes": 15822,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/catalogSourceReview.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/catalogSourceRoutes.ts",
+      "evidenceSourcePath": "server/branches/catalogSourceRoutes.ts",
+      "sha256": "ecd2dbed0684b60ee73e299c0f459d7cf0239e97f6791f6f9fdf3f850fee838b",
+      "gitBlobSha": "6eedccad2582b6d27f0c16abe02010d208cd51c7",
+      "bytes": 1889,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/catalogSourceRoutes.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/commonAuthority.ts",
+      "evidenceSourcePath": "server/branches/commonAuthority.ts",
+      "sha256": "042c87f5328db47229e5b9a0d6b612311c8e80e0b78ab4fa8bd22974fb8e48c8",
+      "gitBlobSha": "fbd5910b0c24a8814602781b292a94649f2c7b0d",
+      "bytes": 3752,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/commonAuthority.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/connectionPolicy.ts",
+      "evidenceSourcePath": "server/branches/connectionPolicy.ts",
+      "sha256": "511989792f9debebd948e9efab3b9b8670c7bcbf8c3662eb1c4343736785ab66",
+      "gitBlobSha": "0833d013087b66a4ec4234f48f694dbf067ab911",
+      "bytes": 2001,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/connectionPolicy.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/developmentRuntimeEnvironment.ts",
+      "evidenceSourcePath": "server/branches/developmentRuntimeEnvironment.ts",
+      "sha256": "b2cc075d0ac7c320208b113b17b04411f87de28b9c7d92ce0993176c66f26ced",
+      "gitBlobSha": "428642412db036b25348898f72598d824dc22013",
+      "bytes": 4094,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/developmentRuntimeEnvironment.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/legacyPhotoObjects.ts",
+      "evidenceSourcePath": "server/branches/legacyPhotoObjects.ts",
+      "sha256": "07d8926ae45836eebe6ee1caf1fca0e66893bfa9cc11dbc3bf9e22ecc2557a5b",
+      "gitBlobSha": "650774669264e9d6598feeed35fdc7bf1b146fc7",
+      "bytes": 4433,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/legacyPhotoObjects.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/media.ts",
+      "evidenceSourcePath": "server/branches/media.ts",
+      "sha256": "3b7ca81644e1ae4bccc885734e2bac4bf11be239cdf86679f431f43c04815648",
+      "gitBlobSha": "73fed3f6ff985a66e25e10789412d600ba447930",
+      "bytes": 21608,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/media.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/mediaRoutes.ts",
+      "evidenceSourcePath": "server/branches/mediaRoutes.ts",
+      "sha256": "52613742a60736b2ddbb02359f27464dd8aebeeb6c3b26709fae341d984f8f42",
+      "gitBlobSha": "001bd37726e11536eade02c13c05bf7a2b10445e",
+      "bytes": 8123,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/mediaRoutes.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/middleware.ts",
+      "evidenceSourcePath": "server/branches/middleware.ts",
+      "sha256": "86c37038b9ad5f2cdd4628a396fb7cec880d0134e024a2a937730336671d1de0",
+      "gitBlobSha": "7131366e842e58a2eb09002d4f03569ad688a706",
+      "bytes": 2428,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/middleware.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/newBusinessSchema.ts",
+      "evidenceSourcePath": "server/branches/newBusinessSchema.ts",
+      "sha256": "8e119af5c909284835f31f83dee563ef92fd6b1f26cd4b3235be96676895ebab",
+      "gitBlobSha": "cd7a598acd5e2b8e1120a2bd64f422981506507b",
+      "bytes": 4140,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/newBusinessSchema.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/privateMediaObjects.ts",
+      "evidenceSourcePath": "server/branches/privateMediaObjects.ts",
+      "sha256": "c183e39ca9e9372387ce6c13bbb847cacb546a7f02f3bbdd83182b126184aedd",
+      "gitBlobSha": "f721f084479c82ca6f776e7e70339b4a1527741e",
+      "bytes": 1895,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/privateMediaObjects.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/runtime.ts",
+      "evidenceSourcePath": "server/branches/runtime.ts",
+      "sha256": "0dca2a448e36c68c5e8d2b16da3f4233781b9a2e66ec105b47fe90aa5c299646",
+      "gitBlobSha": "0eb51579404caa441187ff7fd5273294dfb8c132",
+      "bytes": 4118,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/runtime.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/sharedMediaStorage.ts",
+      "evidenceSourcePath": "server/branches/sharedMediaStorage.ts",
+      "sha256": "c613e542062a8e6ae9e398a9a16cae1d6547892930e32deffa172056168a5548",
+      "gitBlobSha": "422c9a49a2e39e6af4cfc2e4965f3ebe897cf1f2",
+      "bytes": 5682,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/sharedMediaStorage.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/sharedSession.ts",
+      "evidenceSourcePath": "server/branches/sharedSession.ts",
+      "sha256": "cde9ff938d5aebc9582ac816025ced5bdea67fa9594a3aa7d9c3f3a90a9daa1a",
+      "gitBlobSha": "bdb0d6053ae2c34ddfd4760812c079960677df58",
+      "bytes": 913,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/sharedSession.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/sharedStartup.ts",
+      "evidenceSourcePath": "server/branches/sharedStartup.ts",
+      "sha256": "b9cf1f18b6d5992cc543202022c51644d040b8fccf43a9efa88df9e8a1324251",
+      "gitBlobSha": "c58c40e2931b43a482db670402d954ee345ab328",
+      "bytes": 4166,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/sharedStartup.ts.txt"
+      }
+    },
+    {
+      "path": "server/branches/startupPlan.ts",
+      "evidenceSourcePath": "server/branches/startupPlan.ts",
+      "sha256": "46ccfa0b79a1776068af3358d6e25135c328797f342fac511801cb2c716cfe61",
+      "gitBlobSha": "0695beeae457a3219fa4e2214cc69582de4ba5e3",
+      "bytes": 5515,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/startupPlan.ts.txt"
+      }
+    },
+    {
+      "path": "server/db.ts",
+      "evidenceSourcePath": "server/db.ts",
+      "sha256": "8f4abf13cdb6efc4ac5772699192ef0dd3b441afba4055db4e124c3cfae02b91",
+      "gitBlobSha": "ba7e26ffd0b040b252accc85314407d86a8ab0c1",
+      "bytes": 2444,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/db.ts"
+      }
+    },
+    {
+      "path": "server/index.ts",
+      "evidenceSourcePath": "server/index.ts",
+      "sha256": "eddb75d213b58d755674f15dfd908f15bd8118bb6b8fefbde05457278b8178de",
+      "gitBlobSha": "46f5cff4dea58552afff7de13f3fa788e866c098",
+      "bytes": 3567,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/index.ts.txt"
+      }
+    },
+    {
+      "path": "server/legacyBootstrap.ts",
+      "evidenceSourcePath": "server/legacyBootstrap.ts",
+      "sha256": "0fb9ff51ffd820312cd6ea208d81c4c0b25efcbc524b05d873110e0513a75494",
+      "gitBlobSha": "fc40950052409dc2735d9692b7f993598cbaaf4c",
+      "bytes": 2289,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/legacyBootstrap.ts.txt"
+      }
+    },
+    {
+      "path": "server/legacyStorage.ts",
+      "evidenceSourcePath": "server/legacyStorage.ts",
+      "sha256": "38562453c03378e4b4deb53859aa5e1252615c4e4f0955299980eaa79a42828d",
+      "gitBlobSha": "06fa2b0f0fea1414edad2b9c28879afa983dcdbd",
+      "bytes": 313,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/legacyStorage.ts.txt"
+      }
+    },
+    {
+      "path": "server/replit_integrations/auth/commonStorage.ts",
+      "evidenceSourcePath": "server/replit_integrations/auth/commonStorage.ts",
+      "sha256": "44c5399653f8b512e41f6385ba0520c8f23c8c310e1eb206321146e7c5c0c52b",
+      "gitBlobSha": "b6f99ec012e515a0d0865a8cc795fdebbece60dd",
+      "bytes": 3097,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/replit_integrations/auth/commonStorage.ts.txt"
+      }
+    },
+    {
+      "path": "server/replit_integrations/auth/googleAuth.ts",
+      "evidenceSourcePath": "server/replit_integrations/auth/googleAuth.ts",
+      "sha256": "d591e5f805a5b380ced56a32918cbf839a0a76afa787f9a5c549d54bf680af5c",
+      "gitBlobSha": "ea550bceb31aea4bcf584616b213747cb1cb89ed",
+      "bytes": 4539,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/replit_integrations/auth/googleAuth.ts.txt"
+      }
+    },
+    {
+      "path": "server/replit_integrations/auth/index.ts",
+      "evidenceSourcePath": "server/replit_integrations/auth/index.ts",
+      "sha256": "ebf89f03cbca0c9f05f483b60b4d2ad15bf828b4bc3a8f5a66777932fe711689",
+      "gitBlobSha": "2fd93de5ba08dc867c0de6bcdf86eef1201b92af",
+      "bytes": 178,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/replit_integrations/auth/index.ts"
+      }
+    },
+    {
+      "path": "server/replit_integrations/auth/replitAuth.ts",
+      "evidenceSourcePath": "server/replit_integrations/auth/replitAuth.ts",
+      "sha256": "d80940473cdc9667779763bfd2bc62c807f5ec031ef2590085d1a282aed570a5",
+      "gitBlobSha": "ee82e22c676f3ff7302415a147ab89e9cdd960af",
+      "bytes": 937,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/replit_integrations/auth/replitAuth.ts"
+      }
+    },
+    {
+      "path": "server/replit_integrations/auth/routes.ts",
+      "evidenceSourcePath": "server/replit_integrations/auth/routes.ts",
+      "sha256": "44f0753ea27a0feb1a03cc470d43b51e930f47f0a415d74f684ee4fc80fd87c8",
+      "gitBlobSha": "7ca5908a20e0540a0858bffa22312721bcf6d9cd",
+      "bytes": 5379,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/replit_integrations/auth/routes.ts.txt"
+      }
+    },
+    {
+      "path": "server/replit_integrations/auth/storage.ts",
+      "evidenceSourcePath": "server/replit_integrations/auth/storage.ts",
+      "sha256": "2ce44794111f8d4f432a56e7834c3a8a098acaf8a3826847e289b3c1690d6d62",
+      "gitBlobSha": "2368f9ff832f00618ca0b54067ec199c31cae7c2",
+      "bytes": 257,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/replit_integrations/auth/storage.ts.txt"
+      }
+    },
+    {
+      "path": "server/replit_integrations/object_storage/index.ts",
+      "evidenceSourcePath": "server/replit_integrations/object_storage/index.ts",
+      "sha256": "13fecba5c0dce931222b7245007a8bf928cba1de4fcf35e2f8328e1be4a519ce",
+      "gitBlobSha": "1664af26b190d8200d292005422ff9445f21afa4",
+      "bytes": 377,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/replit_integrations/object_storage/index.ts"
+      }
+    },
+    {
+      "path": "server/replit_integrations/object_storage/objectAcl.ts",
+      "evidenceSourcePath": "server/replit_integrations/object_storage/objectAcl.ts",
+      "sha256": "215287b944c7dfc8d82f85d21fc8df4d0612ac7e9cd37673cbd9d3f61c13c0a2",
+      "gitBlobSha": "bfa4c7123b236e27598882f202092d987097988d",
+      "bytes": 5545,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/replit_integrations/object_storage/objectAcl.ts"
+      }
+    },
+    {
+      "path": "server/replit_integrations/object_storage/objectStorage.ts",
+      "evidenceSourcePath": "server/replit_integrations/object_storage/objectStorage.ts",
+      "sha256": "cfbc54694cb47f24e2c29b4062ee8e9f3372209bcf9d0055e87dc5a52a2ce607",
+      "gitBlobSha": "3130afc0a2fc75b7dd7a85c52c4f0ca73a342132",
+      "bytes": 8409,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/replit_integrations/object_storage/objectStorage.ts"
+      }
+    },
+    {
+      "path": "server/replit_integrations/object_storage/routes.ts",
+      "evidenceSourcePath": "server/replit_integrations/object_storage/routes.ts",
+      "sha256": "470a76606063caaf8a9043371b2d07376cdf5da811375d40abbe256272444335",
+      "gitBlobSha": "5d50b3417c5db4296255250a835978578b5b515e",
+      "bytes": 2786,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/replit_integrations/object_storage/routes.ts"
+      }
+    },
+    {
+      "path": "server/routes.ts",
+      "evidenceSourcePath": "server/routes.ts",
+      "sha256": "2bed7f33ca6241523af48fe8821adab57ea4b8e4b1d86a12f0412934cf48e362",
+      "gitBlobSha": "50ce31e611e149b3475da690f9c427b6169eddb1",
+      "bytes": 302490,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/routes.ts.txt"
+      }
+    },
+    {
+      "path": "server/seed.ts",
+      "evidenceSourcePath": "server/seed.ts",
+      "sha256": "2b0532cc94c7bc719bbd527415e09fb06941e4d7e7619ffb7cacb39fcb4e2ba1",
+      "gitBlobSha": "4f09395bf79bd326359c2e6d141a19918976d7e8",
+      "bytes": 5845,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/seed.ts"
+      }
+    },
+    {
+      "path": "server/services/boqXlsx.ts",
+      "evidenceSourcePath": "server/services/boqXlsx.ts",
+      "sha256": "e2da786cc86f5a8d5cae60610931600cef0d3f93989bfdcf4813291f9522c0f0",
+      "gitBlobSha": "3b6c2993603bb9672c653c1ee965c260cdcb03d3",
+      "bytes": 11706,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/services/boqXlsx.ts"
+      }
+    },
+    {
+      "path": "server/services/completionReportPptx.ts",
+      "evidenceSourcePath": "server/services/completionReportPptx.ts",
+      "sha256": "fa64320a5c95e8768e82d06ebd30a621eb5d75d67e0751c501952ba285c8d036",
+      "gitBlobSha": "3ffe5fbccf5787fc940d197d604f857c62fa3b1c",
+      "bytes": 27699,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/services/completionReportPptx.ts"
+      }
+    },
+    {
+      "path": "server/services/inventory/movement-display.ts",
+      "evidenceSourcePath": "server/services/inventory/movement-display.ts",
+      "sha256": "cc3d30faeeb0d42f0ec5a77006592772447d24e4056567f3318bc70a750a6672",
+      "gitBlobSha": "e718c5c9cc6613514e404d20acd62302c0571ef8",
+      "bytes": 2317,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/services/inventory/movement-display.ts"
+      }
+    },
+    {
+      "path": "server/services/inventory/movement-validation.ts",
+      "evidenceSourcePath": "server/services/inventory/movement-validation.ts",
+      "sha256": "1e94b21ed9f100c92945ea89295dd46f946c1df40d299afa020c473a60fb800e",
+      "gitBlobSha": "0b1de8cd23c3fdbf61205e1182534e75a16ded1f",
+      "bytes": 3694,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/services/inventory/movement-validation.ts"
+      }
+    },
+    {
+      "path": "server/services/inventoryMatcher.ts",
+      "evidenceSourcePath": "server/services/inventoryMatcher.ts",
+      "sha256": "c407b4a8f3756a5665f98a3c76a36ecab008a63c43c5dc0db558dc1c7fc9e5d4",
+      "gitBlobSha": "5e8e44dc9081d2dfaaa4e13bf6cc25e314534084",
+      "bytes": 8416,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/services/inventoryMatcher.ts"
+      }
+    },
+    {
+      "path": "server/services/itemImageContent.ts",
+      "evidenceSourcePath": "server/services/itemImageContent.ts",
+      "sha256": "6dd5749a76b5281e366f3fc6f04b74e10d0423ce12e9c0d87cda89106b605ff1",
+      "gitBlobSha": "49d6cdd278c67ab2c5fed5511d86a51a636d1ab2",
+      "bytes": 1878,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/services/itemImageContent.ts"
+      }
+    },
+    {
+      "path": "server/services/jibble.ts",
+      "evidenceSourcePath": "server/services/jibble.ts",
+      "sha256": "1b664571b187a68cc0842605cb7cd388613f2c3067edd1bc58c49eb15fc7fed3",
+      "gitBlobSha": "539569a008e4149dcbef7995aebc0e43915e6d5e",
+      "bytes": 18911,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/services/jibble.ts"
+      }
+    },
+    {
+      "path": "server/services/materialRequestCommands.ts",
+      "evidenceSourcePath": "server/services/materialRequestCommands.ts",
+      "sha256": "fc2094ba7af201fffcba7b4ca94aa173dadbaf2b725db009e16788a44e907e63",
+      "gitBlobSha": "86505d9f77305e679b2418e03ea9c94188b48f19",
+      "bytes": 17341,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/services/materialRequestCommands.ts.txt"
+      }
+    },
+    {
+      "path": "server/services/materialRequestRoutes.ts",
+      "evidenceSourcePath": "server/services/materialRequestRoutes.ts",
+      "sha256": "c76b2f4f848f46fad54723cb542371efd9f3718fd48c9aadd8f560faa020b21a",
+      "gitBlobSha": "fbf0dc32bc87560bc8073c1c1fc509f201d5a931",
+      "bytes": 2918,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/services/materialRequestRoutes.ts.txt"
+      }
+    },
+    {
+      "path": "server/services/monday.ts",
+      "evidenceSourcePath": "server/services/monday.ts",
+      "sha256": "aa53e021de8eb18174f70d33ac80874a7cd3e3e123db0c2b336285a65642b84c",
+      "gitBlobSha": "0c4562ab72542ed013f45613c77e32ae906c45bc",
+      "bytes": 15105,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/services/monday.ts"
+      }
+    },
+    {
+      "path": "server/services/objectStorageUpload.ts",
+      "evidenceSourcePath": "server/services/objectStorageUpload.ts",
+      "sha256": "11300676e6326cecf70434a8f9cebf1256d54280453cf4e93b5efbdb29d1e664",
+      "gitBlobSha": "ffb2a29b2c839b9a552ba3a814ddd1a61b5788f2",
+      "bytes": 1391,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/services/objectStorageUpload.ts"
+      }
+    },
+    {
+      "path": "server/services/pdfFirstPage.ts",
+      "evidenceSourcePath": "server/services/pdfFirstPage.ts",
+      "sha256": "3f96d12dc714e40984db7fc44c425290673d748f2bcbc30abcdc5fc05b3788e4",
+      "gitBlobSha": "88d73a4292705af80ee029e67a9fa11401610274",
+      "bytes": 5192,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/services/pdfFirstPage.ts"
+      }
+    },
+    {
+      "path": "server/services/requestIdentity.ts",
+      "evidenceSourcePath": "server/services/requestIdentity.ts",
+      "sha256": "47efa4d316ce4de2858d08a218aaf70064226397d4ad5d0b116da783858ab700",
+      "gitBlobSha": "645de072755e75bb3d9b44ba79c87a341a8b1e63",
+      "bytes": 823,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/services/requestIdentity.ts"
+      }
+    },
+    {
+      "path": "server/services/requestMovementGuard.ts",
+      "evidenceSourcePath": "server/services/requestMovementGuard.ts",
+      "sha256": "eda44d4089dc9cf44478b6f5928f538148611ef57cc67916d176062ed47f176b",
+      "gitBlobSha": "2ca976fb134f7e1935519d4c0c4cbbbd8318ec6e",
+      "bytes": 330,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/services/requestMovementGuard.ts"
+      }
+    },
+    {
+      "path": "server/services/roleAuthorization.ts",
+      "evidenceSourcePath": "server/services/roleAuthorization.ts",
+      "sha256": "d6b8754bab6aeae3a71150ecefa998ae2c286e311aa52252f6e546cea2829789",
+      "gitBlobSha": "d08c86d9c5826e24f85dff54dfc6a935dd91991f",
+      "bytes": 1218,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/services/roleAuthorization.ts"
+      }
+    },
+    {
+      "path": "server/static.ts",
+      "evidenceSourcePath": "server/static.ts",
+      "sha256": "7ad68ceb8da0fe0b29af6d517e66cfc14f106a641de845aac4f1bd995ad24f4a",
+      "gitBlobSha": "0ac8269bf571d4d11e2826e55af1378d204f9e4e",
+      "bytes": 554,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/static.ts"
+      }
+    },
+    {
+      "path": "server/storage.ts",
+      "evidenceSourcePath": "server/storage.ts",
+      "sha256": "117b30f224e3492551fe86a3d4923c08e41422842ed34f2ff30cb1aec2d05b46",
+      "gitBlobSha": "398c1a101f029805e101cff554040757e13043a2",
+      "bytes": 222905,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/server/storage.ts.txt"
+      }
+    },
+    {
+      "path": "server/vite.ts",
+      "evidenceSourcePath": "server/vite.ts",
+      "sha256": "21ad63ba500ffe736990832922dcd0b4e48e268a9610104283e9bb8a482aa3f9",
+      "gitBlobSha": "7f25adaa38df0bb78da770870eab71cb25d8f408",
+      "bytes": 1847,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "server/vite.ts"
+      }
+    },
+    {
+      "path": "shared/classifyItem.ts",
+      "evidenceSourcePath": "shared/classifyItem.ts",
+      "sha256": "a4d0b5dcfdaaeb24f1af2d1d6209a9ce6dd2ffe86aefbc378760ec25d9e880a3",
+      "gitBlobSha": "ff52e3bab1f612057c2603966d44b63ea61b3734",
+      "bytes": 5261,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "shared/classifyItem.ts"
+      }
+    },
+    {
+      "path": "shared/models/auth.ts",
+      "evidenceSourcePath": "shared/models/auth.ts",
+      "sha256": "99b1991b8c29c8fd03b20fbd35a7bd2594313cb6058acea984fd8799d80ffad1",
+      "gitBlobSha": "f8c0eb1a08555d1d37d73e69a101f4335a748df2",
+      "bytes": 1063,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "shared/models/auth.ts"
+      }
+    },
+    {
+      "path": "shared/models/branchMembership.ts",
+      "evidenceSourcePath": "shared/models/branchMembership.ts",
+      "sha256": "dc42c0587b342023b51445573a2a0a809bec3d35e37d5b3efed2ce2181428509",
+      "gitBlobSha": "9288b0e2ff5aaf79d09fd366e116f559de6c866d",
+      "bytes": 708,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/shared/models/branchMembership.ts.txt"
+      }
+    },
+    {
+      "path": "shared/movementDraftSupplier.ts",
+      "evidenceSourcePath": "shared/movementDraftSupplier.ts",
+      "sha256": "7c5f89f2916975161b846b3610dc73f4ff7edb0ec83bb37116286be16f8bb941",
+      "gitBlobSha": "283cb6b42b9dd8d1ba0d174001ad8ce37a59da47",
+      "bytes": 568,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "shared/movementDraftSupplier.ts"
+      }
+    },
+    {
+      "path": "shared/reelEligibility.ts",
+      "evidenceSourcePath": "shared/reelEligibility.ts",
+      "sha256": "6acf24e58f119b7cb070bd8de2bd7c36d6397c89dea5714f6f2e5cab93ea291f",
+      "gitBlobSha": "7b76871d1256c1424b441126ea4cad85ca06e7fb",
+      "bytes": 8638,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "shared/reelEligibility.ts"
+      }
+    },
+    {
+      "path": "shared/routes.ts",
+      "evidenceSourcePath": "shared/routes.ts",
+      "sha256": "f9ccc2dcaff72b1bee40d37e32e35e1be4112121d011f6d9cefe255a62082e2c",
+      "gitBlobSha": "40edf28d63e0ee9fe3fd678bb3e407b1b02fda18",
+      "bytes": 1575,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "shared/routes.ts"
+      }
+    },
+    {
+      "path": "shared/schema.ts",
+      "evidenceSourcePath": "shared/schema.ts",
+      "sha256": "8f4bce283baf7740858923c8b2b18e24fff88ac2276231f688f05949adcf81bb",
+      "gitBlobSha": "8722ce3d9f4b749b56028d9c779629db54d99840",
+      "bytes": 41920,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/shared/schema.ts.txt"
+      }
+    },
+    {
+      "path": "shared/scopeReportTarget.ts",
+      "evidenceSourcePath": "shared/scopeReportTarget.ts",
+      "sha256": "0d66b48f0e3d1a7f2a79eb4573ac13b0272f594620e6d214ef5258d53242745f",
+      "gitBlobSha": "c55c08c21fcf50538de3f7cae1432bbaa265b365",
+      "bytes": 557,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "shared/scopeReportTarget.ts"
+      }
+    },
+    {
+      "path": "tailwind.config.ts",
+      "evidenceSourcePath": "tailwind.config.ts",
+      "sha256": "c8006eb4e04327d547a4b935cc03570ad0b230674eff5f5c86c36d0e14c7bc8e",
+      "gitBlobSha": "42cda6dde4a969970780ce7e7345f84836b64934",
+      "bytes": 5434,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "tailwind.config.ts"
+      }
+    },
+    {
+      "path": "tests/helpers/branchScreenHarness.ts",
+      "evidenceSourcePath": "tests/helpers/branchScreenHarness.ts",
+      "sha256": "0ae6e48c123c197c0e2e62e5694904640d4fc65d89b2ce2dfca083e1e190dbc1",
+      "gitBlobSha": "0b19e93ae43f721cec9e4071a3295c0d9a3f0309",
+      "bytes": 5542,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/branchScreenHarness.ts.txt"
+      }
+    },
+    {
+      "path": "tests/helpers/denyBranchNetwork.cjs",
+      "evidenceSourcePath": "tests/helpers/denyBranchNetwork.cjs",
+      "sha256": "57e0f8b0c28dec6acf1ba8663ae968c88d643ea9875d38b4ba1fe52a6ed9e3ed",
+      "gitBlobSha": "d968b641636165a3e9691dc638249f9f5a9c5dd9",
+      "bytes": 503,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/denyBranchNetwork.cjs.txt"
+      }
+    },
+    {
+      "path": "tests/helpers/disposableFieldPg.ts",
+      "evidenceSourcePath": "tests/helpers/disposableFieldPg.ts",
+      "sha256": "6a7749faf9024cd1ad8f9e70117bed95beee2066edc8094ae0ba1178b48cf9ac",
+      "gitBlobSha": "a12a61dd4e43f06f6f124de2a208ed5094673c82",
+      "bytes": 5763,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/disposableFieldPg.ts.txt"
+      }
+    },
+    {
+      "path": "tests/helpers/disposableMovementPg.ts",
+      "evidenceSourcePath": "tests/helpers/disposableMovementPg.ts",
+      "sha256": "c57642fc52db6f63b8f92841d0aedb5d4f0904742e37a4fe705c01d33ebc975f",
+      "gitBlobSha": "66de5ddb893408ff00aeb1f83eb45e6acd28246d",
+      "bytes": 2748,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/disposableMovementPg.ts.txt"
+      }
+    },
+    {
+      "path": "tests/helpers/fieldDraftFlowHarness.ts",
+      "evidenceSourcePath": "tests/helpers/fieldDraftFlowHarness.ts",
+      "sha256": "eba85cba59b3dd85cd0de718fe8720596e87a1159343a3346efe454bbc9034fc",
+      "gitBlobSha": "c77cece74a9aec75668dcef70e44caf4f833e475",
+      "bytes": 10194,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "tests/helpers/fieldDraftFlowHarness.ts"
+      }
+    },
+    {
+      "path": "tests/helpers/fieldFiltersHarness.ts",
+      "evidenceSourcePath": "tests/helpers/fieldFiltersHarness.ts",
+      "sha256": "a6f8628d1221ec9c37703043c22b2b8dfd3d90dc7753da1f93bd199a216f4f9b",
+      "gitBlobSha": "d6312a91bea1319825ef0a7871d6f428a7de9c06",
+      "bytes": 6568,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "tests/helpers/fieldFiltersHarness.ts"
+      }
+    },
+    {
+      "path": "tests/helpers/fieldSelectScreensHarness.ts",
+      "evidenceSourcePath": "tests/helpers/fieldSelectScreensHarness.ts",
+      "sha256": "5a240c20b07d53e303f03f11bad78af7229173b2c63f9030da0030c0b155b249",
+      "gitBlobSha": "983eb9cbcd20643a4fccce434aa5758ec7432526",
+      "bytes": 5079,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "tests/helpers/fieldSelectScreensHarness.ts"
+      }
+    },
+    {
+      "path": "tests/helpers/guardBranchApplication.cjs",
+      "evidenceSourcePath": "tests/helpers/guardBranchApplication.cjs",
+      "sha256": "902ecaa6365eb894ca9b85ec161207b1fe8d98dbb10a654093b312dc75fa787e",
+      "gitBlobSha": "67599718686c1a2fee38619b755c130bbf78e0d9",
+      "bytes": 1405,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/guardBranchApplication.cjs.txt"
+      }
+    },
+    {
+      "path": "tests/helpers/guardIndianaSqlNetwork.cjs",
+      "evidenceSourcePath": "tests/helpers/guardIndianaSqlNetwork.cjs",
+      "sha256": "ee040c404946d17ab37fa22685283f8c4aebf041c6c1bf947b03107a7fe5d6fb",
+      "gitBlobSha": "848e9d63727d5f9850af7182b9058367b1d3c269",
+      "bytes": 1978,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/guardIndianaSqlNetwork.cjs.txt"
+      }
+    },
+    {
+      "path": "tests/helpers/guardStartupPlanOffline.cjs",
+      "evidenceSourcePath": "tests/helpers/guardStartupPlanOffline.cjs",
+      "sha256": "c82ad967abafc6a354bcd02a44f9c701034c9e0fb79dfb9f7b540278633db130",
+      "gitBlobSha": "155287e6fbe101547b51b09430e84621c4fae105",
+      "bytes": 986,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/guardStartupPlanOffline.cjs.txt"
+      }
+    },
+    {
+      "path": "tests/helpers/inMemoryHttp.ts",
+      "evidenceSourcePath": "tests/helpers/inMemoryHttp.ts",
+      "sha256": "2e2204e449a0b988c00cad4dbd67bed89d3756aaad116b1530052b8ec1cb0b79",
+      "gitBlobSha": "85dec9bb2b38e8bc023a15427e2d4fea465dbaaf",
+      "bytes": 1533,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/inMemoryHttp.ts.txt"
+      }
+    },
+    {
+      "path": "tests/helpers/inMemoryMediaHttp.ts",
+      "evidenceSourcePath": "tests/helpers/inMemoryMediaHttp.ts",
+      "sha256": "151d40670b2c023a86b2a9ae6bf36b20e71294deb6409dfb5c575d5f9623f7cf",
+      "gitBlobSha": "d357933bd47488294dbf4c0d737d826cd7c83771",
+      "bytes": 2055,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/inMemoryMediaHttp.ts.txt"
+      }
+    },
+    {
+      "path": "tests/helpers/indianaSqlFixture.ts",
+      "evidenceSourcePath": "tests/helpers/indianaSqlFixture.ts",
+      "sha256": "c4df618fb72a7e2cd49b7a0d2eccbe6a21ccf4709aea2fde572c5c59983e1fe4",
+      "gitBlobSha": "8bfded289ea4a389e95253ce85728ecc8b924883",
+      "bytes": 2703,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/indianaSqlFixture.ts.txt"
+      }
+    },
+    {
+      "path": "tests/helpers/indianaValidationTarget.ts",
+      "evidenceSourcePath": "tests/helpers/indianaValidationTarget.ts",
+      "sha256": "f48e858e7bf40579a59dfc238f19f4d18a3a4bb4576a9ab610f053f06cca839d",
+      "gitBlobSha": "9bb9c4427284d92bafc5b04a4d13c8c1ad43224f",
+      "bytes": 3836,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/indianaValidationTarget.ts.txt"
+      }
+    },
+    {
+      "path": "tests/helpers/movementSqlHarness.ts",
+      "evidenceSourcePath": "tests/helpers/movementSqlHarness.ts",
+      "sha256": "57d3d7c98b4dd3f6b8030f9af089f762a1f7fc2e2bf403b215d88e44f39da6c7",
+      "gitBlobSha": "80a0f3908087e00b7af5a586675cc46b7ea24e90",
+      "bytes": 4285,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/movementSqlHarness.ts.txt"
+      }
+    },
+    {
+      "path": "tests/helpers/registerStartupPlanTs.cjs",
+      "evidenceSourcePath": "tests/helpers/registerStartupPlanTs.cjs",
+      "sha256": "ad34b53c610cc995dfe80870f93c2c71e32cc49542a69d9ea1c63836127a8f6d",
+      "gitBlobSha": "4248cc179c245e28a011fe0cedee9ee5e7ede733",
+      "bytes": 1087,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/registerStartupPlanTs.cjs.txt"
+      }
+    },
+    {
+      "path": "tests/helpers/startupCredentialScenarios.ts",
+      "evidenceSourcePath": "tests/helpers/startupCredentialScenarios.ts",
+      "sha256": "44431856ac87ae3b959fa37dd5af38ae93771171797c8eebce60e419fbbfc191",
+      "gitBlobSha": "488a0083c26c4af3ab45a94fee5d41265d1f8ca7",
+      "bytes": 8252,
+      "source": {
+        "kind": "inert-snapshot",
+        "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/startupCredentialScenarios.ts.txt"
+      }
+    },
+    {
+      "path": "tsconfig.json",
+      "evidenceSourcePath": "tsconfig.json",
+      "sha256": "427d09c3888aa9d12a5c1b3e8a5f31f779d46edb5bf0d5d2bfda9f2ed39ca623",
+      "gitBlobSha": "54de26a78a45a176a59c5b28897760be671ee317",
+      "bytes": 681,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "tsconfig.json"
+      }
+    },
+    {
+      "path": "vite.config.ts",
+      "evidenceSourcePath": "vite.config.ts",
+      "sha256": "e3e8d6579339046a1f3c5b542e212c17efb3437bc9affab8db97053d19ea2f98",
+      "gitBlobSha": "71d75ac02cea7ff76af2a8d925d031909202ee04",
+      "bytes": 1018,
+      "source": {
+        "kind": "pinned-remote-blob",
+        "commit": "40da01ee24d9154166462bc96e295de191f9ae75",
+        "path": "vite.config.ts"
+      }
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "scope": "Literal credential pattern triage; not a security scan or proof of absence of PII",
+  "unresolved": 0,
+  "findings": [
+    {
+      "path": "client/src/lib/i18n.ts",
+      "line": 15,
+      "kind": "literal-credential",
+      "reviewedHarmless": true,
+      "reason": "English password field label, not a credential"
+    },
+    {
+      "path": "client/src/lib/i18n.ts",
+      "line": 5273,
+      "kind": "literal-credential",
+      "reviewedHarmless": true,
+      "reason": "Spanish password field label, not a credential"
+    },
+    {
+      "path": "server/branches/developmentRuntimeEnvironment.ts",
+      "line": 17,
+      "kind": "literal-database-uri",
+      "reviewedHarmless": true,
+      "reason": "Credential-free localhost URL constructor template; no username, password or real endpoint"
+    },
+    {
+      "path": "server/branches/developmentRuntimeEnvironment.ts",
+      "line": 6,
+      "kind": "literal-credential",
+      "reviewedHarmless": true,
+      "reason": "Environment-variable key name, not its value"
+    },
+    {
+      "path": "server/branches/developmentRuntimeEnvironment.ts",
+      "line": 7,
+      "kind": "literal-credential",
+      "reviewedHarmless": true,
+      "reason": "Environment-variable key name, not its value"
+    },
+    {
+      "path": "server/branches/developmentRuntimeEnvironment.ts",
+      "line": 8,
+      "kind": "literal-credential",
+      "reviewedHarmless": true,
+      "reason": "Environment-variable key name, not its value"
+    }
+  ]
+}

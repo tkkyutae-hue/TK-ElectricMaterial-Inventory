@@ -1,0 +1,103 @@
+import { build } from "esbuild";
+import { readdirSync } from "node:fs";
+import { resolve } from "node:path";
+import { chromium } from "playwright";
+import assert from "node:assert/strict";
+
+/** Actual existing screens, providers, query client and branch transport. */
+export async function branchScreenBundle() {
+  const output = await build({
+    stdin: { resolveDir: process.cwd(), loader: "tsx", contents: `
+      import React from "react";
+      import {createRoot} from "react-dom/client";
+      import {Router} from "wouter";
+      import {QueryClientProvider} from "@tanstack/react-query";
+      import {queryClient,apiRequest} from "./client/src/lib/queryClient";
+      import * as transport from "./client/src/lib/branchTransport";
+      import {TooltipProvider} from "./client/src/components/ui/tooltip";
+      import {LanguageProvider} from "./client/src/hooks/use-language";
+      import {FieldThemeProvider} from "./client/src/hooks/use-field-theme";
+      import {FieldCartProvider,useFieldCart} from "./client/src/lib/fieldCart";
+      import {useAuth} from "./client/src/hooks/use-auth";
+      import FieldInventory from "./client/src/pages/field/FieldInventory";
+      import Inventory from "./client/src/pages/Inventory";
+      import Home from "./client/src/pages/Home";
+      import {AppLayout} from "./client/src/components/layout/AppLayout";
+      import {FieldHeader} from "./client/src/components/layout/FieldHeader";
+      import {BranchLoginRedirect} from "./client/src/components/layout/BranchLoginRedirect";
+      import Login from "./client/src/pages/Login";
+      function DraftProbe(){window.testCart=useFieldCart();return null;}
+      window.testTransport=transport;
+      window.testClient=queryClient;
+      window.testApiRequest=apiRequest;
+      function Screen(){
+        const {user,isLoading}=useAuth();
+        if(isLoading)return <p>Loading</p>;
+        if(!user)return transport.documentBranchPrefix?<BranchLoginRedirect/>:<Login/>;
+        return window.testView==="home"||window.testView==="login"?<Home/>:window.testView==="admin"
+          ?<AppLayout><Inventory/></AppLayout>:<><FieldHeader/><FieldInventory/></>;
+      }
+      createRoot(document.getElementById("root")).render(
+        <QueryClientProvider client={queryClient}><LanguageProvider><FieldThemeProvider>
+          <Router base={transport.documentBranchPrefix}><TooltipProvider><FieldCartProvider>
+            <DraftProbe/><Screen/>
+          </FieldCartProvider></TooltipProvider></Router>
+        </FieldThemeProvider></LanguageProvider></QueryClientProvider>);
+    ` },
+    bundle: true, write: false, platform: "browser", format: "iife", jsx: "automatic", metafile: true,
+    alias: { "@assets": resolve("attached_assets") },
+    loader: { ".png": "dataurl" },
+  });
+  assert.ok(!Object.keys(output.metafile!.inputs).some(p => /^server\//.test(p)));
+  return output.outputFiles[0].text;
+}
+
+export async function branchBrowser() {
+  const nix = readdirSync("/nix/store").find(name => name.includes("playwright-chromium-cjk"));
+  return chromium.launch({
+    headless: true,
+    ...(nix ? { executablePath: `/nix/store/${nix}/chrome-linux/chrome` } : {}),
+    args: ["--disable-background-networking", "--host-resolver-rules=MAP * ~NOTFOUND"],
+  });
+}
+
+export async function mountBranchScreen(browser: Awaited<ReturnType<typeof branchBrowser>>, bundle: string,
+  options: { branch: string; view?: string; storageState?: any; api: (url: string, options: any) => Promise<any> }) {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 1000 }, serviceWorkers: "block",
+    storageState: options.storageState });
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on("pageerror", e => errors.push(e.message));
+  const documentUrl = `https://synthetic.invalid/branches/${options.branch}/${options.view === "admin" ? "inventory" : options.view === "home" ? "home" : "field/inventory"}`;
+  await context.route("**/*", route => route.request().isNavigationRequest()
+    && route.request().url().startsWith("https://synthetic.invalid/")
+    ? route.fulfill({ contentType: "text/html", body: '<!doctype html><div id="root"></div>' })
+    : route.abort());
+  await page.exposeFunction("syntheticApi", async (url: string, init: any) => options.api(url, {
+    method: init.method, headers: init.headers, body: init.body ? JSON.parse(init.body) : {},
+  }));
+  await page.goto(documentUrl);
+  async function mountView(view: string) {
+  await page.evaluate(view => {
+    (window as any).testView = view;
+    (window as any).calls = [];
+    localStorage.setItem("voltstock_lang", "en");
+    window.fetch = async (input: any, init: any = {}) => {
+      (window as any).calls.push({ url: input, method: init.method || "GET" });
+      const result = await (window as any).syntheticApi(input, {
+        method: init.method || "GET", body: init.body,
+        headers: Object.fromEntries(new Headers(init.headers).entries()),
+      });
+      // Deliberately allow late responses: production transport must reject them.
+      if ((window as any).slowResponse) await new Promise(r => setTimeout(r, 500));
+      return new Response(JSON.stringify(result.body), { status: result.status, headers: { "Content-Type": "application/json" } });
+    };
+  }, view);
+  await page.addScriptTag({ content: bundle });
+  }
+  await mountView(options.view ?? "field");
+  return { page, errors, mountView, async close() {
+    await context.close();
+    assert.deepEqual(errors, [], "No browser runtime errors");
+  } };
+}

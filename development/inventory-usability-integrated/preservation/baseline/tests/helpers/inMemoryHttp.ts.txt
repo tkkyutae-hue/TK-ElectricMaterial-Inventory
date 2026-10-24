@@ -1,0 +1,35 @@
+import { IncomingMessage, ServerResponse } from "node:http";
+import { Socket } from "node:net";
+import { Duplex } from "node:stream";
+import type { Express } from "express";
+
+/** Real Express matching/middleware/response pipeline without opening a port. */
+export async function inMemoryHttp(app: Express, url: string, options: {
+  method?: string; body?: unknown; userId?: string; headers?: Record<string, string>;
+} = {}): Promise<{ status: number; body: any }> {
+  const req = new IncomingMessage(new Socket());
+  req.url = url;
+  req.method = options.method ?? "GET";
+  req.headers = { host: "synthetic.invalid", ...options.headers };
+  (req as any).body = options.body ?? {};
+  (req as any).session = { userId: options.userId ?? "synthetic-admin", selectedBranch: "savannah" };
+  const chunks: Buffer[] = [];
+  const socket = new Duplex({
+    read() {},
+    write(chunk, _encoding, done) { chunks.push(Buffer.from(chunk)); done(); },
+  });
+  const res = new ServerResponse(req);
+  res.assignSocket(socket as Socket);
+  return await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(Error("IN_MEMORY_HTTP_TIMEOUT")), 15000);
+    res.on("finish", () => {
+      clearTimeout(timer);
+      const raw = Buffer.concat(chunks).toString();
+      const text = raw.slice(raw.indexOf("\r\n\r\n") + 4);
+      try { resolve({ status: res.statusCode, body: text ? JSON.parse(text) : null }); }
+      catch { reject(Error("IN_MEMORY_HTTP_INVALID_JSON")); }
+      socket.destroy();
+    });
+    app(req, res);
+  });
+}

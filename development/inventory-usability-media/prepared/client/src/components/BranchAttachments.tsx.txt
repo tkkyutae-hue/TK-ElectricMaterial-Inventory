@@ -1,0 +1,512 @@
+import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { branchFetch, documentBranchPrefix } from "@/lib/branchTransport";
+import {
+  branchMediaSource,
+  downloadBranchArchive,
+  downloadBranchMedia,
+  mediaCanRetry,
+  mediaErrorMessage,
+  mediaErrorState,
+  mediaMessages,
+  uploadBranchFile,
+} from "@/lib/branchMedia";
+import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
+import { Button } from "@/components/ui/button";
+import { api } from "@shared/routes";
+
+type Attachment = {
+  id: string;
+  url: string;
+  size: number;
+  contentType: string;
+  filename?: string;
+  name?: string;
+};
+type MessageKey = keyof typeof mediaMessages.en;
+type ActionState = {
+  scope: string;
+  messageKey?: MessageKey;
+  error?: unknown;
+  recordId?: string;
+};
+type ScopedFile = { scope: string; file: File };
+type ScopedError = { scope: string; error: unknown };
+type DeleteRetry = { scope: string; id: string; error: unknown };
+
+const supportedKinds = new Set(["item", "category", "request", "project", "movement"]);
+
+function readAttachments(value: unknown): Attachment[] {
+  if (!Array.isArray(value)) throw Object.assign(Error("BRANCH_MEDIA_RESPONSE_INVALID"), { code: "BRANCH_MEDIA_RESPONSE_INVALID" });
+  return value.map(entry => {
+    if (!entry || typeof entry.id !== "string" || typeof entry.url !== "string"
+      || typeof entry.size !== "number" || typeof entry.contentType !== "string") {
+      throw Object.assign(Error("BRANCH_MEDIA_RESPONSE_INVALID"), { code: "BRANCH_MEDIA_RESPONSE_INVALID" });
+    }
+    return entry as Attachment;
+  });
+}
+
+function attachmentFilename(file: Attachment, kind: string) {
+  const name = file.filename || file.name;
+  if (name) return name.replace(/[\\/\u0000-\u001f\u007f]/g, "_");
+  const extension = file.contentType === "application/pdf" ? "pdf"
+    : file.contentType === "image/webp" ? "webp"
+      : file.contentType === "image/png" ? "png" : "jpg";
+  return `${kind}-${file.id}.${extension}`;
+}
+
+/** Additive branch-only attachment controls; local business drafts remain owned by their existing forms. */
+export function BranchAttachments({
+  kind,
+  targetId,
+  canWrite,
+  showCamera = false,
+}: {
+  kind: string;
+  targetId: number;
+  /** Additional permission for a staff member's own request; the server remains authoritative. */
+  canWrite?: boolean;
+  /** Opt-in camera capture for item-photo galleries. */
+  showCamera?: boolean;
+}) {
+  const { lang } = useLanguage();
+  const { isManagerOrAbove, user } = useAuth();
+  const messages = mediaMessages[lang] ?? mediaMessages.en;
+  const client = useQueryClient();
+  const input = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const mounted = useRef(false);
+  const sessionEndedRef = useRef(false);
+  const lockScopeRef = useRef<string | null>(null);
+  const retryFileRef = useRef<ScopedFile | null>(null);
+  const scopeRef = useRef("");
+  const [sessionEnded, setSessionEnded] = useState(false);
+  const [lockedScope, setLockedScope] = useState<string | null>(null);
+  const [action, setAction] = useState<ActionState | null>(null);
+  const [uploadError, setUploadError] = useState<ScopedError | null>(null);
+  const [deleteRetry, setDeleteRetry] = useState<DeleteRetry | null>(null);
+
+  const accountId = user?.id == null ? "" : String(user.id);
+  const scope = [documentBranchPrefix, accountId, kind, targetId].join(":");
+  scopeRef.current = scope;
+  const path = `/api/media/targets/${kind}/${targetId}`;
+  const queryKey = ["branch-attachments", documentBranchPrefix, accountId, kind, targetId] as const;
+  const supported = supportedKinds.has(kind) && Number.isSafeInteger(targetId) && targetId > 0;
+  const mayWrite = isManagerOrAbove || canWrite === true;
+  const currentRetryFile = retryFileRef.current?.scope === scope ? retryFileRef.current.file : null;
+  const currentUploadError = uploadError?.scope === scope ? uploadError.error : null;
+  const currentDeleteRetry = deleteRetry?.scope === scope ? deleteRetry : null;
+  const currentAction = action?.scope === scope ? action : null;
+  const busy = lockScopeRef.current === scope || lockedScope === scope;
+  const isSessionEnded = sessionEnded || sessionEndedRef.current;
+  const hasUncertainUpload = !!currentRetryFile && mediaErrorState(currentUploadError) === "unknown";
+  const hasUncertainDelete = !!currentDeleteRetry;
+
+  useEffect(() => {
+    mounted.current = true;
+    const endSession = () => {
+      sessionEndedRef.current = true;
+      setSessionEnded(true);
+      retryFileRef.current = null;
+      setAction(null);
+      setUploadError(null);
+      setDeleteRetry(null);
+      void client.removeQueries({ queryKey: ["branch-attachments"] });
+    };
+    window.addEventListener("inventory:branch-session-ended", endSession);
+    return () => {
+      mounted.current = false;
+      window.removeEventListener("inventory:branch-session-ended", endSession);
+    };
+  }, [client]);
+
+  useEffect(() => {
+    if (retryFileRef.current && retryFileRef.current.scope !== scope) retryFileRef.current = null;
+  }, [scope]);
+
+  const query = useQuery<Attachment[]>({
+    queryKey,
+    enabled: !!documentBranchPrefix && !!accountId && supported && !isSessionEnded,
+    retry: false,
+    queryFn: async ({ signal }) => {
+      const response = await branchFetch(path, { signal });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        const code = body?.code ?? "BRANCH_MEDIA_UNAVAILABLE";
+        throw Object.assign(Error(code), { code, status: response.status });
+      }
+      return readAttachments(body);
+    },
+  });
+
+  const isCurrent = (requestScope: string) => mounted.current
+    && scopeRef.current === requestScope
+    && !sessionEndedRef.current;
+  const acquire = (requestScope: string) => {
+    if (lockScopeRef.current === requestScope) return false;
+    lockScopeRef.current = requestScope;
+    if (isCurrent(requestScope)) setLockedScope(requestScope);
+    return true;
+  };
+  const release = (requestScope: string) => {
+    if (lockScopeRef.current !== requestScope) return;
+    lockScopeRef.current = null;
+    if (isCurrent(requestScope)) setLockedScope(null);
+  };
+  const authorizedList = query.isSuccess && !query.isError && !query.isFetching;
+  const actionsBlocked = !authorizedList || busy || hasUncertainDelete || hasUncertainUpload;
+
+  useEffect(() => {
+    if (currentDeleteRetry && authorizedList && query.data
+      && !query.data.some(file => file.id === currentDeleteRetry.id)) {
+      setDeleteRetry(null);
+      setAction({ scope, messageKey: "removed" });
+    }
+  }, [currentDeleteRetry, authorizedList, query.data, scope]);
+
+  async function refreshAfterMutation(requestScope: string) {
+    if (!isCurrent(requestScope)) return;
+    await client.invalidateQueries({ queryKey });
+    if (kind === "item" && isCurrent(requestScope)) {
+      await client.invalidateQueries({ queryKey: ["/api/inventory", targetId, "images"] });
+      await client.invalidateQueries({ queryKey: [api.items.get.path, targetId] });
+      await client.invalidateQueries({ queryKey: [api.items.list.path] });
+    }
+    if ((kind === "item" || kind === "category") && isCurrent(requestScope)) {
+      await client.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
+      if (kind === "category") await client.invalidateQueries({ queryKey: [api.categories.list.path] });
+    }
+  }
+
+  async function upload(file: File) {
+    const retryingSameFile = currentRetryFile === file;
+    if (!isCurrent(scope) || !supported || !mayWrite || lockScopeRef.current === scope) return;
+    if ((!authorizedList && !retryingSameFile)
+      || hasUncertainDelete
+      || (hasUncertainUpload && !retryingSameFile)
+      || (currentRetryFile && !retryingSameFile)) return;
+    if (!acquire(scope)) return;
+    setAction({ scope, messageKey: "uploading" });
+    setUploadError(null);
+    try {
+      await uploadBranchFile(file, kind, targetId);
+      if (!isCurrent(scope)) return;
+      retryFileRef.current = null;
+      setUploadError(null);
+      setAction({ scope, messageKey: "uploaded" });
+    } catch (error) {
+      if (!isCurrent(scope)) return;
+      const state = mediaErrorState(error);
+      if (state === "unknown" || mediaCanRetry(error)) {
+        retryFileRef.current = { scope, file };
+        setUploadError({ scope, error });
+      } else {
+        retryFileRef.current = null;
+        setUploadError(null);
+      }
+      setAction({ scope, error });
+      return;
+    } finally {
+      release(scope);
+    }
+    await refreshAfterMutation(scope);
+  }
+
+  async function verifyDelete(file: Attachment, requestScope: string, error: unknown) {
+    if (!isCurrent(requestScope)) return;
+    setDeleteRetry({ scope: requestScope, id: file.id, error });
+    setAction({ scope: requestScope, messageKey: "deleteUnknown", recordId: file.id, error });
+    try {
+      const response = await branchFetch(path);
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        const listError = Object.assign(Error(body?.code ?? "BRANCH_MEDIA_UNAVAILABLE"), {
+          code: body?.code ?? "BRANCH_MEDIA_UNAVAILABLE",
+          status: response.status,
+        });
+        throw listError;
+      }
+      const records = readAttachments(body);
+      if (!isCurrent(requestScope)) return;
+      if (!records.some(record => record.id === file.id)) {
+        setDeleteRetry(null);
+        setAction({ scope: requestScope, messageKey: "removed" });
+        client.setQueryData(queryKey, records);
+        void refreshAfterMutation(requestScope);
+      } else {
+        setDeleteRetry({ scope: requestScope, id: file.id, error });
+      }
+    } catch (listError) {
+      if (!isCurrent(requestScope)) return;
+      setDeleteRetry({ scope: requestScope, id: file.id, error: listError });
+      setAction({ scope: requestScope, messageKey: "deleteUnknown", recordId: file.id, error: listError });
+    }
+  }
+
+  async function remove(file: Attachment, retryingDelete = false) {
+    const permittedRetry = retryingDelete && currentDeleteRetry?.id === file.id;
+    if (!isCurrent(scope) || !supported || !mayWrite || lockScopeRef.current === scope
+      || (!authorizedList && !permittedRetry)
+      || (hasUncertainDelete && !permittedRetry)
+      || hasUncertainUpload) return;
+    if (!acquire(scope)) return;
+    if (!window.confirm(messages.confirmRemove)) {
+      release(scope);
+      return;
+    }
+    if (!isCurrent(scope)) {
+      release(scope);
+      return;
+    }
+    setAction({ scope, messageKey: "removing", recordId: file.id });
+    try {
+      let response: Response | null = null;
+      let transportError: unknown = null;
+      try {
+        response = await branchFetch(`/api/media/${encodeURIComponent(file.id)}`, { method: "DELETE" });
+      } catch (error) {
+        transportError = error;
+      }
+
+      if (!isCurrent(scope)) return;
+      if (!response) {
+        const status = (transportError as { status?: number } | null)?.status;
+        if (typeof status === "number" && status < 500) {
+          setAction({ scope, recordId: file.id, error: transportError });
+          return;
+        }
+        await verifyDelete(file, scope, transportError);
+        return;
+      }
+
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        const responseError = Object.assign(Error(body?.code ?? "BRANCH_MEDIA_UNAVAILABLE"), {
+          code: body?.code ?? "BRANCH_MEDIA_UNAVAILABLE",
+          status: response.status,
+        });
+        if (response.status < 500) {
+          setAction({ scope, recordId: file.id, error: responseError });
+          return;
+        }
+        await verifyDelete(file, scope, responseError);
+        return;
+      }
+
+      // The server's confirmed DELETE contract is { id, state: "deleted" }.
+      if (body?.id !== file.id || body?.state !== "deleted") {
+        await verifyDelete(file, scope, Object.assign(Error("BRANCH_MEDIA_RESULT_UNKNOWN"), { code: "BRANCH_MEDIA_RESULT_UNKNOWN" }));
+        return;
+      }
+      if (!isCurrent(scope)) return;
+      setDeleteRetry(null);
+      setAction({ scope, messageKey: "removed" });
+      await refreshAfterMutation(scope);
+    } catch (error) {
+      if (isCurrent(scope)) setAction({ scope, recordId: file.id, error });
+    } finally {
+      release(scope);
+    }
+  }
+
+  async function retryDelete() {
+    if (!currentDeleteRetry || !isCurrent(scope) || query.isFetching || lockScopeRef.current === scope) return;
+    const file = query.data?.find(candidate => candidate.id === currentDeleteRetry.id)
+      ?? { id: currentDeleteRetry.id, url: "", size: 0, contentType: "" };
+    await remove(file, true);
+  }
+
+  async function download(file: Attachment) {
+    if (!isCurrent(scope) || actionsBlocked || lockScopeRef.current === scope) return;
+    const source = branchMediaSource(file.url);
+    if (!source || !acquire(scope)) return;
+    setAction({ scope, messageKey: "downloading", recordId: file.id });
+    try {
+      await downloadBranchMedia(source.replace(/\/content$/, "/download"), attachmentFilename(file, kind));
+      if (isCurrent(scope)) setAction({ scope, messageKey: "downloaded", recordId: file.id });
+    } catch (error) {
+      if (isCurrent(scope)) setAction({ scope, recordId: file.id, error });
+    } finally {
+      release(scope);
+    }
+  }
+
+  async function archive() {
+    if (!isCurrent(scope) || !supported || actionsBlocked || lockScopeRef.current === scope || !acquire(scope)) return;
+    setAction({ scope, messageKey: "exporting" });
+    try {
+      await downloadBranchArchive(kind, targetId);
+      if (isCurrent(scope)) setAction({ scope, messageKey: "exported" });
+    } catch (error) {
+      if (isCurrent(scope)) setAction({ scope, error });
+    } finally {
+      release(scope);
+    }
+  }
+
+  const queryState = isSessionEnded || !accountId ? "forbidden"
+    : !documentBranchPrefix || !supported ? "unconfigured"
+      : query.isPending ? "loading"
+        : query.isError ? mediaErrorState(query.error)
+          : query.data?.length ? "ready" : "empty";
+  const actionError = currentAction?.error;
+  const actionText = currentAction?.messageKey
+    ? messages[currentAction.messageKey]
+    : actionError ? mediaErrorMessage(actionError, lang) : "";
+  const uploadRetryable = !!currentUploadError
+    && (currentUploadError as { canRetry?: boolean }).canRetry !== false
+    && (mediaErrorState(currentUploadError) === "unknown" || mediaCanRetry(currentUploadError));
+
+  // The shared component is intentionally absent outside immutable branch documents.
+  if (!documentBranchPrefix) return null;
+
+  return (
+    <section className="space-y-2 rounded-xl border p-3 text-foreground [&_button]:min-h-11 [&_button]:h-auto [&_button]:whitespace-normal" data-testid="branch-attachments" aria-busy={busy || query.isFetching}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-semibold">{messages.attachments}</h3>
+        <Button type="button" variant="outline" disabled={isSessionEnded || !authorizedList || actionsBlocked} onClick={() => void archive()}>
+          {busy && currentAction?.messageKey === "exporting" ? messages.exporting : messages.archive}
+        </Button>
+      </div>
+
+      {queryState === "loading" && <p role="status">{messages.loading}</p>}
+      {queryState === "empty" && <p role="status">{messages.empty}</p>}
+      {queryState === "forbidden" && (
+        <p role="alert">{query.isError ? mediaErrorMessage(query.error, lang) : messages.forbidden}</p>
+      )}
+      {queryState === "unconfigured" && <p role="status">{!supported ? messages.unsupported : messages.unavailable}</p>}
+      {(queryState === "failed" || queryState === "missing" || queryState === "unknown") && (
+        <div role="alert" className="space-y-2">
+          <p>{mediaErrorMessage(query.error, lang)}</p>
+          {mediaCanRetry(query.error) && (
+            <Button type="button" variant="outline" disabled={busy || query.isFetching} onClick={() => void query.refetch()}>
+              {currentDeleteRetry ? messages.checkResult : messages.retry}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {queryState === "ready" && query.isSuccess && (
+        <ul className="space-y-2">
+          {(query.data ?? []).map(file => {
+            const downloadable = !!branchMediaSource(file.url);
+            return (
+              <li key={file.id} className="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border p-2">
+                <span className="min-w-0 flex-1 break-words">
+                  {file.contentType === "application/pdf" ? "PDF" : file.contentType.replace(/^image\//, "").toUpperCase()}
+                  {" · "}{Math.ceil(file.size / 1024)} KB
+                </span>
+                {currentAction?.recordId === file.id && (
+                  <span role={actionError ? "alert" : "status"} className="w-full text-sm">{actionText}</span>
+                )}
+                {downloadable && (
+                  <Button type="button" variant="outline" disabled={actionsBlocked} onClick={() => void download(file)}>
+                    {busy && currentAction?.messageKey === "downloading" && currentAction.recordId === file.id
+                      ? messages.downloading : messages.download}
+                  </Button>
+                )}
+                {mayWrite && (
+                  <Button type="button" variant="outline" disabled={actionsBlocked} onClick={() => void remove(file)}>
+                    {busy && currentAction?.messageKey === "removing" && currentAction.recordId === file.id
+                      ? messages.removing : messages.remove}
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {currentAction && (
+        <div role={actionError ? "alert" : "status"} className="space-y-1">
+          <p>{currentAction.messageKey === "deleteUnknown" ? messages.deleteUnknown : actionText}</p>
+          {currentAction.messageKey === "deleteUnknown" && !!actionError
+            && mediaErrorState(actionError) === "forbidden" && <p>{mediaErrorMessage(actionError, lang)}</p>}
+        </div>
+      )}
+
+      {currentDeleteRetry && (
+        <div role="alert" className="space-y-1">
+          {currentAction?.messageKey !== "deleteUnknown" && <p>{messages.deleteUnknown}</p>}
+          {mediaErrorState(currentDeleteRetry.error) === "forbidden" && (
+            <p>{mediaErrorMessage(currentDeleteRetry.error, lang)}</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" disabled={busy || query.isFetching} onClick={() => void query.refetch()}>
+              {messages.checkResult}
+            </Button>
+            <Button type="button" variant="outline" disabled={busy || query.isFetching} onClick={() => void retryDelete()}>
+              {messages.retry}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {currentRetryFile && !!currentUploadError && uploadRetryable && (
+        <div role="alert" className="space-y-1">
+          {currentAction?.error !== currentUploadError && <p>{mediaErrorMessage(currentUploadError, lang)}</p>}
+          <Button type="button" variant="outline" disabled={busy} onClick={() => void upload(currentRetryFile)}>
+            {messages.retryUpload}
+          </Button>
+        </div>
+      )}
+      {currentRetryFile && !!currentUploadError && !uploadRetryable && (
+        <p role="alert">{messages.contactAdmin}</p>
+      )}
+
+      {mayWrite && accountId && supported && !isSessionEnded && (
+        <>
+          <input
+            ref={input}
+            data-testid="branch-attachment-file"
+            type="file"
+            className="hidden"
+            accept="image/png,image/jpeg,image/webp,application/pdf"
+            disabled={!authorizedList || actionsBlocked || !!currentRetryFile}
+            onChange={event => {
+              const file = event.currentTarget.files?.[0];
+              event.currentTarget.value = "";
+              if (file) void upload(file);
+            }}
+          />
+          {showCamera && (
+            <input
+              ref={cameraInput}
+              data-testid="branch-attachment-camera"
+              type="file"
+              className="hidden"
+              accept="image/jpeg,image/png,image/webp"
+              capture="environment"
+              disabled={!authorizedList || actionsBlocked || !!currentRetryFile}
+              onChange={event => {
+                const file = event.currentTarget.files?.[0];
+                event.currentTarget.value = "";
+                if (file) void upload(file);
+              }}
+            />
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!authorizedList || actionsBlocked || !!currentRetryFile}
+            onClick={() => input.current?.click()}
+          >
+            {busy && currentAction?.messageKey === "uploading" ? messages.uploading : messages.add}
+          </Button>
+          {showCamera && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!authorizedList || actionsBlocked || !!currentRetryFile}
+              onClick={() => cameraInput.current?.click()}
+            >
+              {messages.takePhoto}
+            </Button>
+          )}
+        </>
+      )}
+    </section>
+  );
+}

@@ -1,0 +1,105 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+
+export type BranchId = "savannah" | "indiana";
+export type BranchRole = "admin" | "manager" | "manager_viewer" | "staff" | "viewer";
+export interface BranchActor {
+  readonly id: string;
+  readonly status: string;
+  readonly role: string;
+}
+export interface BranchSource<T> {
+  /** Non-secret platform database identity, NOT a connection string. */
+  readonly targetId: string;
+  readonly handle: T;
+}
+
+export class BranchAccessError extends Error {
+  constructor(
+    public readonly code: string,
+    public readonly status: number,
+  ) {
+    super(code);
+    this.name = "BranchAccessError";
+  }
+}
+
+export function parseBranchId(value: unknown): BranchId {
+  if (value !== "savannah" && value !== "indiana") {
+    throw new BranchAccessError("BRANCH_INVALID", 400);
+  }
+  return value;
+}
+
+const roles = new Set<BranchRole>(["admin", "manager", "manager_viewer", "staff", "viewer"]);
+
+/**
+ * Request-local business-data boundary. No process.env, DB, session-store or
+ * application imports. This does not change the existing global db/storage.
+ * Identity lookup must happen OUTSIDE this context, against a pinned user store.
+ */
+export function createBranchRuntime<T>(options: {
+  sources: Partial<Record<BranchId, BranchSource<T>>>;
+  canAccess: (actor: Readonly<BranchActor>, branch: BranchId) => Promise<boolean>;
+}) {
+  const scope = new AsyncLocalStorage<{
+    branch: BranchId;
+    actor: Readonly<BranchActor>;
+    source: Readonly<BranchSource<T>>;
+  }>();
+  const sources = new Map<BranchId, Readonly<BranchSource<T>>>();
+  for (const branch of ["savannah", "indiana"] as const) {
+    const source = options.sources[branch];
+    if (!source) continue;
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(source.targetId) || source.handle == null) {
+      throw new BranchAccessError("BRANCH_SOURCE_INVALID", 503);
+    }
+    for (const existing of sources.values()) {
+      if (existing.targetId === source.targetId || existing.handle === source.handle) {
+        throw new BranchAccessError("BRANCH_DATABASE_NOT_DISTINCT", 503);
+      }
+    }
+    sources.set(branch, Object.freeze({ ...source }));
+  }
+
+  function current() {
+    const context = scope.getStore();
+    if (!context) throw new BranchAccessError("BRANCH_CONTEXT_REQUIRED", 503);
+    return context;
+  }
+
+  async function run<R>(actorInput: BranchActor | null | undefined, input: unknown, work: () => R): Promise<Awaited<R>> {
+    const branch = parseBranchId(input);
+    if (!actorInput || !actorInput.id || actorInput.status !== "active" || !roles.has(actorInput.role as BranchRole)) {
+      throw new BranchAccessError("BRANCH_ACCOUNT_REQUIRED", 401);
+    }
+    const actor = Object.freeze({ id: actorInput.id, status: actorInput.status, role: actorInput.role });
+    let allowed: boolean;
+    try {
+      // Current membership is checked for every invocation, including retries.
+      allowed = (await options.canAccess(actor, branch)) === true;
+    } catch {
+      throw new BranchAccessError("BRANCH_AUTHORIZATION_UNAVAILABLE", 503);
+    }
+    if (!allowed) throw new BranchAccessError("BRANCH_ACCESS_DENIED", 403);
+    const source = sources.get(branch);
+    if (!source) throw new BranchAccessError("BRANCH_UNAVAILABLE", 503);
+    const outer = scope.getStore();
+    if (outer && (outer.branch !== branch || outer.actor.id !== actor.id || outer.actor.role !== actor.role)) {
+      throw new BranchAccessError("BRANCH_CONTEXT_CONFLICT", 409);
+    }
+    return await scope.run(Object.freeze({ branch, actor, source }), work);
+  }
+
+  return Object.freeze({
+    run,
+    data: () => current().source.handle,
+    identity: () => Object.freeze({ branch: current().branch, actor: current().actor }),
+    /** Use for NEW branch-aware caches; existing caches are not changed here. */
+    cacheKey: (...parts: readonly unknown[]) => {
+      const context = current();
+      return ["branch", context.branch, context.source.targetId, "actor", context.actor.id, context.actor.role, ...parts] as const;
+    },
+  });
+}
+
+export type BranchRuntime<T> = ReturnType<typeof createBranchRuntime<T>>;

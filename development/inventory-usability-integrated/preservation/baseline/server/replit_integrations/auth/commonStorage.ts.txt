@@ -1,0 +1,48 @@
+import { users, type User, type UpsertUser } from "@shared/models/auth";
+import { eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type * as schema from "@shared/schema";
+
+export interface IAuthStorage {
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  findUserByEmail(email: string): Promise<User | undefined>;
+  findUserByGoogleId(googleId: string): Promise<User | undefined>;
+  createUser(data: { email: string; passwordHash: string; name: string }): Promise<User>;
+  createGoogleUser(data: { googleId: string; email: string; name?: string | null; profileImageUrl?: string | null }): Promise<User>;
+  linkGoogleId(userId: string, googleId: string): Promise<void>;
+  listUsers(status?: string): Promise<User[]>;
+  updateUserStatus(id: string, status: string): Promise<User | undefined>;
+  updateUser(id: string, data: Partial<{ role: string; status: string; name: string }>): Promise<User | undefined>;
+  updateLastLogin(id: string): Promise<void>;
+  deleteUser(id: string): Promise<void>;
+}
+
+/** Same account operations, explicitly pinned to the common identity handle. */
+export function createAuthStorage(db: NodePgDatabase<typeof schema>): IAuthStorage {
+  return {
+    async getUser(id) { return (await db.select().from(users).where(eq(users.id, id)))[0]; },
+    async upsertUser(data) {
+      return (await db.insert(users).values(data).onConflictDoUpdate({
+        target: users.id, set: { ...data, updatedAt: new Date() },
+      }).returning())[0];
+    },
+    async findUserByEmail(email) { return (await db.select().from(users).where(eq(users.email, email)))[0]; },
+    async findUserByGoogleId(id) { return (await db.select().from(users).where(eq(users.googleId, id)))[0]; },
+    async createUser(data) {
+      return (await db.insert(users).values({ email: data.email, passwordHash: data.passwordHash,
+        name: data.name, role: "viewer", status: "pending" }).returning())[0];
+    },
+    async createGoogleUser(data) {
+      return (await db.insert(users).values({ email: data.email.toLowerCase(), googleId: data.googleId,
+        name: data.name ?? data.email.split("@")[0], profileImageUrl: data.profileImageUrl ?? null,
+        role: "viewer", status: "pending" }).returning())[0];
+    },
+    async linkGoogleId(id, googleId) { await db.update(users).set({ googleId, updatedAt: new Date() }).where(eq(users.id, id)); },
+    async listUsers(status) { return status ? db.select().from(users).where(eq(users.status, status)) : db.select().from(users); },
+    async updateUserStatus(id, status) { return (await db.update(users).set({ status, updatedAt: new Date() }).where(eq(users.id, id)).returning())[0]; },
+    async updateUser(id, data) { return (await db.update(users).set({ ...data, updatedAt: new Date() }).where(eq(users.id, id)).returning())[0]; },
+    async updateLastLogin(id) { await db.update(users).set({ lastLoginAt: new Date(), updatedAt: new Date() }).where(eq(users.id, id)); },
+    async deleteUser(id) { await db.delete(users).where(eq(users.id, id)); },
+  };
+}

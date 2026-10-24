@@ -1,0 +1,72 @@
+import { useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { branchFetch, documentBranchPrefix } from "@/lib/branchTransport";
+import { branchMediaSource, mediaErrorMessage, mediaMessages, uploadBranchFile } from "@/lib/branchMedia";
+import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
+import { Button } from "@/components/ui/button";
+
+/** Additive branch-only attachment controls. Does not load/reset any form/draft. */
+export function BranchAttachments({ kind, targetId }: { kind: string; targetId: number }) {
+  const { lang } = useLanguage();
+  const { isManagerOrAbove, user } = useAuth();
+  const messages = mediaMessages[lang] ?? mediaMessages.en;
+  const client = useQueryClient();
+  const input = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<unknown>(null), [busy, setBusy] = useState(false);
+  const [retryFile, setRetryFile] = useState<File | null>(null);
+  const path = `/api/media/targets/${kind}/${targetId}`;
+  const query = useQuery<any[]>({ queryKey: [path], enabled: !!documentBranchPrefix && !!user?.id, retry: false,
+    queryFn: async () => {
+      const response = await branchFetch(path);
+      const value = await response.json();
+      if (!response.ok) throw Object.assign(Error(value.code), { code: value.code });
+      return value;
+    } });
+  if (!documentBranchPrefix) return null;
+  async function upload(file: File) {
+    setBusy(true); setError(null);
+    try {
+      await uploadBranchFile(file, kind, targetId);
+      setRetryFile(null);
+      await client.invalidateQueries({ queryKey: [path] });
+      await client.invalidateQueries({ queryKey: ["/api/inventory", targetId, "images"] });
+    } catch (e) { setError(e); setRetryFile(file); }
+    finally { setBusy(false); }
+  }
+  async function remove(id: string) {
+    if (!window.confirm(messages.confirmRemove)) return;
+    setBusy(true); setError(null);
+    try {
+      const response = await branchFetch(`/api/media/${id}`, { method: "DELETE" });
+      const value = await response.json();
+      if (!response.ok) throw Object.assign(Error(value.code), { code: value.code });
+      await client.invalidateQueries({ queryKey: [path] });
+      await client.invalidateQueries({ queryKey: ["/api/inventory", targetId, "images"] });
+    } catch (e) { setError(e); }
+    finally { setBusy(false); }
+  }
+  return <section className="space-y-2 border rounded-xl p-3" data-testid="branch-attachments" aria-busy={busy}>
+    <h3 className="font-semibold">{messages.attachments}</h3>
+    {query.isLoading && <p role="status">{messages.loading}</p>}
+    {(error || query.error) && <div role="alert">
+      <p>{mediaErrorMessage(error ?? query.error, lang)}</p>
+      <Button type="button" variant="outline" disabled={busy} onClick={() => { setError(null); void query.refetch(); }}>{messages.retry}</Button>
+      {retryFile && <Button type="button" disabled={busy} onClick={() => void upload(retryFile)}>{messages.retryUpload}</Button>}
+    </div>}
+    {query.isSuccess && !query.data?.length && <p>{messages.empty}</p>}
+    <ul className="space-y-2">
+      {(query.data ?? []).map(file => <li key={file.id} className="flex flex-wrap items-center gap-2">
+        <span>{file.contentType === "application/pdf" ? "PDF" : "JPEG"} · {Math.ceil(file.size / 1024)} KB</span>
+        {branchMediaSource(file.url) && <a href={file.url.replace(/\/content$/, "/download")} download>{messages.download}</a>}
+        {isManagerOrAbove && <Button type="button" variant="outline" disabled={busy}
+          onClick={() => void remove(file.id)}>{messages.remove}</Button>}
+      </li>)}
+    </ul>
+    {isManagerOrAbove && <>
+      <input ref={input} data-testid="branch-attachment-file" type="file" className="hidden" accept="image/png,image/jpeg,image/webp,application/pdf"
+        onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file); }} />
+      <Button type="button" variant="outline" disabled={busy || query.isError} onClick={() => input.current?.click()}>{messages.add}</Button>
+    </>}
+  </section>;
+}

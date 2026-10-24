@@ -1,0 +1,23 @@
+// This suite needs no DB, HTTP, DNS, sockets, listeners or application secrets.
+const deny = () => { throw Error("STARTUP_PLAN_OFFLINE_ONLY"); };
+for (const key of Object.keys(process.env)) delete process.env[key];
+process.env.STARTUP_PLAN_OFFLINE_GUARD = "active";
+const net = require("node:net");
+net.Socket.prototype.connect = deny;
+net.Server.prototype.listen = deny;
+for (const name of ["node:dns", "node:dns/promises"]) {
+  const dns = require(name);
+  for (const key of Object.keys(dns)) {
+    if (typeof dns[key] === "function" && /^(lookup|resolve|reverse)/.test(key)) dns[key] = deny;
+  }
+}
+for (const name of ["node:http", "node:https"]) {
+  require(name).request = deny;
+  require(name).get = deny;
+}
+require("node:dgram").Socket.prototype.send = deny;
+for (const key of ["spawn", "spawnSync", "exec", "execSync", "execFile", "execFileSync", "fork"]) {
+  require("node:child_process")[key] = deny;
+}
+globalThis.fetch = deny;
+require("node:module").syncBuiltinESMExports();

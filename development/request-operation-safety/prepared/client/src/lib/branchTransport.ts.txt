@@ -1,0 +1,140 @@
+/**
+ * A branch is immutable for the lifetime of a document. Switching branches uses
+ * a full navigation, not a global selectedBranch or a session/header override.
+ * Late handlers from an old page can therefore never write to the new branch.
+ */
+export function branchPrefix(path: string): string {
+  if (!path.startsWith("/branches/")) return "";
+  const branch = path.split("/")[2];
+  if (branch !== "indiana" && branch !== "savannah") throw Error("BRANCH_INVALID");
+  return `/branches/${branch}`;
+}
+
+export const documentBranchPrefix = typeof window === "undefined" ? "" : branchPrefix(window.location.pathname);
+// Protect future unscoped business bundles too. This cannot retrofit scripts
+// already loaded in an employee's old tab; those still require a cutover drain.
+export const protectedBusinessDocument = !!documentBranchPrefix || (typeof window !== "undefined"
+  && !["/", "/home", "/login", "/signup"].includes(window.location.pathname));
+let account: string | null = null;
+let generation = 0;
+let invalidated = false;
+const pending = new Set<AbortController>();
+
+/** Opaque, document-local command ownership; never persisted or sent to a server. */
+export function requestDocumentContext(expectedAccount?: string): string | null {
+  return !invalidated && account && (expectedAccount === undefined || account === expectedAccount)
+    ? JSON.stringify([documentBranchPrefix, account, generation]) : null;
+}
+
+/** Once authentication is lost, this document can never accept another login. */
+function invalidateBranchDocument() {
+  if (invalidated) return;
+  invalidated = true;
+  account = null;
+  generation++;
+  for (const controller of pending) controller.abort();
+  pending.clear();
+  // Also protect a document whose navigation is delayed/blocked by the browser.
+  const root = document.getElementById("root");
+  if (root) root.style.visibility = "hidden";
+  window.dispatchEvent(new Event("inventory:branch-session-ended"));
+}
+
+export function redirectBranchLogin() {
+  if (!protectedBusinessDocument) return;
+  invalidateBranchDocument();
+  window.location.replace("/login");
+}
+
+/** Login must not populate a branch document's old auth/business caches. */
+export function completeBranchLogin(): boolean {
+  if (!documentBranchPrefix) return false;
+  invalidateBranchDocument();
+  window.location.replace("/home");
+  return true;
+}
+
+export function setBranchAccount(id: string | null) {
+  if (protectedBusinessDocument && id === null) {
+    invalidateBranchDocument();
+    return;
+  }
+  if (protectedBusinessDocument && invalidated) throw Error("BRANCH_REAUTHENTICATION_REQUIRED");
+  if (id === account) return;
+  // Do not carry old query caches/components/draft handlers into a new login.
+  if (protectedBusinessDocument && account && id) {
+    invalidateBranchDocument();
+    window.location.replace("/home");
+    throw Error("BRANCH_ACCOUNT_CHANGED");
+  }
+  account = id;
+  generation++;
+  for (const controller of pending) controller.abort();
+  pending.clear();
+}
+
+export function branchApiUrl(url: string): string {
+  if (!documentBranchPrefix) return url;
+  // Only explicitly common identity endpoints may leave the branch prefix.
+  if (/^\/api\/auth(?:\/|$)/.test(url) || url === "/api/branch-access") return url;
+  if (url.startsWith(documentBranchPrefix + "/api/")) return url;
+  if (!url.startsWith("/api/")) throw Error("BRANCH_URL_NOT_SCOPED");
+  return documentBranchPrefix + url;
+}
+
+export async function branchFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  if (!documentBranchPrefix && (!protectedBusinessDocument || typeof input !== "string"
+    || !input.startsWith("/api/"))) return globalThis.fetch(input, init);
+  if (typeof input !== "string") throw Error("BRANCH_URL_NOT_SCOPED");
+  const common = /^\/api\/auth(?:\/|$)/.test(input) || input === "/api/branch-access";
+  if (!common && (invalidated || (!!documentBranchPrefix && !account))) throw Error("BRANCH_ACCOUNT_REQUIRED");
+  const epoch = generation;
+  const initialAccount = account;
+  const headers = new Headers(init?.headers);
+  if (documentBranchPrefix && !common && account) headers.set("X-Inventory-Account", account);
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  init?.signal?.addEventListener("abort", abort, { once: true });
+  if (init?.signal?.aborted) controller.abort();
+  pending.add(controller);
+  try {
+    const response = await globalThis.fetch(branchApiUrl(input), { ...init, headers, signal: controller.signal });
+    if ((documentBranchPrefix || initialAccount || invalidated) && epoch !== generation) throw Error("BRANCH_CONTEXT_CHANGED");
+    if (!common && response.status === 401) {
+      redirectBranchLogin();
+      throw Error("BRANCH_REAUTHENTICATION_REQUIRED");
+    }
+    if (!common && response.status === 409) {
+      const result = await response.clone().json().catch(() => null);
+      if (result?.code === "BRANCH_SELECTION_REQUIRED") {
+        window.dispatchEvent(new Event("inventory:branch-selection-required"));
+      }
+      if (result?.code === "BRANCH_ACCOUNT_CHANGED") {
+        redirectBranchLogin();
+        throw Error("BRANCH_REAUTHENTICATION_REQUIRED");
+      }
+    }
+    return response;
+  } finally {
+    pending.delete(controller);
+    init?.signal?.removeEventListener("abort", abort);
+  }
+}
+
+/** Business drafts/custom catalog suggestions are never shared across accounts. */
+export const branchLocalStorage = {
+  key(key: string) {
+    if (!documentBranchPrefix) return key;
+    if (!account) throw Error("BRANCH_ACCOUNT_REQUIRED");
+    return `inventory:${documentBranchPrefix}:${encodeURIComponent(account)}:${key}`;
+  },
+  getItem(key: string) { return window.localStorage.getItem(this.key(key)); },
+  setItem(key: string, value: string) { window.localStorage.setItem(this.key(key), value); },
+  removeItem(key: string) { window.localStorage.removeItem(this.key(key)); },
+};
+
+export const branchSessionStorage = {
+  getItem(key: string) { return window.sessionStorage.getItem(branchLocalStorage.key(key)); },
+  setItem(key: string, value: string) { window.sessionStorage.setItem(branchLocalStorage.key(key), value); },
+  removeItem(key: string) { window.sessionStorage.removeItem(branchLocalStorage.key(key)); },
+};

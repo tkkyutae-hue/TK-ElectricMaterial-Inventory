@@ -1,0 +1,235 @@
+import { branchFetch, documentBranchPrefix } from "./branchTransport";
+
+const pending = new Map<string, string>();
+const uncertain = new Set<string>();
+const flights = new Map<string, Promise<any>>();
+let mediaGeneration = 0;
+const downloads = new Set<string>();
+if (typeof window !== "undefined") window.addEventListener("inventory:branch-session-ended", () => {
+  mediaGeneration++;
+  pending.clear();
+  uncertain.clear();
+  flights.clear();
+  for (const url of downloads) URL.revokeObjectURL(url);
+  downloads.clear();
+});
+function contextGuard() {
+  const generation = mediaGeneration;
+  return () => {
+    if (generation !== mediaGeneration) throw Object.assign(Error("BRANCH_CONTEXT_CHANGED"), { code: "BRANCH_CONTEXT_CHANGED" });
+  };
+}
+export function branchMediaSource(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  if (!documentBranchPrefix) return url;
+  if (documentBranchPrefix === "/branches/indiana"
+    && /^\/branches\/indiana\/api\/catalog-images\/(?:item|category|group)\/[1-9]\d*\/[0-3]$/.test(url)) return url;
+  if (documentBranchPrefix === "/branches/savannah"
+    && /^\/branches\/savannah\/api\/legacy-media\/items\/[1-9]\d*\/images\/[1-9]\d*\/(?:content|download|thumbnail)$/.test(url)) return url;
+  return new RegExp("^" + documentBranchPrefix + "/api/media/[a-f0-9-]{36}/(?:content|thumbnail|download)$", "i").test(url)
+    ? url : undefined;
+}
+export const mediaMessages = {
+  en: {
+    unavailable: "Photos / attachments are not configured. Contact an administrator.",
+    failed: "The file could not be loaded. Your input has not been changed.",
+    missing: "The authorized file's contents could not be found. Contact an administrator.",
+    forbidden: "You cannot view or change this file with your current access.",
+    unknown: "Upload result is not confirmed. Check with the same file without creating a duplicate.",
+    emptyPhotos: "No photos registered", empty: "No attachments",
+    retry: "Retry", attachments: "Attachments", add: "Add file", download: "Download",
+    remove: "Remove", confirmRemove: "Remove this attachment from the record? The original will be retained privately.",
+    loading: "Loading files…", retryUpload: "Check / retry same file",
+    takePhoto: "Take photo", updating: "Updating photo…",
+    uploading: "Uploading / confirming result…", uploaded: "File saved. Refreshing the list does not submit it again.",
+    downloading: "Preparing download…", downloaded: "Download sent to your browser.",
+    removing: "Removing attachment…", removed: "Attachment removed from this record.",
+    archive: "Download attachments ZIP", exporting: "Preparing attachments ZIP…", exported: "ZIP sent to your browser.",
+    deleteUnknown: "Removal result is not confirmed. Check this record again before proceeding.",
+    contactAdmin: "Contact an administrator to check access or setup.",
+    unsupported: "Attachments are not available for this record type.",
+    checkResult: "Check result", invalid: "Use a JPEG, PNG, WebP or PDF file up to 5 MiB.",
+    limit: "This record has reached its file or export size limit.",
+    conflict: "The file cannot be changed in its current state. Reload this record.",
+    readOnly: "These original photos are read-only and will be preserved.",
+  },
+  ko: {
+    unavailable: "사진·첨부 기능이 아직 설정되지 않았습니다. 관리자에게 문의하세요.",
+    failed: "파일을 불러오지 못했습니다. 입력 내용은 변경하지 않았습니다.",
+    missing: "조회가 허용된 파일의 실제 내용을 찾지 못했습니다. 관리자에게 문의하세요.",
+    forbidden: "현재 권한으로 이 파일을 조회하거나 변경할 수 없습니다.",
+    unknown: "업로드 결과가 미확정입니다. 같은 파일로 확인·재시도하면 중복을 방지합니다.",
+    emptyPhotos: "등록된 사진 없음", empty: "첨부파일 없음",
+    retry: "재시도", attachments: "첨부파일", add: "파일 추가", download: "다운로드",
+    remove: "삭제", confirmRemove: "이 기록에서 첨부를 제거할까요? 원본은 비공개로 보존됩니다.",
+    loading: "파일 불러오는 중…", retryUpload: "같은 파일 확인·재시도",
+    takePhoto: "사진 촬영", updating: "사진 변경 중…",
+    uploading: "업로드·결과 확인 중…", uploaded: "파일 저장을 확인했습니다. 목록 갱신은 다시 제출하지 않습니다.",
+    downloading: "다운로드 준비 중…", downloaded: "브라우저에 다운로드를 전달했습니다.",
+    removing: "첨부 삭제 중…", removed: "이 기록에서 첨부가 제거되었습니다.",
+    archive: "첨부 ZIP 다운로드", exporting: "첨부 ZIP 준비 중…", exported: "브라우저에 ZIP 다운로드를 전달했습니다.",
+    deleteUnknown: "삭제 결과가 미확정입니다. 다른 작업 전에 이 기록의 결과를 다시 확인하세요.",
+    contactAdmin: "접근 권한이나 기능 설정은 관리자에게 문의하세요.",
+    unsupported: "이 종류의 기록은 첨부 기능을 지원하지 않습니다.",
+    checkResult: "결과 확인", invalid: "5 MiB 이하의 JPEG·PNG·WebP·PDF 파일을 선택하세요.",
+    limit: "이 기록의 파일 개수 또는 내보내기 용량 한도에 도달했습니다.",
+    conflict: "현재 상태에서는 파일을 변경할 수 없습니다. 이 기록을 새로 불러오세요.",
+    readOnly: "기존 원본 사진은 읽기 전용으로 보존됩니다.",
+  },
+  es: {
+    unavailable: "Las fotos y los adjuntos no están configurados. Consulte al administrador.",
+    failed: "No se pudo cargar el archivo. No se ha cambiado lo que ha escrito.",
+    missing: "No se encontró el contenido del archivo autorizado. Consulte al administrador.",
+    forbidden: "Su acceso actual no permite ver o cambiar este archivo.",
+    unknown: "El resultado de la carga no está confirmado. Compruébelo con el mismo archivo sin duplicarlo.",
+    emptyPhotos: "Sin fotos registradas", empty: "Sin adjuntos",
+    retry: "Reintentar", attachments: "Adjuntos", add: "Añadir archivo", download: "Descargar",
+    remove: "Eliminar", confirmRemove: "¿Quitar el adjunto del registro? El original se conservará de forma privada.",
+    loading: "Cargando archivos…", retryUpload: "Comprobar / reintentar mismo archivo",
+    takePhoto: "Tomar foto", updating: "Actualizando foto…",
+    uploading: "Cargando / confirmando resultado…", uploaded: "Archivo guardado. Actualizar la lista no vuelve a enviarlo.",
+    downloading: "Preparando descarga…", downloaded: "Descarga enviada al navegador.",
+    removing: "Eliminando adjunto…", removed: "Adjunto eliminado de este registro.",
+    archive: "Descargar adjuntos ZIP", exporting: "Preparando ZIP de adjuntos…", exported: "ZIP enviado al navegador.",
+    deleteUnknown: "La eliminación no está confirmada. Compruebe este registro antes de continuar.",
+    contactAdmin: "Consulte al administrador para revisar el acceso o la configuración.",
+    unsupported: "Los adjuntos no están disponibles para este tipo de registro.",
+    checkResult: "Comprobar resultado", invalid: "Seleccione un archivo JPEG, PNG, WebP o PDF de hasta 5 MiB.",
+    limit: "Este registro alcanzó el límite de archivos o de tamaño de exportación.",
+    conflict: "No se puede cambiar el archivo en su estado actual. Vuelva a cargar este registro.",
+    readOnly: "Estas fotos originales son de solo lectura y se conservarán.",
+  },
+};
+export function mediaErrorState(error: unknown): "failed" | "forbidden" | "unconfigured" | "missing" | "unknown" {
+  const code = String((error as any)?.code ?? (error as any)?.message ?? "");
+  const status = (error as any)?.status;
+  if (/NOT_CONFIGURED|REVIEW_REQUIRED|CATALOG.*(?:NOT_READY|UNAVAILABLE)/.test(code)) return "unconfigured";
+  // Only an explicit post-authorization object miss is evidence of a lost file.
+  // Generic 404 is deliberately indistinguishable from denied/not-visible records.
+  if (code === "BRANCH_MEDIA_OBJECT_MISSING") return "missing";
+  if (/RESULT_UNKNOWN/.test(code)) return "unknown";
+  if (status === 401 || status === 403 || status === 404
+    || /ACCESS_DENIED|ACCOUNT_|CONTEXT_CHANGED|REAUTHENTICATION|NOT_FOUND|URL_NOT_SCOPED|SOURCE_INVALID/.test(code)) return "forbidden";
+  return "failed";
+}
+export function mediaCanRetry(error: unknown) {
+  const code = String((error as any)?.code ?? (error as any)?.message ?? "");
+  return mediaErrorState(error) === "failed"
+    && !/SIZE_INVALID|TYPE_INVALID|TARGET_INVALID|LIMIT|GALLERY_FULL|CONFLICT|READ_ONLY|INVALID/.test(code);
+}
+export function mediaErrorMessage(error: unknown, lang: string) {
+  const messages = mediaMessages[lang as keyof typeof mediaMessages] ?? mediaMessages.en;
+  const code = String((error as any)?.code ?? (error as any)?.message ?? "");
+  const state = mediaErrorState(error);
+  if (state === "unconfigured") return messages.unavailable;
+  if (state !== "failed") return messages[state];
+  if (/SIZE_INVALID|TYPE_INVALID/.test(code)) return messages.invalid;
+  if (/LIMIT|GALLERY_FULL|EXPORT_TOO_LARGE/.test(code)) return messages.limit;
+  if (/READ_ONLY/.test(code)) return messages.readOnly;
+  if (/CONFLICT|INVALID/.test(code)) return messages.conflict;
+  return messages.failed;
+}
+export async function branchMediaResult(response: Response) {
+  const body = await response.json().catch(() => null);
+  if (!response.ok) throw Object.assign(Error(body?.code ?? "BRANCH_MEDIA_UNAVAILABLE"), {
+    code: body?.code ?? "BRANCH_MEDIA_UNAVAILABLE", status: response.status,
+  });
+  if (body === null) throw Error("BRANCH_MEDIA_UNAVAILABLE");
+  return body;
+}
+export async function branchGallery(itemId: number) {
+  const check = contextGuard();
+  const body = await branchMediaResult(await branchFetch(`/api/inventory/${itemId}/images`, { credentials: "include" }));
+  check();
+  if (!Array.isArray(body)) throw Error("BRANCH_MEDIA_UNAVAILABLE");
+  return body;
+}
+export async function fetchBranchMediaBlob(url: string): Promise<Blob> {
+  const check = contextGuard();
+  if (!documentBranchPrefix || branchMediaSource(url) !== url) throw Error("BRANCH_MEDIA_SOURCE_INVALID");
+  const response = await branchFetch(url, { credentials: "include", cache: "no-store" });
+  if (!response.ok) await branchMediaResult(response);
+  const blob = await response.blob();
+  check();
+  if (!blob.size || !/^image\/(?:jpeg|png|webp)$/.test(blob.type)) throw Error("BRANCH_MEDIA_UNAVAILABLE");
+  return blob;
+}
+async function saveDownload(path: string, filename: string) {
+  const check = contextGuard();
+  const response = await branchFetch(path, { credentials: "include", cache: "no-store" });
+  if (!response.ok) await branchMediaResult(response);
+  const blob = await response.blob();
+  check();
+  if (!blob.size || !["image/jpeg", "image/png", "image/webp", "application/pdf", "application/zip"].includes(blob.type)) throw Error("BRANCH_MEDIA_UNAVAILABLE");
+  const url = URL.createObjectURL(blob);
+  downloads.add(url);
+  const link = document.createElement("a");
+  link.href = url; link.download = filename;
+  document.body.appendChild(link); link.click(); link.remove();
+  // Browser delivery is not proof of saving the file on the user's device.
+  setTimeout(() => { URL.revokeObjectURL(url); downloads.delete(url); }, 30_000);
+}
+export async function downloadBranchMedia(url: string, filename = "attachment") {
+  if (!documentBranchPrefix || branchMediaSource(url) !== url || !/\/(?:content|download|thumbnail)$/.test(url)) throw Error("BRANCH_MEDIA_SOURCE_INVALID");
+  return saveDownload(url.replace(/\/(?:content|thumbnail)$/, "/download"), filename);
+}
+function validTarget(kind: string, targetId: number) {
+  if (!["item", "category", "request", "project", "movement"].includes(kind) || !Number.isSafeInteger(targetId) || targetId <= 0) throw Error("BRANCH_MEDIA_TARGET_INVALID");
+}
+export async function downloadBranchArchive(kind: string, targetId: number) {
+  if (!documentBranchPrefix) throw Error("BRANCH_MEDIA_CONTEXT_REQUIRED");
+  validTarget(kind, targetId);
+  return saveDownload(`/api/media/targets/${kind}/${targetId}/export`, "attachments.zip");
+}
+export async function uploadBranchFile(file: File, kind: string, targetId: number) {
+  const check = contextGuard();
+  if (!documentBranchPrefix) throw Error("BRANCH_MEDIA_CONTEXT_REQUIRED");
+  validTarget(kind, targetId);
+  if (!file.size || file.size > 5 * 1024 * 1024) throw Error("BRANCH_MEDIA_SIZE_INVALID");
+  if (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type)) throw Error("BRANCH_MEDIA_TYPE_INVALID");
+  const data = await file.arrayBuffer();
+  check();
+  const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", data)), b => b.toString(16).padStart(2, "0")).join("");
+  check();
+  const key = [kind, targetId, file.type, digest].join(":");
+  if (flights.has(key)) return flights.get(key);
+  const operationId = pending.get(key) ?? crypto.randomUUID();
+  pending.set(key, operationId);
+  const command = (async () => {
+    try {
+      const body = await branchMediaResult(await branchFetch(`/api/media/targets/${kind}/${targetId}`, {
+        method: "POST", body: data, headers: { "Content-Type": file.type, "X-Media-Operation": operationId },
+      }));
+      check();
+      if (body.state !== "ready" || !branchMediaSource(body.url)) throw Error("BRANCH_MEDIA_RESULT_UNKNOWN");
+      pending.delete(key);
+      uncertain.delete(key);
+      return body as { id: string; url: string; state: string };
+    } catch (e: any) {
+      check();
+      if (!e.status || e.status >= 500) {
+        try {
+          const confirmed = await branchMediaResult(await branchFetch(`/api/media/operations/${operationId}`));
+          check();
+          if (confirmed.state === "ready" && branchMediaSource(confirmed.url)) {
+            pending.delete(key);
+            uncertain.delete(key);
+            return confirmed;
+          }
+        } catch { /* Absence may race an unfinished command; it does not prove failure. */ }
+        check();
+        uncertain.add(key);
+        throw Object.assign(Error("BRANCH_MEDIA_RESULT_UNKNOWN"), { code: "BRANCH_MEDIA_RESULT_UNKNOWN", operationId });
+      }
+      // A later rejection does not prove an earlier lost reply was not applied.
+      // Keep that original operation unresolved; do not unlock a new submission.
+      if (uncertain.has(key)) throw Object.assign(Error("BRANCH_MEDIA_RESULT_UNKNOWN"), {
+        code: "BRANCH_MEDIA_RESULT_UNKNOWN", operationId, canRetry: false,
+      });
+      throw e;
+    }
+  })();
+  flights.set(key, command);
+  try { return await command; }
+  finally { if (flights.get(key) === command) flights.delete(key); }
+}

@@ -1,0 +1,76 @@
+// Execute the actual repository source, substituting only its connection module.
+// No application bootstrap, legacy DB resolver, secrets, sessions or seeds.
+import assert from "node:assert/strict";
+import { build } from "esbuild";
+import { runInNewContext } from "node:vm";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { getTableConfig, PgDialect } from "drizzle-orm/pg-core";
+import type pg from "pg";
+import * as schema from "../../shared/schema";
+import { users } from "../../shared/models/auth";
+
+export const quote = (s: string) => `"${s.replaceAll('"', '""')}"`;
+const tables = [users, schema.categories, schema.locations, schema.suppliers,
+  schema.projects, schema.items, schema.inventoryMovements, schema.inventoryLocationBalances,
+  schema.projectMaterialTransactions, schema.movementDrafts, schema.wireReels,
+  schema.wireReelMovementLines, schema.materialRequests, schema.materialRequestOperations];
+
+/** Source-defined movement/request subset, not a deployment migration. */
+export async function createMovementSqlTables(pool: pg.Pool, fullForeignKeys = false, catalogReads = false) {
+  const selectedTables = catalogReads
+    ? [...tables, schema.itemImages, schema.itemGroups, schema.categorySubcategoryOrder, schema.workers] : tables;
+  const dialect = new PgDialect();
+  for (const table of selectedTables) {
+    const cfg = getTableConfig(table);
+    const columns = cfg.columns.map(c => {
+      const v = c.default;
+      const def = v === undefined ? "" : typeof v === "string" ? "'" + v.replaceAll("'", "''") + "'"
+        : typeof v === "number" || typeof v === "boolean" ? String(v) : dialect.sqlToQuery(v as any).sql;
+      return `${quote(c.name)} ${c.getSQLType()}${c.primary ? " PRIMARY KEY" : ""}${c.notNull ? " NOT NULL" : ""}${c.isUnique && !c.primary ? " UNIQUE" : ""}${def ? " DEFAULT " + def : ""}`;
+    });
+    await pool.query(`CREATE TABLE ${quote(cfg.name)} (${columns.join(",")})`);
+  }
+  if (fullForeignKeys) {
+    const names = new Set(selectedTables.map(t => getTableConfig(t).name));
+    for (const table of selectedTables) {
+      const cfg = getTableConfig(table);
+      for (const fk of cfg.foreignKeys) {
+        const ref = fk.reference(), foreignName = getTableConfig(ref.foreignTable).name;
+        assert.ok(names.has(foreignName), "test schema must include every FK target");
+        await pool.query(`ALTER TABLE ${quote(cfg.name)} ADD CONSTRAINT ${quote(fk.getName())}
+          FOREIGN KEY (${ref.columns.map(c => quote(c.name)).join(",")})
+          REFERENCES ${quote(foreignName)} (${ref.foreignColumns.map(c => quote(c.name)).join(",")})
+          ON UPDATE ${fk.onUpdate ?? "no action"} ON DELETE ${fk.onDelete ?? "no action"}`);
+      }
+    }
+  } else {
+    // Preserve the established disposable movement harness's constraints.
+    await pool.query(`
+      ALTER TABLE inventory_movements ADD FOREIGN KEY(item_id) REFERENCES items(id);
+      ALTER TABLE inventory_movements ADD FOREIGN KEY(supplier_id) REFERENCES suppliers(id);
+      ALTER TABLE project_material_transactions ADD FOREIGN KEY(movement_id) REFERENCES inventory_movements(id);
+    `);
+  }
+}
+
+let bundle: Promise<string> | undefined;
+export async function loadActualMovementStorage(pool: pg.Pool) {
+  bundle ??= (async () => {
+    const output = await build({ entryPoints: ["server/storage.ts"], bundle: true, write: false,
+      metafile: true, platform: "node", format: "cjs",
+      plugins: [{ name: "private-db-only", setup(p) {
+        p.onResolve({ filter: /^\.\/db$/ }, () => ({ path: "private-db", namespace: "private-db" }));
+        p.onLoad({ filter: /.*/, namespace: "private-db" }, () => ({
+          contents: "export const db=globalThis.privateDB; export const pool=globalThis.privatePool;",
+        }));
+      }}] });
+    assert.ok(!Object.keys(output.metafile!.inputs).some(p =>
+      /server\/(?:db|index)\.ts|node_modules\/(?:pg|@neondatabase)/.test(p)));
+    return output.outputFiles[0].text;
+  })();
+  const exports = {};
+  const context: any = { module: { exports }, exports, privateDB: drizzle(pool), privatePool: pool,
+    console, require() { throw Error("UNEXPECTED_REPOSITORY_DEPENDENCY"); } };
+  runInNewContext(await bundle, context);
+  return context.module.exports.createDatabaseStorage(drizzle(pool), pool);
+}

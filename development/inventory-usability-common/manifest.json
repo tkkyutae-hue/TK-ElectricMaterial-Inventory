@@ -1,0 +1,55 @@
+{
+  "candidateOnly": true,
+  "candidates": [
+    {
+      "path": "client/src/components/layout/AppLayout.tsx",
+      "preparedSha256": "e940c6b146e20b82b727b15bf6051e0be097cc5927a170d5a349580501ebc10d",
+      "currentRootSha256": "cbda2f72f84a905d556ccd0d111a4744828a5b15047ba62b2f32fe9c1614d4ef"
+    },
+    {
+      "path": "client/src/components/layout/BranchModeMarker.tsx",
+      "preparedSha256": "7c68905e074c45225c8e648445c943431eb419f8efb59f43f55648cd9bed6609",
+      "currentRootSha256": null
+    },
+    {
+      "path": "client/src/components/layout/FieldHeader.tsx",
+      "preparedSha256": "cbf08a515e11ecba7222f30c8061fb101144b5948f52b39324053418df12a8f8",
+      "currentRootSha256": "405ef2b6e55e29b8d03778c86467b1ebeff8e7ad421aada32d1b7e08d3aa8682"
+    },
+    {
+      "path": "client/src/components/layout/inventory-context-header.css",
+      "preparedSha256": "cd52c418c2e86e5dc760bd5e441c189394346d1e1003b1b31fdcd34c0d2932dd",
+      "currentRootSha256": null
+    },
+    {
+      "path": "client/src/components/shared/EmptyState.tsx",
+      "preparedSha256": "e33d7492c6229cafe524b3652eaebd17e4bdf02e4067ada29d38759c60aa5be1",
+      "currentRootSha256": "6668a8e0a122aab28fad0548298ab29be775ce05a2b9ec07f6cd52750e1cd525"
+    },
+    {
+      "path": "client/src/components/shared/ErrorState.tsx",
+      "preparedSha256": "8fc806f10fa08de733264bf8e9dea1609c8da110f2a7ea052057de1a79450a20",
+      "currentRootSha256": "d03942b1593d8ee8e115fd4b0e1011b262de7d37a39acf7a106fedd7f4da8fcf"
+    },
+    {
+      "path": "client/src/components/shared/LoadState.tsx",
+      "preparedSha256": "d2e923fcd34ba4cb58afc7fcce03996fce0d62146949af09c0964fddc3aae435",
+      "currentRootSha256": null
+    },
+    {
+      "path": "client/src/hooks/use-common-messages.ts",
+      "preparedSha256": "58fb950de771700298c47acce7749614dfe779d03900304b3f358dc51786eb4d",
+      "currentRootSha256": null
+    },
+    {
+      "path": "client/src/lib/common-messages.ts",
+      "preparedSha256": "dc3458aee94e885a4061c9eb9a52b31321c1b0d493e65d2f69db75c21145b53c",
+      "currentRootSha256": null
+    },
+    {
+      "path": "client/src/pages/Login.tsx",
+      "preparedSha256": "0f96a9b52c9808c92eafb65b169446b84ac274108ee77e0a0557481d5545ac3b",
+      "currentRootSha256": "e03e319c95033f797529e3d930693b256bd5d85d1d880ffda2c60dc03862241e"
+    }
+  ]
+}

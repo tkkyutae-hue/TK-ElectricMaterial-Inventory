@@ -1,0 +1,1124 @@
+{
+  "candidateOnly": true,
+  "remoteWriteAuthorizedOnlyAfterAutomationGate": true,
+  "repository": "tkkyutae-hue/TK-ElectricMaterial-Inventory",
+  "branch": "Indiana",
+  "expectedParent": "40da01ee24d9154166462bc96e295de191f9ae75",
+  "newRemoteCommit": null,
+  "remoteEqualityVerified": false,
+  "files": [
+    {
+      "path": "development/inventory-usability-admin/README.md",
+      "sha256": "2abadf6e82bf8f424b4de8a7d68a63556e18f416a887258e4284659dcde60a9b",
+      "bytes": 10155
+    },
+    {
+      "path": "development/inventory-usability-admin/manifest.json",
+      "sha256": "2ce630acd073fa2b18cd55306fe82bd206aab8068da0871a0fbdb9664962b675",
+      "bytes": 2059
+    },
+    {
+      "path": "development/inventory-usability-admin/prepared/client/src/components/admin/AdminLoadState.tsx.txt",
+      "sha256": "c2c717d2cab8968010731164369ac0cd9d7a902cf45bdb7bb62dd8daeab28043",
+      "bytes": 1386
+    },
+    {
+      "path": "development/inventory-usability-admin/prepared/client/src/components/admin/AdminRequestActions.tsx.txt",
+      "sha256": "2004a329d0cfc9ed0e256eeed339095a3a3e62796706ef30dc3a2d9d9b1ee8d7",
+      "bytes": 6268
+    },
+    {
+      "path": "development/inventory-usability-admin/prepared/client/src/hooks/use-dashboard.ts.txt",
+      "sha256": "a59ebb014b3ad332c0aade12551eab0511f4ea87cba339d1c32c99ffebd34e78",
+      "bytes": 477
+    },
+    {
+      "path": "development/inventory-usability-admin/prepared/client/src/hooks/use-items.ts.txt",
+      "sha256": "51036b034576554bb54bb54a5b7c9c44521ec7b6ce3409faf15f3447cbf18132",
+      "bytes": 3225
+    },
+    {
+      "path": "development/inventory-usability-admin/prepared/client/src/lib/i18n.ts.txt",
+      "sha256": "0eec6c3b43ef282c2018548c077fa4d5f54da0aa906151d976f77a11e17a0bb7",
+      "bytes": 440443
+    },
+    {
+      "path": "development/inventory-usability-admin/prepared/client/src/pages/Dashboard.tsx.txt",
+      "sha256": "4f53650ddb3114b04cc3ce0afcb4d24b08cdcf274c4c07bbe22d8d2bcaf8f8a7",
+      "bytes": 24451
+    },
+    {
+      "path": "development/inventory-usability-admin/prepared/client/src/pages/Inventory.tsx.txt",
+      "sha256": "db8d20a3d29b038c6f72ebb188a8f726bc16f56a1bd3ab17e60133ab34d0695d",
+      "bytes": 40723
+    },
+    {
+      "path": "development/inventory-usability-admin/prepared/client/src/pages/ItemDetails.tsx.txt",
+      "sha256": "bbc4d22ed69f8ac3efb554b39331e92ca93f717a0e55d247507edc475d08fe50",
+      "bytes": 90910
+    },
+    {
+      "path": "development/inventory-usability-admin/prepared/client/src/pages/field/FieldRequestsList.tsx.txt",
+      "sha256": "8bc632a2c413c5369fc607f8e31a58e61f41e1f4da2e49ea85cde0733649ab77",
+      "bytes": 51687
+    },
+    {
+      "path": "development/inventory-usability-common/README.md",
+      "sha256": "a814158866429bfe6ba77d5855e1baf70f787447c7daabf4ebf295ece305e133",
+      "bytes": 7710
+    },
+    {
+      "path": "development/inventory-usability-common/manifest.json",
+      "sha256": "9f158b58a7d18b31da2a63e8b9344c62f0291cd88dc3e93b0cc1cee6298c300c",
+      "bytes": 2328
+    },
+    {
+      "path": "development/inventory-usability-common/prepared/client/src/components/layout/AppLayout.tsx.txt",
+      "sha256": "e940c6b146e20b82b727b15bf6051e0be097cc5927a170d5a349580501ebc10d",
+      "bytes": 13122
+    },
+    {
+      "path": "development/inventory-usability-common/prepared/client/src/components/layout/BranchModeMarker.tsx.txt",
+      "sha256": "7c68905e074c45225c8e648445c943431eb419f8efb59f43f55648cd9bed6609",
+      "bytes": 1820
+    },
+    {
+      "path": "development/inventory-usability-common/prepared/client/src/components/layout/FieldHeader.tsx.txt",
+      "sha256": "cbf08a515e11ecba7222f30c8061fb101144b5948f52b39324053418df12a8f8",
+      "bytes": 5513
+    },
+    {
+      "path": "development/inventory-usability-common/prepared/client/src/components/layout/inventory-context-header.css.txt",
+      "sha256": "cd52c418c2e86e5dc760bd5e441c189394346d1e1003b1b31fdcd34c0d2932dd",
+      "bytes": 806
+    },
+    {
+      "path": "development/inventory-usability-common/prepared/client/src/components/shared/EmptyState.tsx.txt",
+      "sha256": "e33d7492c6229cafe524b3652eaebd17e4bdf02e4067ada29d38759c60aa5be1",
+      "bytes": 1036
+    },
+    {
+      "path": "development/inventory-usability-common/prepared/client/src/components/shared/ErrorState.tsx.txt",
+      "sha256": "8fc806f10fa08de733264bf8e9dea1609c8da110f2a7ea052057de1a79450a20",
+      "bytes": 1196
+    },
+    {
+      "path": "development/inventory-usability-common/prepared/client/src/components/shared/LoadState.tsx.txt",
+      "sha256": "d2e923fcd34ba4cb58afc7fcce03996fce0d62146949af09c0964fddc3aae435",
+      "bytes": 3923
+    },
+    {
+      "path": "development/inventory-usability-common/prepared/client/src/hooks/use-common-messages.ts.txt",
+      "sha256": "58fb950de771700298c47acce7749614dfe779d03900304b3f358dc51786eb4d",
+      "bytes": 214
+    },
+    {
+      "path": "development/inventory-usability-common/prepared/client/src/lib/common-messages.ts.txt",
+      "sha256": "dc3458aee94e885a4061c9eb9a52b31321c1b0d493e65d2f69db75c21145b53c",
+      "bytes": 4596
+    },
+    {
+      "path": "development/inventory-usability-common/prepared/client/src/pages/Login.tsx.txt",
+      "sha256": "0f96a9b52c9808c92eafb65b169446b84ac274108ee77e0a0557481d5545ac3b",
+      "bytes": 12684
+    },
+    {
+      "path": "development/inventory-usability-field/README.md",
+      "sha256": "f1b7f4d799b8a48117fdde8a44e6eb9cb10af06e539cb0718b338737c0562b69",
+      "bytes": 9468
+    },
+    {
+      "path": "development/inventory-usability-field/manifest.json",
+      "sha256": "637898bd268b35e083ff40d093ca5f2c065dc98e5794b467caf5090110dc863d",
+      "bytes": 1569
+    },
+    {
+      "path": "development/inventory-usability-field/prepared/client/src/lib/i18n.ts.txt",
+      "sha256": "f170e3f4d6a434706dd70bc0d0de8f4afeee2ae34e86ab82bd4b21eba2fc1d34",
+      "bytes": 434746
+    },
+    {
+      "path": "development/inventory-usability-field/prepared/client/src/pages/field/FieldCartPanel.tsx.txt",
+      "sha256": "8d570f3bbb31ee34530bb5f86bfd4fc6faa6a62b9a2adb88d0ab72230432700c",
+      "bytes": 4361
+    },
+    {
+      "path": "development/inventory-usability-field/prepared/client/src/pages/field/FieldCartReview.tsx.txt",
+      "sha256": "9792b1b15242db64413423fafe4e9e7708aa8e718de91f9b22d6c41dbd0e2b54",
+      "bytes": 31685
+    },
+    {
+      "path": "development/inventory-usability-field/prepared/client/src/pages/field/FieldCommandFeedback.tsx.txt",
+      "sha256": "5642349e8f75a361f8e6dba1ae5f22b80d845be3a6ee1d795c5220cbe19fc852",
+      "bytes": 5444
+    },
+    {
+      "path": "development/inventory-usability-field/prepared/client/src/pages/field/FieldInventory.tsx.txt",
+      "sha256": "973d8f08b8ad261fb44b21aae02c093ea761233ca5e1f93e56223269d608dc8a",
+      "bytes": 89766
+    },
+    {
+      "path": "development/inventory-usability-field/prepared/client/src/pages/field/FieldRequestsList.tsx.txt",
+      "sha256": "2f7c6f2d913c80e56fcd3004ea7ecf9d2ced87fa0c7e05596ada61ec4cee0ab1",
+      "bytes": 54040
+    },
+    {
+      "path": "development/inventory-usability-integrated/README.md",
+      "sha256": "eaa1263538365685544e133a0c8e585bc29f421c6b4589883893033498288b42",
+      "bytes": 9242
+    },
+    {
+      "path": "development/inventory-usability-integrated/assemble.mjs",
+      "sha256": "6817bccf7d3cc90285234e909fcef9a23a04b837915b602da6376ca0709eb6b1",
+      "bytes": 2580
+    },
+    {
+      "path": "development/inventory-usability-integrated/assembly.json",
+      "sha256": "ac92e4dd80fe6135590ca5a23d1248ed51d8965bda399bb4ef331cc61fbb6621",
+      "bytes": 16576
+    },
+    {
+      "path": "development/inventory-usability-integrated/build-report.mjs",
+      "sha256": "264a3f5a41f46f63ecce4f016b4627e53c7056a57882df587e8cf2fd9669a80f",
+      "bytes": 3985
+    },
+    {
+      "path": "development/inventory-usability-integrated/command-manifest.json",
+      "sha256": "a0b945fae03ef07f4f0391990554090bb7bc0c68fd01bf8d41d1356e2776a239",
+      "bytes": 16087
+    },
+    {
+      "path": "development/inventory-usability-integrated/command-results.json",
+      "sha256": "7ba5ea6cdc824c93a7522b9160d7f7f5bf17cb8e98e87d6294119b51cd0ab41d",
+      "bytes": 4249
+    },
+    {
+      "path": "development/inventory-usability-integrated/manifest.json",
+      "sha256": "cc6f0ac33faa1e470f1802af2a921ace6f743d2d168e9767b338ea398f01f778",
+      "bytes": 17542
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/components/BranchAttachmentDisclosure.tsx.txt",
+      "sha256": "6f89014209a28996f774f4d88cec62cd76bfb4bc91c1ecf52eb6ce22fcf43f8e",
+      "bytes": 965
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/components/BranchAttachments.tsx.txt",
+      "sha256": "ca6e45c2f31b89e21aac52600ae005dadfd6007b50aa23128abe360cbf5cfc71",
+      "bytes": 21495
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/components/BranchItemGallery.tsx.txt",
+      "sha256": "9f4f45b8c8b8c0376bd757bdc6a89cbde8ee2061e5bae87d7bae58efa4c3540a",
+      "bytes": 5288
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/components/BranchMediaImage.tsx.txt",
+      "sha256": "3e07e572bb707c386f2beaa5f19a0c5c19ec1723552f9c0ce5c8d63541cb2888",
+      "bytes": 9584
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/components/ImageLightbox.tsx.txt",
+      "sha256": "d66d110bfdba635e89283eaf9f86eab618a2b0170c2366451131265b59f00fac",
+      "bytes": 4332
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/components/admin/AdminLoadState.tsx.txt",
+      "sha256": "c2c717d2cab8968010731164369ac0cd9d7a902cf45bdb7bb62dd8daeab28043",
+      "bytes": 1386
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/components/admin/AdminRequestActions.tsx.txt",
+      "sha256": "a5ef1372820f207f8e3608e77369f06051e8148d09cd9384f63a1a6a449885bb",
+      "bytes": 6905
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/components/layout/AppLayout.tsx.txt",
+      "sha256": "e940c6b146e20b82b727b15bf6051e0be097cc5927a170d5a349580501ebc10d",
+      "bytes": 13122
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/components/layout/BranchModeMarker.tsx.txt",
+      "sha256": "7c68905e074c45225c8e648445c943431eb419f8efb59f43f55648cd9bed6609",
+      "bytes": 1820
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/components/layout/FieldHeader.tsx.txt",
+      "sha256": "cbf08a515e11ecba7222f30c8061fb101144b5948f52b39324053418df12a8f8",
+      "bytes": 5513
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/components/layout/inventory-context-header.css.txt",
+      "sha256": "cd52c418c2e86e5dc760bd5e441c189394346d1e1003b1b31fdcd34c0d2932dd",
+      "bytes": 806
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/components/shared/EmptyState.tsx.txt",
+      "sha256": "e33d7492c6229cafe524b3652eaebd17e4bdf02e4067ada29d38759c60aa5be1",
+      "bytes": 1036
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/components/shared/ErrorState.tsx.txt",
+      "sha256": "8fc806f10fa08de733264bf8e9dea1609c8da110f2a7ea052057de1a79450a20",
+      "bytes": 1196
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/components/shared/LoadState.tsx.txt",
+      "sha256": "d2e923fcd34ba4cb58afc7fcce03996fce0d62146949af09c0964fddc3aae435",
+      "bytes": 3923
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/hooks/use-common-messages.ts.txt",
+      "sha256": "58fb950de771700298c47acce7749614dfe779d03900304b3f358dc51786eb4d",
+      "bytes": 214
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/hooks/use-dashboard.ts.txt",
+      "sha256": "a59ebb014b3ad332c0aade12551eab0511f4ea87cba339d1c32c99ffebd34e78",
+      "bytes": 477
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/hooks/use-items.ts.txt",
+      "sha256": "51036b034576554bb54bb54a5b7c9c44521ec7b6ce3409faf15f3447cbf18132",
+      "bytes": 3225
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/lib/branchMedia.ts.txt",
+      "sha256": "9f505dce15870878ba72c9685177266c88cc39f933d40219579d911c2f37f6b8",
+      "bytes": 14748
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/lib/branchTransport.ts.txt",
+      "sha256": "3c99e74f34cc85cccb36abb7375f5cf13e23f275c9a3a40cac892614176602a6",
+      "bytes": 6247
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/lib/common-messages.ts.txt",
+      "sha256": "dc3458aee94e885a4061c9eb9a52b31321c1b0d493e65d2f69db75c21145b53c",
+      "bytes": 4596
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/lib/i18n.ts.txt",
+      "sha256": "0eec6c3b43ef282c2018548c077fa4d5f54da0aa906151d976f77a11e17a0bb7",
+      "bytes": 440443
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/lib/requestCommands.ts.txt",
+      "sha256": "f0f3f3aea16eb0ea510fc3b226f7a78bfa87096b3a072b9aeb4a886e0383cf3b",
+      "bytes": 8899
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/pages/CategoryDetail.tsx.txt",
+      "sha256": "a86739e16c5b3535b86cfba94886ef47588892a43c418f3688aed077aab319cd",
+      "bytes": 41638
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/pages/Dashboard.tsx.txt",
+      "sha256": "4f53650ddb3114b04cc3ce0afcb4d24b08cdcf274c4c07bbe22d8d2bcaf8f8a7",
+      "bytes": 24451
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/pages/Inventory.tsx.txt",
+      "sha256": "4069c200f76451efbe5f2c385aa307547ceb81044fd6e0bba79436ac7b89085f",
+      "bytes": 41511
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/pages/ItemDetails.tsx.txt",
+      "sha256": "bbc4d22ed69f8ac3efb554b39331e92ca93f717a0e55d247507edc475d08fe50",
+      "bytes": 90910
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/pages/Login.tsx.txt",
+      "sha256": "0f96a9b52c9808c92eafb65b169446b84ac274108ee77e0a0557481d5545ac3b",
+      "bytes": 12684
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/pages/ProjectDetail.tsx.txt",
+      "sha256": "f7f29d468a6523c1d31b557d725efed07df80335b570ea49b95f4727d1ab9bab",
+      "bytes": 6874
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/pages/Transactions.tsx.txt",
+      "sha256": "f5c682f45cfd59cdf501562048f980372255d48fc1a54098718bfd2d1272e9b2",
+      "bytes": 62718
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/pages/field/FieldCartPanel.tsx.txt",
+      "sha256": "8d570f3bbb31ee34530bb5f86bfd4fc6faa6a62b9a2adb88d0ab72230432700c",
+      "bytes": 4361
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/pages/field/FieldCartReview.tsx.txt",
+      "sha256": "0691fac3b2b5ccf80ccf70f76ec0fcb5c5c66597bd466550918deb0ca4d430ed",
+      "bytes": 33268
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/pages/field/FieldCommandFeedback.tsx.txt",
+      "sha256": "3579aadac2d961869af42656de19beb41d7a48f270a28f1e561e79925dee006d",
+      "bytes": 7616
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/pages/field/FieldInventory.tsx.txt",
+      "sha256": "973d8f08b8ad261fb44b21aae02c093ea761233ca5e1f93e56223269d608dc8a",
+      "bytes": 89766
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/pages/field/FieldRequestsList.tsx.txt",
+      "sha256": "f6f4fe189e5d0a79704bac0792e1d97782b385186474ac95d0c21f4f916f3065",
+      "bytes": 51975
+    },
+    {
+      "path": "development/inventory-usability-integrated/prepared/client/src/pages/field/FieldTransactions.tsx.txt",
+      "sha256": "e78f35ef1f3c60c276c65a917cdf0adcdb2ffd0a6eac2284811660693df7903a",
+      "bytes": 90322
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/APPLICATION-REVIEW.md",
+      "sha256": "99e5a0cd7159ddaab29ff7f10fb9d24ca8a77cb6aed8524386ccbedbcbdd0798",
+      "bytes": 3548
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/README.md",
+      "sha256": "2a3c1ffac742f5b76ae9a7bf784f55de1e85914f88c65694606aeb7daad05b2c",
+      "bytes": 7715
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/audit-inputs.mjs",
+      "sha256": "fc9e3680268884884d1214836500c85990ed8e4be01306e8a4b85961b853cc79",
+      "bytes": 9265
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/automation-observation.json",
+      "sha256": "a80de3ea067749f044b8e5a44bea98a0d73cb9fe12b7cc33a4af754d56695d8d",
+      "bytes": 3172
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline-index.json",
+      "sha256": "d2e212a24ff8d22daeaa23dbc054fd9d24b7b3f69417866dccbf179e1f227865",
+      "bytes": 144219
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/App.tsx.txt",
+      "sha256": "bb70cd274c446a268a7ea0f4e6da79bc4eddec6225b82dc629650760b819f91d",
+      "bytes": 18211
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/BranchAttachments.tsx.txt",
+      "sha256": "29d6f183efde0aa33d74cef1fd795270a64a52e8156b75492c5c1be30d947991",
+      "bytes": 4157
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/BranchTransitionNotice.tsx.txt",
+      "sha256": "c556d1a343285a1d06fdb458f69425ddc86661c53f6f42bce121ddae3906a952",
+      "bytes": 1233
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/CatalogPreparationPanel.tsx.txt",
+      "sha256": "3c3a3f21385656b8a280e9855dfbd298d2c7c82e5d00489a561916a3982d196a",
+      "bytes": 18559
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/ExportRmsDialog.tsx.txt",
+      "sha256": "3a0f9b98349d4e23394c678805b926eb19c79f3b7c8a8ce409085f900fedd9f6",
+      "bytes": 23201
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/ImageLightbox.tsx.txt",
+      "sha256": "85af7fbdc082491dc2b63ba973dd80dd36e3f6f7a282572fa11ee8e017a28512",
+      "bytes": 4251
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/MovementForm.tsx.txt",
+      "sha256": "f5f87e069cdf0098bb3b4a1ec03983c61e7306f7988b6d24885608db9be320cb",
+      "bytes": 50125
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/category/AssetPanel.tsx.txt",
+      "sha256": "2a2cc5d96480815d3688357a303deb7eeb26286523cd6e03335df36a4788ee98",
+      "bytes": 7064
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/category/FamilyGroupCard.tsx.txt",
+      "sha256": "b05efa8e9f86ca1deff45192d920001c2eb8235d97ed9b146d4ab33c1f13b03f",
+      "bytes": 45594
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/category/InlineEditRow.tsx.txt",
+      "sha256": "d806532853ed1bb5ffbe36cfe70d8bc8e16bad848770670a4cf8b29375e79a5f",
+      "bytes": 19602
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/category/MoveCategoryDialog.tsx.txt",
+      "sha256": "85435db6ff313abd241628902efc339074c22ca23588833c960ec2cb765dddf1",
+      "bytes": 7434
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/category/WireItemReelSection.tsx.txt",
+      "sha256": "11b0390ddba92a1fb6480a48b88812faddbe2b269ccb02d0ac6c693dede06da4",
+      "bytes": 24508
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/layout/AppLayout.tsx.txt",
+      "sha256": "cbda2f72f84a905d556ccd0d111a4744828a5b15047ba62b2f32fe9c1614d4ef",
+      "bytes": 12449
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/layout/BranchLoginRedirect.tsx.txt",
+      "sha256": "2b39c191086c2dbadacb673ed50ebc8978393a5eef04614ad545a8034f730fde",
+      "bytes": 291
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/layout/BranchSelectorLink.tsx.txt",
+      "sha256": "604e68f40e30a982cf42d3230141bdc6589a11f81f723f73b349b75a658ef119",
+      "bytes": 450
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/layout/FieldHeader.tsx.txt",
+      "sha256": "405ef2b6e55e29b8d03778c86467b1ebeff8e7ad421aada32d1b7e08d3aa8682",
+      "bytes": 6980
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/layout/LazyPage.tsx.txt",
+      "sha256": "409c154104becb6e57fe3ec8d42c0b487e895a53fca0bfcdb23692b85878d939",
+      "bytes": 1085
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/manpower/ForemanAccountAudit.tsx.txt",
+      "sha256": "2a0afd13438acb5ec13bf1c899a8f56eb354e3433cb1a58367d30ba761d39842",
+      "bytes": 13330
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/movement/ItemRowField.tsx.txt",
+      "sha256": "15590dfe7ca3b69fc1348a8abc348dd9794158ccfcea51cb9eb34b215346076c",
+      "bytes": 38230
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/movement/SearchableLocationSelect.tsx.txt",
+      "sha256": "a590599fed620c9ce910293713ce8cd5daba4a7399839cde45243b35e37e5886",
+      "bytes": 19860
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/CompletionReportTab.tsx.txt",
+      "sha256": "a9e6e6514e43796acb036e2ba276ce3752619ddb9ccd4f92256a42729d8483b2",
+      "bytes": 58590
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/OverviewTab.tsx.txt",
+      "sha256": "8a76abfcbc36c36c6794b1b609fc1bc8dae4983a56e9a9b51d4d4cf14bbbc17d",
+      "bytes": 7377
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/ProgressTab.tsx.txt",
+      "sha256": "6f5a20f64a9d51d065a19ec6af4b6c5c07dfe9b25ff8ff544647d6643db370a9",
+      "bytes": 17066
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/ScopeItemsTab.tsx.txt",
+      "sha256": "1a49b8a4907b487daac84f815dc23a4866aa4963977a6a68fb079c4c7be31f6a",
+      "bytes": 33470
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/overview/DailyReportsTab.tsx.txt",
+      "sha256": "9f8d0de2b43fce50ba458025264be8055c87d5aca2a94277da4b84160f2123f6",
+      "bytes": 14506
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/overview/MaterialUsageTab.tsx.txt",
+      "sha256": "fe2fbe2f2de01f9500dd5fb97ecfe6b97d0cd50b9bd2d0c22541b1d97da645d8",
+      "bytes": 7929
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/scope/ScopeExtractDialog.tsx.txt",
+      "sha256": "21beaa25b776cd929d54b886d0b32d979f027627b6e943e5cb5266da1e4e335d",
+      "bytes": 35815
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/components/project/scope/ScopeItemDialog.tsx.txt",
+      "sha256": "f74a4cf8f36db8bbb354d9e1147824d50dffe6fe7218c4f10592bd38ca7c89d7",
+      "bytes": 15071
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/hooks/use-auth.ts.txt",
+      "sha256": "77b34b9cfd046117986331d18ecaac5e2cb3cbd84286f7ae4e0cb316458586f3",
+      "bytes": 2698
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/hooks/use-dashboard.ts.txt",
+      "sha256": "76f0eb50cbf80f671d6d897306ee8afb5d066826af3ab7281be842bafc421870",
+      "bytes": 474
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/hooks/use-field-theme.tsx.txt",
+      "sha256": "28aebfb5d6c3c38652416fd7cdd851b18161bd7beeefeae04dc9807d901e0318",
+      "bytes": 6463
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/hooks/use-items.ts.txt",
+      "sha256": "24dda14712f1c016dfa43988bde2da52fec0fa505556d2be32715d58bc3062c8",
+      "bytes": 3205
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/hooks/use-reference-data.ts.txt",
+      "sha256": "f6e4928ae084c4a3b05c3b22480e6cafc278d2601c4f6365f980eb30a0d157dd",
+      "bytes": 5822
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/hooks/use-transactions.ts.txt",
+      "sha256": "d170f7a7af5e89c3f0faee9031afc0a404f9b9fcf0c8dc5e31715f7fc4c82124",
+      "bytes": 5968
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/hooks/use-upload.ts.txt",
+      "sha256": "172675e1c38e846c039e12b4c0038de7e63f616c744aad90f73da8fd072d7eaf",
+      "bytes": 5371
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/index.css.txt",
+      "sha256": "eab85a635ba98ee3d26c788bc29723260f223d89ca58c8254caf9c07946f628d",
+      "bytes": 25758
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/branch-copy.ts.txt",
+      "sha256": "dfff3e5849b85a650c6570850cbc9d5688b0157456cc06ed80e7f3d247cdb245",
+      "bytes": 2480
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/branchMedia.ts.txt",
+      "sha256": "f553f3ae6c3dfc66810dc67039db6fdfaf36c73626eb317d5e36d642b16a833a",
+      "bytes": 5643
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/branchTransport.ts.txt",
+      "sha256": "feedbf23efb646faf0d51948810b50096e845e23f0966fe6fcdf1d41f584ad31",
+      "bytes": 5903
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/fieldCart.tsx.txt",
+      "sha256": "3826ae9f18363a731c73729d09cb7e909373559cf9739baafcffeeb1b5609705",
+      "bytes": 3945
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/fieldFilterQuery.ts.txt",
+      "sha256": "0542fac21a427711afaf8cad62abcebf51da8a9463dc410b7be429e19283fdb8",
+      "bytes": 1277
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/i18n.ts.txt",
+      "sha256": "5d2248c44b15443ba68172158f12246d666c8e4328ecd19dbbcd694ce6afaf01",
+      "bytes": 432039
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/queryClient.ts.txt",
+      "sha256": "704980c9dd435045ea01aa0880fa9f0582da2ac18362a2094bd40e63840bd5a5",
+      "bytes": 1640
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/requestCommands.ts.txt",
+      "sha256": "6f923e75fc39a596867af8244bc3320c78a736de1365aef0be2f1c7163b8d377",
+      "bytes": 3489
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/lib/transitionMessages.ts.txt",
+      "sha256": "063b78442aa384b9ba7aa86e98be50903693320ca8b95131252d59a23a48cb64",
+      "bytes": 1124
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/CategoryDetail.tsx.txt",
+      "sha256": "c80453e41cd52c72c966ef40329d205cfe742a5913636fba80ecaa1a8943e6a6",
+      "bytes": 41468
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/CrewDispatchAssignment.tsx.txt",
+      "sha256": "197f4f1c0c5222ce961a4b122a4997bee75bfd14427e9201599d176c3e899103",
+      "bytes": 98468
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/DailyReport.tsx.txt",
+      "sha256": "29c9343cca03ed4a5b7bf7950f9380396eeb440633bccc478a31068b51a621e0",
+      "bytes": 40222
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/DailyReportWorkspace.tsx.txt",
+      "sha256": "3110f65594014c4f4214eec2eab0bae8eb32ced7877618af7d59c922dca6749b",
+      "bytes": 46118
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/Home.tsx.txt",
+      "sha256": "6923545f57d01bb1d798c09c9812e5bbe45bee1464d55b5a4ef3b0fadbd31f6b",
+      "bytes": 27319
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/Inventory.tsx.txt",
+      "sha256": "2fafa7ec9db9086d83844fc69184f32632796abe35f91e5fc5ffbd3b8cc28dac",
+      "bytes": 35934
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/ItemDetails.tsx.txt",
+      "sha256": "2de38df888e6210fd5eb639ecc70cf073d1a3fe596acdf10c01ac7a8476353a7",
+      "bytes": 88439
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/Login.tsx.txt",
+      "sha256": "e03e319c95033f797529e3d930693b256bd5d85d1d880ffda2c60dc03862241e",
+      "bytes": 18002
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/Projects.tsx.txt",
+      "sha256": "f3010a4dbb71398e33c2f79358807e2036fc544c0964d8dc57c91411b0afc78e",
+      "bytes": 35075
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/Reorder.tsx.txt",
+      "sha256": "398ec88a3e3d68077dc303b7a692376dbe409cac45a596fa0eee6c89a4bba772",
+      "bytes": 35254
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/ReorderHistory.tsx.txt",
+      "sha256": "f59057365e6233c7aaa75f0fe75c14d2139da599d1d538376ae385ce8eaafdaf",
+      "bytes": 64290
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/Reports.tsx.txt",
+      "sha256": "f4afab27cfc16955692bb12ec9fc5bd52d16b3b9216cf6e372968694d8cab6b5",
+      "bytes": 17931
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/TvDashboard.tsx.txt",
+      "sha256": "68a9be25092661716720ca8be6f4fe66229a274280ac79d7653d8be94f1bb6c8",
+      "bytes": 18081
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/WorkerDetail.tsx.txt",
+      "sha256": "edac07b4dd8d930d598f82de5596b6c69f1c5fb06511d7021003f6b0901805a4",
+      "bytes": 84032
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/admin/Export.tsx.txt",
+      "sha256": "ed4910c2ea14c1641636f7331c2b404796c8398de91e7b2b3b7d4a132de06cc4",
+      "bytes": 4359
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/admin/MondayIntegration.tsx.txt",
+      "sha256": "9a7279237f38f82f295b87da33382f3bacad128a1c79fc12089baa3c3e3a1183",
+      "bytes": 38547
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/admin/StockPricing.tsx.txt",
+      "sha256": "638ffc2aef96fe075867283629116480b8d67c5b440fe354537e3d8677b1129b",
+      "bytes": 59605
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/daily-report/NewReportTab.tsx.txt",
+      "sha256": "30fc8beaf6d631900a76077e2f12832f0929972f23a2502c42128ac80d4a6772",
+      "bytes": 224587
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/field/DraftMovementsList.tsx.txt",
+      "sha256": "fe28aaa807a43e8bd34d000bee7600b70b5af60d7ac9f421078680a65ee6dc36",
+      "bytes": 24335
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/client/src/pages/field/FieldInventory.tsx.txt",
+      "sha256": "48ebc2186c36e4c2cb78c6dd2b8db9e70ed771b6ed742da0d6b4b4f631c3a143",
+      "bytes": 86688
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/bootstrap.ts.txt",
+      "sha256": "0a5560422cd83b2d8283fe8b9c348a70c0f664785abe742c2cfd65b63071657e",
+      "bytes": 1936
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/application.ts.txt",
+      "sha256": "a0c27ce0ada8909f2b670403764d6a87854aab32c83f4a10c361e40b51bb2299",
+      "bytes": 8917
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/catalogDeployment.ts.txt",
+      "sha256": "a375dd02dea84528b387b1569f9ba35cfbbbcd2e908e253d2a4ac9ce4749ac0f",
+      "bytes": 4132
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/catalogIntroduction.ts.txt",
+      "sha256": "6416bc19e92f62e45904d6ecc44926c81d338f0e32cd3b5e32d0ce677766b8d2",
+      "bytes": 20160
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/catalogIntroductionRoutes.ts.txt",
+      "sha256": "655c5118a0de18c94e88814e01949e888d7d15e71bbb80ce325498f54c162a62",
+      "bytes": 1985
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/catalogPreparation.ts.txt",
+      "sha256": "a5d82662d40f90bb3ffa342a721ae6dee206f83ee0338303c2626babcbda7c63",
+      "bytes": 6662
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/catalogPrivateAssets.ts.txt",
+      "sha256": "665425f992e01bfae3ca811773270149feb2d4eebaf2c7bfcc3e156218fd7134",
+      "bytes": 7766
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/catalogSourceReview.ts.txt",
+      "sha256": "4d6fb4196831178c6e18f872c800cff463bc2815296ab5eb1ef0e760a53de959",
+      "bytes": 15822
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/catalogSourceRoutes.ts.txt",
+      "sha256": "ecd2dbed0684b60ee73e299c0f459d7cf0239e97f6791f6f9fdf3f850fee838b",
+      "bytes": 1889
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/commonAuthority.ts.txt",
+      "sha256": "042c87f5328db47229e5b9a0d6b612311c8e80e0b78ab4fa8bd22974fb8e48c8",
+      "bytes": 3752
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/connectionPolicy.ts.txt",
+      "sha256": "511989792f9debebd948e9efab3b9b8670c7bcbf8c3662eb1c4343736785ab66",
+      "bytes": 2001
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/developmentRuntimeEnvironment.ts.txt",
+      "sha256": "b2cc075d0ac7c320208b113b17b04411f87de28b9c7d92ce0993176c66f26ced",
+      "bytes": 4094
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/legacyPhotoObjects.ts.txt",
+      "sha256": "07d8926ae45836eebe6ee1caf1fca0e66893bfa9cc11dbc3bf9e22ecc2557a5b",
+      "bytes": 4433
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/media.ts.txt",
+      "sha256": "3b7ca81644e1ae4bccc885734e2bac4bf11be239cdf86679f431f43c04815648",
+      "bytes": 21608
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/mediaRoutes.ts.txt",
+      "sha256": "52613742a60736b2ddbb02359f27464dd8aebeeb6c3b26709fae341d984f8f42",
+      "bytes": 8123
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/middleware.ts.txt",
+      "sha256": "86c37038b9ad5f2cdd4628a396fb7cec880d0134e024a2a937730336671d1de0",
+      "bytes": 2428
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/newBusinessSchema.ts.txt",
+      "sha256": "8e119af5c909284835f31f83dee563ef92fd6b1f26cd4b3235be96676895ebab",
+      "bytes": 4140
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/privateMediaObjects.ts.txt",
+      "sha256": "c183e39ca9e9372387ce6c13bbb847cacb546a7f02f3bbdd83182b126184aedd",
+      "bytes": 1895
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/runtime.ts.txt",
+      "sha256": "0dca2a448e36c68c5e8d2b16da3f4233781b9a2e66ec105b47fe90aa5c299646",
+      "bytes": 4118
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/sharedMediaStorage.ts.txt",
+      "sha256": "c613e542062a8e6ae9e398a9a16cae1d6547892930e32deffa172056168a5548",
+      "bytes": 5682
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/sharedSession.ts.txt",
+      "sha256": "cde9ff938d5aebc9582ac816025ced5bdea67fa9594a3aa7d9c3f3a90a9daa1a",
+      "bytes": 913
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/sharedStartup.ts.txt",
+      "sha256": "b9cf1f18b6d5992cc543202022c51644d040b8fccf43a9efa88df9e8a1324251",
+      "bytes": 4166
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/branches/startupPlan.ts.txt",
+      "sha256": "46ccfa0b79a1776068af3358d6e25135c328797f342fac511801cb2c716cfe61",
+      "bytes": 5515
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/index.ts.txt",
+      "sha256": "eddb75d213b58d755674f15dfd908f15bd8118bb6b8fefbde05457278b8178de",
+      "bytes": 3567
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/legacyBootstrap.ts.txt",
+      "sha256": "0fb9ff51ffd820312cd6ea208d81c4c0b25efcbc524b05d873110e0513a75494",
+      "bytes": 2289
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/legacyStorage.ts.txt",
+      "sha256": "38562453c03378e4b4deb53859aa5e1252615c4e4f0955299980eaa79a42828d",
+      "bytes": 313
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/replit_integrations/auth/commonStorage.ts.txt",
+      "sha256": "44c5399653f8b512e41f6385ba0520c8f23c8c310e1eb206321146e7c5c0c52b",
+      "bytes": 3097
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/replit_integrations/auth/googleAuth.ts.txt",
+      "sha256": "d591e5f805a5b380ced56a32918cbf839a0a76afa787f9a5c549d54bf680af5c",
+      "bytes": 4539
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/replit_integrations/auth/routes.ts.txt",
+      "sha256": "44f0753ea27a0feb1a03cc470d43b51e930f47f0a415d74f684ee4fc80fd87c8",
+      "bytes": 5379
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/replit_integrations/auth/storage.ts.txt",
+      "sha256": "2ce44794111f8d4f432a56e7834c3a8a098acaf8a3826847e289b3c1690d6d62",
+      "bytes": 257
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/routes.ts.txt",
+      "sha256": "2bed7f33ca6241523af48fe8821adab57ea4b8e4b1d86a12f0412934cf48e362",
+      "bytes": 302490
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/services/materialRequestCommands.ts.txt",
+      "sha256": "fc2094ba7af201fffcba7b4ca94aa173dadbaf2b725db009e16788a44e907e63",
+      "bytes": 17341
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/services/materialRequestRoutes.ts.txt",
+      "sha256": "c76b2f4f848f46fad54723cb542371efd9f3718fd48c9aadd8f560faa020b21a",
+      "bytes": 2918
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/server/storage.ts.txt",
+      "sha256": "117b30f224e3492551fe86a3d4923c08e41422842ed34f2ff30cb1aec2d05b46",
+      "bytes": 222905
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/shared/models/branchMembership.ts.txt",
+      "sha256": "dc42c0587b342023b51445573a2a0a809bec3d35e37d5b3efed2ce2181428509",
+      "bytes": 708
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/shared/schema.ts.txt",
+      "sha256": "8f4bce283baf7740858923c8b2b18e24fff88ac2276231f688f05949adcf81bb",
+      "bytes": 41920
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/branchScreenHarness.ts.txt",
+      "sha256": "0ae6e48c123c197c0e2e62e5694904640d4fc65d89b2ce2dfca083e1e190dbc1",
+      "bytes": 5542
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/denyBranchNetwork.cjs.txt",
+      "sha256": "57e0f8b0c28dec6acf1ba8663ae968c88d643ea9875d38b4ba1fe52a6ed9e3ed",
+      "bytes": 503
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/disposableFieldPg.ts.txt",
+      "sha256": "6a7749faf9024cd1ad8f9e70117bed95beee2066edc8094ae0ba1178b48cf9ac",
+      "bytes": 5763
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/disposableMovementPg.ts.txt",
+      "sha256": "c57642fc52db6f63b8f92841d0aedb5d4f0904742e37a4fe705c01d33ebc975f",
+      "bytes": 2748
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/guardBranchApplication.cjs.txt",
+      "sha256": "902ecaa6365eb894ca9b85ec161207b1fe8d98dbb10a654093b312dc75fa787e",
+      "bytes": 1405
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/guardIndianaSqlNetwork.cjs.txt",
+      "sha256": "ee040c404946d17ab37fa22685283f8c4aebf041c6c1bf947b03107a7fe5d6fb",
+      "bytes": 1978
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/guardStartupPlanOffline.cjs.txt",
+      "sha256": "c82ad967abafc6a354bcd02a44f9c701034c9e0fb79dfb9f7b540278633db130",
+      "bytes": 986
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/inMemoryHttp.ts.txt",
+      "sha256": "2e2204e449a0b988c00cad4dbd67bed89d3756aaad116b1530052b8ec1cb0b79",
+      "bytes": 1533
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/inMemoryMediaHttp.ts.txt",
+      "sha256": "151d40670b2c023a86b2a9ae6bf36b20e71294deb6409dfb5c575d5f9623f7cf",
+      "bytes": 2055
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/indianaSqlFixture.ts.txt",
+      "sha256": "c4df618fb72a7e2cd49b7a0d2eccbe6a21ccf4709aea2fde572c5c59983e1fe4",
+      "bytes": 2703
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/indianaValidationTarget.ts.txt",
+      "sha256": "f48e858e7bf40579a59dfc238f19f4d18a3a4bb4576a9ab610f053f06cca839d",
+      "bytes": 3836
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/movementSqlHarness.ts.txt",
+      "sha256": "57d3d7c98b4dd3f6b8030f9af089f762a1f7fc2e2bf403b215d88e44f39da6c7",
+      "bytes": 4285
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/registerStartupPlanTs.cjs.txt",
+      "sha256": "ad34b53c610cc995dfe80870f93c2c71e32cc49542a69d9ea1c63836127a8f6d",
+      "bytes": 1087
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/baseline/tests/helpers/startupCredentialScenarios.ts.txt",
+      "sha256": "44431856ac87ae3b959fa37dd5af38ae93771171797c8eebce60e419fbbfc191",
+      "bytes": 8252
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/hash-audit.json",
+      "sha256": "7d07f6c2f81cebfac73ed1a1d2119ae7cdb9adeda1a133a0250a7b756c09ed92",
+      "bytes": 10278
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/remote-source-index.json",
+      "sha256": "446293b11f4cc2e62f7c5c7c581e25e974a4203cc8ea6274ea15e719792c2b13",
+      "bytes": 37503
+    },
+    {
+      "path": "development/inventory-usability-integrated/preservation/source-review-findings.json",
+      "sha256": "b955ee23adec7e2c6ab62d8aff3314af7bd7efaf951e3c772f10601d1b8031b7",
+      "bytes": 1505
+    },
+    {
+      "path": "development/inventory-usability-integrated/route-results.json",
+      "sha256": "b91e1e00d1119c7e865aa617a242cd2e0e455f53bf603639264310befdf6e93b",
+      "bytes": 4026
+    },
+    {
+      "path": "development/inventory-usability-integrated/verify-commands.mjs",
+      "sha256": "00d9467bd5d63688ad02d16328df1c05a37e1257948c3ebe529a7f9241e247cd",
+      "bytes": 36852
+    },
+    {
+      "path": "development/inventory-usability-integrated/verify-routes.mjs",
+      "sha256": "1f7d6e0e1b3f111ac0f8e8545df05bf98f6bfc266d23f6cb4e85b3dea8f744de",
+      "bytes": 22678
+    },
+    {
+      "path": "development/inventory-usability-media/README.md",
+      "sha256": "ff0a8d43e91671cfa1f65fe770a3d31678531db02ea9deaaf0028973465e4afd",
+      "bytes": 14697
+    },
+    {
+      "path": "development/inventory-usability-media/manifest.json",
+      "sha256": "223305e77b13cebb96d47822aa131ecc99435967d4965a017beaa8c80cdc7d79",
+      "bytes": 3189
+    },
+    {
+      "path": "development/inventory-usability-media/prepared/client/src/components/BranchAttachmentDisclosure.tsx.txt",
+      "sha256": "6f89014209a28996f774f4d88cec62cd76bfb4bc91c1ecf52eb6ce22fcf43f8e",
+      "bytes": 965
+    },
+    {
+      "path": "development/inventory-usability-media/prepared/client/src/components/BranchAttachments.tsx.txt",
+      "sha256": "ca6e45c2f31b89e21aac52600ae005dadfd6007b50aa23128abe360cbf5cfc71",
+      "bytes": 21495
+    },
+    {
+      "path": "development/inventory-usability-media/prepared/client/src/components/BranchItemGallery.tsx.txt",
+      "sha256": "9f4f45b8c8b8c0376bd757bdc6a89cbde8ee2061e5bae87d7bae58efa4c3540a",
+      "bytes": 5288
+    },
+    {
+      "path": "development/inventory-usability-media/prepared/client/src/components/BranchMediaImage.tsx.txt",
+      "sha256": "3e07e572bb707c386f2beaa5f19a0c5c19ec1723552f9c0ce5c8d63541cb2888",
+      "bytes": 9584
+    },
+    {
+      "path": "development/inventory-usability-media/prepared/client/src/components/ImageLightbox.tsx.txt",
+      "sha256": "d66d110bfdba635e89283eaf9f86eab618a2b0170c2366451131265b59f00fac",
+      "bytes": 4332
+    },
+    {
+      "path": "development/inventory-usability-media/prepared/client/src/lib/branchMedia.ts.txt",
+      "sha256": "9f505dce15870878ba72c9685177266c88cc39f933d40219579d911c2f37f6b8",
+      "bytes": 14748
+    },
+    {
+      "path": "development/inventory-usability-media/prepared/client/src/pages/CategoryDetail.tsx.txt",
+      "sha256": "a86739e16c5b3535b86cfba94886ef47588892a43c418f3688aed077aab319cd",
+      "bytes": 41638
+    },
+    {
+      "path": "development/inventory-usability-media/prepared/client/src/pages/ItemDetails.tsx.txt",
+      "sha256": "215f8cd8e9c5efaed3b156e27b35f4f86b6fae4f681cdb6ed069c7541f010a45",
+      "bytes": 88780
+    },
+    {
+      "path": "development/inventory-usability-media/prepared/client/src/pages/ProjectDetail.tsx.txt",
+      "sha256": "f7f29d468a6523c1d31b557d725efed07df80335b570ea49b95f4727d1ab9bab",
+      "bytes": 6874
+    },
+    {
+      "path": "development/inventory-usability-media/prepared/client/src/pages/Transactions.tsx.txt",
+      "sha256": "f5c682f45cfd59cdf501562048f980372255d48fc1a54098718bfd2d1272e9b2",
+      "bytes": 62718
+    },
+    {
+      "path": "development/inventory-usability-media/prepared/client/src/pages/field/FieldCartReview.tsx.txt",
+      "sha256": "0fa23ab441013f82e78987a57a999b9ef252b6b09b2e430c35d2500d8ad0aed0",
+      "bytes": 27489
+    },
+    {
+      "path": "development/inventory-usability-media/prepared/client/src/pages/field/FieldInventory.tsx.txt",
+      "sha256": "9d7b1c6610e204af67bd556c6651e0b6d618df5e68f8865c3c43847fe314e75d",
+      "bytes": 87287
+    },
+    {
+      "path": "development/inventory-usability-media/prepared/client/src/pages/field/FieldRequestsList.tsx.txt",
+      "sha256": "ffbba145084f5db02c19b7a2be19863119bad70479bc851fb6f415616edd1a65",
+      "bytes": 52018
+    },
+    {
+      "path": "development/request-operation-safety/README.md",
+      "sha256": "e1a8779766e4dc2eef7f8c83ea212d92aff60c0d1048386ed9770af68c1acde4",
+      "bytes": 9987
+    },
+    {
+      "path": "development/request-operation-safety/manifest.json",
+      "sha256": "197a00bc937f1547cfb99472453c50626359e702464ffbf8d8fa528f9113d5b0",
+      "bytes": 9236
+    },
+    {
+      "path": "development/request-operation-safety/prepared/client/src/components/admin/AdminRequestActions.tsx.txt",
+      "sha256": "a5ef1372820f207f8e3608e77369f06051e8148d09cd9384f63a1a6a449885bb",
+      "bytes": 6905
+    },
+    {
+      "path": "development/request-operation-safety/prepared/client/src/lib/branchTransport.ts.txt",
+      "sha256": "3c99e74f34cc85cccb36abb7375f5cf13e23f275c9a3a40cac892614176602a6",
+      "bytes": 6247
+    },
+    {
+      "path": "development/request-operation-safety/prepared/client/src/lib/requestCommands.ts.txt",
+      "sha256": "f0f3f3aea16eb0ea510fc3b226f7a78bfa87096b3a072b9aeb4a886e0383cf3b",
+      "bytes": 8899
+    },
+    {
+      "path": "development/request-operation-safety/prepared/client/src/pages/field/FieldCartReview.tsx.txt",
+      "sha256": "0691fac3b2b5ccf80ccf70f76ec0fcb5c5c66597bd466550918deb0ca4d430ed",
+      "bytes": 33268
+    },
+    {
+      "path": "development/request-operation-safety/prepared/client/src/pages/field/FieldCommandFeedback.tsx.txt",
+      "sha256": "3579aadac2d961869af42656de19beb41d7a48f270a28f1e561e79925dee006d",
+      "bytes": 7616
+    },
+    {
+      "path": "development/request-operation-safety/prepared/client/src/pages/field/FieldRequestsList.tsx.txt",
+      "sha256": "f6f4fe189e5d0a79704bac0792e1d97782b385186474ac95d0c21f4f916f3065",
+      "bytes": 51975
+    }
+  ],
+  "totalBytes": 6299409,
+  "excludesLocalHistory": true,
+  "indexSelfHashExcluded": true
+}

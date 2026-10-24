@@ -1,0 +1,37 @@
+import { AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useCommonMessages } from "@/hooks/use-common-messages";
+
+interface ErrorStateProps {
+  title?: string;
+  description?: string;
+  retryLabel?: string;
+  onRetry?: () => void;
+  className?: string;
+}
+
+/** Existing API is preserved; raw technical errors should not be passed as copy. */
+export function ErrorState({
+  title,
+  description,
+  retryLabel,
+  onRetry,
+  className,
+}: ErrorStateProps) {
+  const m = useCommonMessages();
+  return (
+    <div className={cn("flex flex-col items-center justify-center py-16 text-center", className)} role="alert">
+      <div className="mb-4 text-destructive" aria-hidden="true">
+        <AlertTriangle className="h-10 w-10" />
+      </div>
+      <p className="text-sm font-semibold text-foreground">{title ?? m.errorTitle}</p>
+      {description && <p className="mt-1 max-w-md break-words text-sm text-muted-foreground">{description}</p>}
+      {onRetry && (
+        <div className="mt-4">
+          <Button variant="outline" onClick={onRetry}>{retryLabel ?? m.retry}</Button>
+        </div>
+      )}
+    </div>
+  );
+}

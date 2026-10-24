@@ -1,0 +1,79 @@
+// Non-secret provider evidence, obtained from the newly approved Neon project.
+// This is a TEST target manifest, not an enabled application branch mapping.
+import pg from "pg";
+
+export const indianaValidationTarget = Object.freeze({
+  projectId: "young-moon-68924182",
+  branchId: "br-quiet-wildflower-b4b3zkbj",
+  endpointId: "ep-steep-haze-b4h1x63g",
+  region: "aws-us-east-2",
+  directHost: "ep-steep-haze-b4h1x63g.c-6.us-east-2.aws.neon.tech",
+  pooledHost: "ep-steep-haze-b4h1x63g-pooler.c-6.us-east-2.aws.neon.tech",
+  database: "neondb",
+  role: "neondb_owner",
+  postgresMajor: 18,
+});
+
+function parse(value: string | undefined) {
+  try {
+    if (!value) throw Error();
+    const u = new URL(value), target = indianaValidationTarget;
+    if (!["postgres:", "postgresql:"].includes(u.protocol) ||
+        !(target.directHost === u.hostname || target.pooledHost === u.hostname) ||
+        (u.port && u.port !== "5432") || u.hash ||
+        decodeURIComponent(u.pathname) !== "/" + target.database ||
+        decodeURIComponent(u.username) !== target.role || !u.password) throw Error();
+    for (const [k, v] of u.searchParams) {
+      if (u.searchParams.getAll(k).length !== 1 ||
+          !(k === "sslmode" && ["require", "verify-full"].includes(v) ||
+            k === "channel_binding" && ["require", "prefer"].includes(v))) throw Error();
+    }
+    return u;
+  } catch {
+    // Never include the supplied value or a URL/driver error as a cause.
+    throw Error("INDIANA_TEST_TARGET_NOT_APPROVED");
+  }
+}
+
+export function validateIndianaTestConnection(value: string | undefined): void { parse(value); }
+
+export function indianaTestPool(schemaName?: string) {
+  if (schemaName && !/^branch_sql_[a-f0-9]{24}$/.test(schemaName)) throw Error("INVALID_SYNTHETIC_SCHEMA");
+  const u = parse(process.env.INDIANA_DATABASE_URL), t = indianaValidationTarget;
+  // Explicit parameters only. No PG* defaults, connection-URL options or legacy
+  // resolver/fallback. Use the provider-confirmed direct endpoint for sessions.
+  const pool = new pg.Pool({
+    host: t.directHost, port: 5432, database: t.database,
+    user: decodeURIComponent(u.username), password: decodeURIComponent(u.password),
+    ssl: { rejectUnauthorized: true }, max: 4,
+    application_name: "inventory-indiana-synthetic-sql-validation",
+    connectionTimeoutMillis: 20000, query_timeout: 20000,
+    options: "-c statement_timeout=15000 -c lock_timeout=5000" +
+      (schemaName ? ` -c search_path=${schemaName},pg_catalog` : ""),
+  });
+  pool.on("error", () => {
+    // Fail explicitly on idle-client failure without emitting a raw driver error.
+    throw Error("INDIANA_TEST_POOL_IDLE_ERROR");
+  });
+  return pool;
+}
+
+/** Metadata on the newly approved target only; refuses any user relations. */
+export async function assertEmptyIndiana(pool: pg.Pool) {
+  const identity = (await pool.query(`SELECT current_database() AS database,
+    current_user AS role, current_setting('server_version_num')::int AS version,
+    inet_server_addr() IS NOT NULL AS tcp`)).rows[0];
+  const t = indianaValidationTarget;
+  if (identity.database !== t.database || identity.role !== t.role ||
+      Math.floor(identity.version / 10000) !== t.postgresMajor || !identity.tcp) {
+    throw Error("INDIANA_SQL_IDENTITY_MISMATCH");
+  }
+  const objects = (await pool.query(`SELECT count(*)::int AS n FROM pg_class c
+    JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+    AND c.relkind IN ('r','p','v','m','f','S')
+    AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid='pg_class'::regclass
+      AND d.objid=c.oid AND d.deptype='e')`)).rows[0].n;
+  if (objects !== 0) throw Error("INDIANA_TEST_TARGET_NOT_EMPTY");
+  return { database: identity.database, postgresMajor: t.postgresMajor, userRelations: objects };
+}

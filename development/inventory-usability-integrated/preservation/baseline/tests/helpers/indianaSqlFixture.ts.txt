@@ -1,0 +1,54 @@
+import assert from "node:assert/strict";
+import type pg from "pg";
+import { indianaTestPool, assertEmptyIndiana, indianaValidationTarget as target } from "./indianaValidationTarget";
+import { createMovementSqlTables, loadActualMovementStorage, quote } from "./movementSqlHarness";
+
+export async function indianaSqlFixture(schemaName: string) {
+  assert.match(schemaName, /^branch_sql_[a-f0-9]{24}$/);
+  const admin = indianaTestPool();
+  let lease: pg.PoolClient | undefined, pool: pg.Pool | undefined;
+  let locked = false, created = false, marked = false, oid: number | undefined;
+  const lockSql = "hashtextextended('inventory-indiana-synthetic-sql-validation',0)";
+  async function close() {
+    try {
+      await pool?.end();
+      if (created && lease) {
+        const current = (await lease.query("SELECT oid FROM pg_namespace WHERE nspname=$1", [schemaName])).rows[0]?.oid;
+        assert.equal(current, oid, "refuse cleanup if schema identity changed");
+        if (marked) {
+          const rows = (await lease.query(`SELECT project_id FROM ${quote(schemaName)}.validation_target`)).rows;
+          assert.deepEqual(rows, [{ project_id: target.projectId }], "refuse cleanup without own marker");
+        }
+        // Only this run's newly created synthetic schema, never public/other data.
+        await lease.query(`DROP SCHEMA ${quote(schemaName)} CASCADE`);
+        created = false;
+        await assertEmptyIndiana(admin);
+        console.log("INDIANA_CLEANUP_VERIFIED: zero user relations remain");
+      }
+    } finally {
+      if (locked && lease) await lease.query(`SELECT pg_advisory_unlock(${lockSql})`).catch(() => {});
+      lease?.release();
+      await admin.end();
+    }
+  }
+  try {
+    lease = await admin.connect();
+    locked = (await lease.query(`SELECT pg_try_advisory_lock(${lockSql}) AS locked`)).rows[0].locked;
+    assert.equal(locked, true, "another validation is already running");
+    await assertEmptyIndiana(admin);
+    await lease.query(`CREATE SCHEMA ${quote(schemaName)}`);
+    created = true;
+    oid = (await lease.query("SELECT oid FROM pg_namespace WHERE nspname=$1", [schemaName])).rows[0].oid;
+    await lease.query(`CREATE TABLE ${quote(schemaName)}.validation_target (project_id text PRIMARY KEY)`);
+    await lease.query(`INSERT INTO ${quote(schemaName)}.validation_target VALUES($1)`, [target.projectId]);
+    marked = true;
+    pool = indianaTestPool(schemaName);
+    await createMovementSqlTables(pool, true);
+    const storage = await loadActualMovementStorage(pool);
+    return { pool, storage, close, schemaName,
+      targetId: `${target.projectId}:${target.branchId}:${target.database}` };
+  } catch (e) {
+    await close();
+    throw e;
+  }
+}

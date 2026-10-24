@@ -1,0 +1,98 @@
+import { createHash } from "node:crypto";
+import { validateBranchConnections } from "./connectionPolicy";
+import { BranchAccessError } from "./runtime";
+
+export type SharedApproval = {
+  version: 1;
+  identity: { targetId: string; endpointSha256: string };
+  savannah: { targetId: string; endpointSha256: string };
+  indiana: { targetId: string; endpointSha256: string };
+  evidenceId: string;
+  schemaAndRolesReviewed: true;
+  recoveryReviewed: true;
+  allowSharedStartup: true;
+  /** Owner-reviewed common user ID, not an email or client assertion.
+   * Does not grant membership or change an account's role. */
+  masterAccountId: string;
+};
+export type StartupPlan = { mode: "legacy" } | { mode: "shared"; approval: SharedApproval;
+  identityConnection: string; savannahConnection: string; indianaConnection: string; sessionSecret: string; secure: boolean };
+
+/** Only for an OWNER-reviewed platform endpoint tuple, not a self-generated proof.
+ * Excludes user/password and connection-string flags; does not connect.
+ */
+export function endpointFingerprint(connection: string) {
+  try {
+    const u = new URL(connection);
+    if (!["postgres:", "postgresql:"].includes(u.protocol) || !u.hostname || u.pathname.length < 2) throw Error();
+    return createHash("sha256").update(JSON.stringify([u.hostname.toLowerCase(), u.port || "5432", decodeURIComponent(u.pathname)])).digest("hex");
+  } catch { throw new BranchAccessError("SHARED_ENDPOINT_INVALID", 503); }
+}
+function fail(): never { throw new BranchAccessError("SHARED_APPROVAL_REQUIRED", 503); }
+
+// Keep aligned with the independently reviewed NOLOGIN role-preparation packet.
+// A name is not proof of ACLs: schema/role/LOGIN/password attestation remains
+// mandatory before activation. No owner URL, SET ROLE or DATABASE_URL fallback.
+const runtimeRoles = {
+  identity: "tk_common_auth_runtime",
+  savannah: "tk_savannah_business_runtime",
+  indiana: "tk_indiana_business_runtime",
+} as const;
+function verifyPrincipal(connection: string, role: string) {
+  try {
+    const u = new URL(connection);
+    if (!["postgres:", "postgresql:"].includes(u.protocol) || !u.hostname ||
+      !/^\/[^/]+$/.test(decodeURIComponent(u.pathname)) || u.hash ||
+      decodeURIComponent(u.username) !== role || !decodeURIComponent(u.password).trim()) fail();
+    // pg accepts query-string overrides for user/password/host/database/options.
+    // Only reviewed TLS flags are allowed, once each. Reject all other flags,
+    // including service files and role/search_path options, before pool creation.
+    const seen = new Set<string>();
+    for (const [key, value] of u.searchParams) {
+      if (seen.has(key) ||
+        (key === "sslmode" ? !["require", "verify-ca", "verify-full"].includes(value) :
+          key === "channel_binding" ? value !== "require" : true)) fail();
+      seen.add(key);
+    }
+  } catch { fail(); }
+}
+export function verifyStartupPlan(plan: Exclude<StartupPlan, { mode: "legacy" }>) {
+  const a = plan.approval;
+  if (!a || a.version !== 1 || a.schemaAndRolesReviewed !== true || a.recoveryReviewed !== true || a.allowSharedStartup !== true
+    || typeof a.evidenceId !== "string" || !/^[a-zA-Z0-9._:-]{1,128}$/.test(a.evidenceId)) fail();
+  if (typeof a.masterAccountId !== "string" || !/^[a-zA-Z0-9._:-]{1,128}$/.test(a.masterAccountId)) fail();
+  verifyPrincipal(plan.identityConnection, runtimeRoles.identity);
+  verifyPrincipal(plan.savannahConnection, runtimeRoles.savannah);
+  verifyPrincipal(plan.indianaConnection, runtimeRoles.indiana);
+  for (const [endpoint, connection] of [[a.identity, plan.identityConnection], [a.savannah, plan.savannahConnection], [a.indiana, plan.indianaConnection]] as const) {
+    if (!endpoint || !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(endpoint.targetId) ||
+      !/^[a-f0-9]{64}$/.test(endpoint.endpointSha256) || endpointFingerprint(connection) !== endpoint.endpointSha256) fail();
+  }
+  validateBranchConnections({
+    savannah: { targetId: a.savannah.targetId, connectionString: plan.savannahConnection },
+    indiana: { targetId: a.indiana.targetId, connectionString: plan.indianaConnection }, enableIndiana: true,
+  });
+  // Same physical target must have the same independently verified identity,
+  // including when common identities are co-located with Savannah.
+  if ((a.identity.endpointSha256 === a.indiana.endpointSha256) ||
+    (a.identity.targetId === a.indiana.targetId) ||
+    ((a.identity.endpointSha256 === a.savannah.endpointSha256) !== (a.identity.targetId === a.savannah.targetId))) fail();
+  if (typeof plan.sessionSecret !== "string" || plan.sessionSecret.length < 32) fail();
+}
+
+/** Default legacy behavior. No credential reads at all until explicitly shared.
+ * Future settings only; this work does not set any real environment variables.
+ */
+export function readStartupPlan(read: (key: string) => string | undefined): StartupPlan {
+  const mode = read("TK_SERVER_MODE");
+  if (mode === undefined || mode === "legacy") return { mode: "legacy" };
+  if (mode !== "shared") fail();
+  try {
+    const approval = JSON.parse(read("TK_SHARED_APPROVAL_JSON") ?? "") as SharedApproval;
+    const plan = { mode: "shared" as const, approval, identityConnection: read("COMMON_AUTH_DATABASE_URL") ?? "",
+      savannahConnection: read("SAVANNAH_DATABASE_URL") ?? "", indianaConnection: read("INDIANA_DATABASE_URL") ?? "",
+      sessionSecret: read("SESSION_SECRET") ?? "", secure: read("NODE_ENV") === "production" };
+    verifyStartupPlan(plan);
+    return plan;
+  } catch { fail(); }
+}

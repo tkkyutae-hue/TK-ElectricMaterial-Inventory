@@ -1,0 +1,74 @@
+import { Ban, CircleHelp, PackageOpen } from "lucide-react";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { useCommonMessages } from "@/hooks/use-common-messages";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+type CommonProps = {
+  className?: string;
+  title?: string;
+  description?: string;
+};
+
+export type LoadStateProps =
+  | (CommonProps & { state: "empty"; onClearFilters?: never; onRetry?: never; onContactAdmin?: never })
+  | (CommonProps & { state: "filtered"; onClearFilters?: () => void; onRetry?: never; onContactAdmin?: never })
+  | (CommonProps & { state: "loading"; onClearFilters?: never; onRetry?: never; onContactAdmin?: never })
+  | (CommonProps & { state: "error"; onRetry?: () => void; onClearFilters?: never; onContactAdmin?: never })
+  | (CommonProps & { state: "forbidden"; onContactAdmin?: () => void; onClearFilters?: never; onRetry?: never })
+  | (CommonProps & { state: "unconfigured"; onContactAdmin?: () => void; onClearFilters?: never; onRetry?: never });
+
+/** Presentation-only shared state. Parent owns requests and supplies state/actions. */
+export function LoadState(props: LoadStateProps) {
+  const m = useCommonMessages();
+  const { className, title, description } = props;
+
+  if (props.state === "empty") {
+    return <EmptyState className={className} title={title ?? m.noDataTitle} description={description ?? m.noDataDescription} />;
+  }
+  if (props.state === "filtered") {
+    return (
+      <EmptyState
+        className={className}
+        icon={<PackageOpen className="h-12 w-12" aria-hidden="true" />}
+        title={title ?? m.filteredEmptyTitle}
+        description={description ?? m.filteredEmptyDescription}
+        action={props.onClearFilters ? <Button variant="outline" onClick={props.onClearFilters}>{m.clearFilters}</Button> : undefined}
+      />
+    );
+  }
+  if (props.state === "loading") {
+    return (
+      <div className={cn("py-12", className)} role="status" aria-live="polite" aria-busy="true">
+        <p className="mb-4 text-center text-sm text-muted-foreground">{title ?? m.loadingTitle}: {description ?? m.loadingDescription}</p>
+        <div className="mx-auto w-full max-w-md space-y-3" aria-hidden="true">
+          <div className="h-4 w-2/5 animate-pulse rounded bg-brand-100" />
+          <div className="h-3 w-full animate-pulse rounded bg-muted" />
+          <div className="h-3 w-4/5 animate-pulse rounded bg-muted" />
+        </div>
+      </div>
+    );
+  }
+  if (props.state === "error") {
+    return <ErrorState className={className} title={title ?? m.errorTitle} description={description ?? m.errorDescription} retryLabel={m.retry} onRetry={props.onRetry} />;
+  }
+  if (props.state === "forbidden") {
+    return (
+      <div className={cn("flex flex-col items-center py-12 text-center", className)} role="alert">
+        <Ban className="mb-4 h-10 w-10 text-amber-700" aria-hidden="true" />
+        <p className="text-sm font-semibold text-foreground">{title ?? m.forbiddenTitle}</p>
+        <p className="mt-1 max-w-md text-sm text-muted-foreground">{description ?? m.forbiddenDescription}</p>
+        {props.onContactAdmin && <Button variant="outline" className="mt-4" onClick={props.onContactAdmin}>{m.contactAdministrator}</Button>}
+      </div>
+    );
+  }
+  return (
+    <div className={cn("flex flex-col items-center py-12 text-center", className)} role="status">
+      <CircleHelp className="mb-4 h-10 w-10 text-muted-foreground" aria-hidden="true" />
+      <p className="text-sm font-semibold text-foreground">{title ?? m.unconfiguredTitle}</p>
+      <p className="mt-1 max-w-md text-sm text-muted-foreground">{description ?? m.unconfiguredDescription}</p>
+      {props.onContactAdmin && <Button variant="outline" className="mt-4" onClick={props.onContactAdmin}>{m.contactAdministrator}</Button>}
+    </div>
+  );
+}

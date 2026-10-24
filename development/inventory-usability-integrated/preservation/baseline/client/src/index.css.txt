@@ -1,0 +1,795 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: 'Inter', sans-serif;
+    --font-display: 'Plus Jakarta Sans', sans-serif;
+
+    --background: 210 20% 98%;      /* near-white with barely-there tint */
+    --foreground: 220 14% 10%;      /* #111827 — text */
+    --card: 0 0% 100%;
+    --card-foreground: 220 14% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 14% 10%;
+    --primary: 136 83% 23%;         /* #0A6B24 — deep green */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 132 20% 95%;
+    --secondary-foreground: 136 83% 23%;
+    --muted: 132 20% 95%;
+    --muted-foreground: 220 9% 46%; /* #6B7280 */
+    --accent: 141 84% 93%;          /* #DCFCE7 — soft green */
+    --accent-foreground: 136 83% 23%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 130 19% 87%;          /* #D9E5DB */
+    --input: 130 19% 87%;
+    --ring: 131 91% 36%;            /* #08B028 — focus ring */
+    --radius: 0.75rem;
+
+    /* Brand scale */
+    --brand-50:  132 56% 97%;
+    --brand-100: 141 84% 93%;
+    --brand-200: 141 79% 85%;
+    --brand-300: 141 65% 70%;
+    --brand-500: 131 91% 36%;
+    --brand-600: 141 63% 36%;
+    --brand-700: 136 83% 23%;
+    --brand-800: 136 83% 18%;
+    --brand-900: 136 83% 13%;
+  }
+
+  .dark {
+    --background: 145 12% 8%;
+    --foreground: 132 28% 90%;
+    --card: 145 14% 12%;
+    --card-foreground: 132 28% 90%;
+    --popover: 145 14% 12%;
+    --popover-foreground: 132 28% 90%;
+    --primary: 131 91% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 145 15% 17%;
+    --secondary-foreground: 132 28% 90%;
+    --muted: 145 15% 17%;
+    --muted-foreground: 132 15% 65%;
+    --accent: 145 15% 17%;
+    --accent-foreground: 132 28% 90%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 140 20% 23%;
+    --input: 140 20% 23%;
+    --ring: 131 91% 36%;
+  }
+
+  /* ── Field Mode design tokens ──────────────────────────────────────────── */
+  /* These mirror client/src/lib/fieldTokens.ts for CSS/Tailwind usage.     */
+  :root {
+    --field-bg:            #0d1410;
+    --field-surface:       #1c2b1f;
+    --field-surface-2:     #162019;
+    --field-border:        #1e2e21;
+    --field-border-strong: #2a4030;
+    --field-text:          #e2f0e5;
+    --field-text-muted:    #7aab82;
+    --field-text-dim:      #4a7052;
+    --field-accent:        #2ddb6f;
+    --field-accent-text:   #0d1410;
+    --field-danger:        #ff5050;
+    --field-warning:       #f5a623;
+    --field-info:          #5b9cf6;
+    --field-ordered:       #38bdf8;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply tracking-tight;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-sm;
+  }
+  
+  .premium-card {
+    @apply bg-card border border-border shadow-sm rounded-2xl transition-all duration-200 hover:shadow-md;
+  }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+  }
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+  display: none !important;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes selectFlash {
+  0%   { background-color: #dcfce7; }
+  60%  { background-color: #dcfce7; }
+  100% { background-color: transparent; }
+}
+
+.mat-row-flash {
+  animation: selectFlash 0.8s ease forwards;
+}
+
+@keyframes fieldPanelSlideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes fieldPanelSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@media (max-width: 767px) {
+  .hidden-mobile { display: none !important; }
+}
+
+/* Preserve space for header controls on narrow mobile screens. */
+@media (max-width: 380px) {
+  .field-brand-lockup { gap: 0.5rem !important; }
+  .field-brand-subtitle { display: none !important; }
+}
+
+/* Shared typography for every mode header's brand metadata row. */
+.tk-header-detail {
+  font-family: "'Barlow Condensed'", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.tk-header-detail-date {
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.tk-header-control {
+  font-family: "'Barlow Condensed'", sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.4px;
+}
+
+/* ── Project Operations theme bridge ─────────────────────────────────────────
+   Project Operations shares Field Mode's preference but uses its own Field
+   Ticket visual language. These scoped overrides keep the report list and
+   workspace readable without changing the admin application's color scheme. */
+.project-operations-shell {
+  --background: 132 20% 97%;
+  --foreground: 145 34% 9%;
+  --card: 0 0% 100%;
+  --card-foreground: 145 34% 9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 145 34% 9%;
+  --border: 130 19% 87%;
+  --input: 130 19% 87%;
+}
+
+.project-operations-shell[data-project-theme="dark"] {
+  --background: 145 12% 7%;
+  --foreground: 132 40% 90%;
+  --card: 140 15% 11%;
+  --card-foreground: 132 40% 90%;
+  --popover: 140 15% 11%;
+  --popover-foreground: 132 40% 90%;
+  --border: 140 20% 20%;
+  --input: 140 20% 20%;
+  color-scheme: dark;
+}
+
+.project-operations-shell[data-project-theme="dark"] .bg-white,
+.project-operations-shell[data-project-theme="dark"] .bg-slate-50,
+.project-operations-shell[data-project-theme="dark"] .bg-slate-100 {
+  background-color: var(--daily-report-paper) !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] .bg-slate-200 {
+  background-color: var(--daily-report-paper-muted) !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] .text-slate-900,
+.project-operations-shell[data-project-theme="dark"] .text-slate-800,
+.project-operations-shell[data-project-theme="dark"] .text-slate-700 {
+  color: var(--daily-report-ink) !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] .text-slate-600,
+.project-operations-shell[data-project-theme="dark"] .text-slate-500 {
+  color: var(--daily-report-text-muted) !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] .text-slate-400,
+.project-operations-shell[data-project-theme="dark"] .text-slate-300 {
+  color: #86a08d !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] .border-slate-50,
+.project-operations-shell[data-project-theme="dark"] .border-slate-100,
+.project-operations-shell[data-project-theme="dark"] .border-slate-200,
+.project-operations-shell[data-project-theme="dark"] .border-slate-300 {
+  border-color: var(--daily-report-rule) !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] input,
+.project-operations-shell[data-project-theme="dark"] textarea {
+  background-color: var(--daily-report-paper) !important;
+  border-color: var(--daily-report-rule) !important;
+  color: var(--daily-report-ink) !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] input::placeholder,
+.project-operations-shell[data-project-theme="dark"] textarea::placeholder {
+  color: #86a08d !important;
+}
+
+.project-operations-shell[data-project-theme="dark"] .hover\:bg-slate-50:hover,
+.project-operations-shell[data-project-theme="dark"] .hover\:bg-slate-100:hover {
+  background-color: var(--daily-report-paper-muted) !important;
+}
+
+@media (max-width: 639px) {
+  .project-operations-tiles {
+    gap: 12px !important;
+  }
+
+  .project-operations-tile {
+    min-height: 270px !important;
+    padding: 22px 14px !important;
+  }
+}
+
+/* Admin chrome follows the same persisted Field theme preference. Keep this
+   bridge scoped to the admin shell so Field, dialogs and photos are untouched. */
+.admin-theme-shell[data-field-theme="dark"] {
+  --background: 145 12% 8%;
+  --foreground: 132 28% 90%;
+  --card: 145 14% 12%;
+  --card-foreground: 132 28% 90%;
+  --popover: 145 14% 12%;
+  --popover-foreground: 132 28% 90%;
+  --secondary: 145 15% 17%;
+  --secondary-foreground: 132 28% 90%;
+  --muted: 145 15% 17%;
+  --muted-foreground: 132 15% 65%;
+  --accent: 145 15% 17%;
+  --accent-foreground: 132 28% 90%;
+  --border: 140 20% 23%;
+  --input: 140 20% 23%;
+  --ring: 131 91% 36%;
+  color-scheme: dark;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .bg-white,
+.admin-theme-shell[data-field-theme="dark"] .bg-slate-50,
+.admin-theme-shell[data-field-theme="dark"] .bg-slate-100 {
+  background-color: #162019 !important;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .bg-slate-200 {
+  background-color: #1c2b1f !important;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .text-slate-900,
+.admin-theme-shell[data-field-theme="dark"] .text-slate-800,
+.admin-theme-shell[data-field-theme="dark"] .text-slate-700 {
+  color: #e2f0e5 !important;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .text-slate-600,
+.admin-theme-shell[data-field-theme="dark"] .text-slate-500 {
+  color: #b6cbb9 !important;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .text-slate-400,
+.admin-theme-shell[data-field-theme="dark"] .text-slate-300 {
+  color: #8eaa93 !important;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .border-slate-50,
+.admin-theme-shell[data-field-theme="dark"] .border-slate-100,
+.admin-theme-shell[data-field-theme="dark"] .border-slate-200,
+.admin-theme-shell[data-field-theme="dark"] .border-slate-300 {
+  border-color: #2a4030 !important;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .hover\:bg-slate-50:hover,
+.admin-theme-shell[data-field-theme="dark"] .hover\:bg-slate-100:hover {
+  background-color: #1c2b1f !important;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .admin-mode-header {
+  background: linear-gradient(90deg, #152019 0%, #1a2a20 52%, #152019 100%);
+  border-bottom-color: #2a4030;
+  box-shadow: 0 1px 0 rgba(45, 219, 111, 0.12);
+}
+
+.admin-theme-shell[data-field-theme="dark"] .admin-mode-header .text-slate-400,
+.admin-theme-shell[data-field-theme="dark"] .admin-mode-header .text-slate-500 {
+  color: #8eaa93;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .admin-header-controls {
+  background: rgba(22, 32, 25, 0.9);
+  border-color: #2a4030;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .admin-header-home {
+  background: #1c2b1f;
+  border-color: #2a4030;
+  color: #c8deca;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .admin-sidebar,
+.admin-sidebar[data-field-theme="dark"] {
+  background-color: #162019;
+  border-color: #2a4030;
+  color: #e2f0e5;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .admin-nav-label,
+.admin-theme-shell[data-field-theme="dark"] .admin-back-home,
+.admin-theme-shell[data-field-theme="dark"] .admin-sidebar .text-muted-foreground,
+.admin-sidebar[data-field-theme="dark"] .admin-nav-label,
+.admin-sidebar[data-field-theme="dark"] .admin-back-home,
+.admin-sidebar[data-field-theme="dark"] .text-muted-foreground {
+  color: #8eaa93;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .admin-nav-link:not(.admin-nav-link-active),
+.admin-sidebar[data-field-theme="dark"] .admin-nav-link:not(.admin-nav-link-active) {
+  color: #b6cbb9;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .admin-nav-link:not(.admin-nav-link-active):hover,
+.admin-sidebar[data-field-theme="dark"] .admin-nav-link:not(.admin-nav-link-active):hover,
+.admin-theme-shell[data-field-theme="dark"] .admin-back-home:hover,
+.admin-sidebar[data-field-theme="dark"] .admin-back-home:hover {
+  background-color: #203326;
+  color: #e2f0e5;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .admin-nav-link-active,
+.admin-sidebar[data-field-theme="dark"] .admin-nav-link-active {
+  background-color: rgba(45, 219, 111, 0.13);
+  color: #5deba0;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .admin-user-name,
+.admin-sidebar[data-field-theme="dark"] .admin-user-name {
+  color: #e2f0e5;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .admin-sidebar-toggle {
+  background-color: #1c2b1f;
+  border-color: #2a4030;
+  color: #9ab59f;
+}
+
+.admin-theme-shell[data-field-theme="dark"] .admin-sign-out:hover,
+.admin-sidebar[data-field-theme="dark"] .admin-sign-out:hover {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+/* Native text-entry controls in admin content inherit the active palette.
+   Radix Select/listbox and image content are deliberately not blanket-styled. */
+.admin-theme-shell[data-field-theme="dark"] main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.admin-theme-shell[data-field-theme="dark"] main textarea {
+  background-color: #162019;
+  border-color: #2a4030;
+  color: #e2f0e5;
+}
+
+.admin-theme-shell[data-field-theme="dark"] main input::placeholder,
+.admin-theme-shell[data-field-theme="dark"] main textarea::placeholder {
+  color: #8eaa93;
+}
+
+body[data-field-theme="dark"] .project-operations-popover {
+  background: #162019 !important;
+  border-color: #2a4030 !important;
+  color: #e2f0e5 !important;
+}
+
+body[data-field-theme="dark"] .project-operations-popover .hover\:bg-slate-50:hover {
+  background-color: #1c2b1f !important;
+}
+
+@media (max-width: 639px) {
+  .mode-header {
+    height: 80px !important;
+    min-height: 80px !important;
+    flex-wrap: nowrap;
+    align-content: center;
+    row-gap: 0;
+    padding: 12px 14px !important;
+  }
+
+  .mode-header-brand {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+    gap: 10px !important;
+  }
+
+  .mode-header-brand img {
+    height: 36px !important;
+  }
+
+  .mode-header-controls {
+    flex: 0 0 auto;
+    max-width: 100%;
+    margin-left: auto !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .mode-header .tk-header-detail {
+    font-size: 9px;
+    letter-spacing: 0.35px;
+    white-space: nowrap !important;
+  }
+
+  .mode-header .field-header-mobile-detail,
+  .mode-header .app-header-mobile-detail,
+  .mode-header .project-header-mobile-detail {
+    display: flex !important;
+  }
+
+  .mode-header .mode-header-controls > * {
+    flex-shrink: 0;
+  }
+
+  /* App and project headers provide a short language code for compact phones. */
+  .mode-header-controls .language-switcher-full-label {
+    display: none;
+  }
+
+  .mode-header-controls .language-switcher-short-label {
+    display: inline;
+  }
+}
+
+@media (max-width: 340px) {
+  .mode-header-brand {
+    gap: 8px !important;
+  }
+
+  .mode-header .tk-header-detail {
+    font-size: 8px;
+    letter-spacing: 0;
+  }
+
+  .mode-header-controls {
+    gap: 2px !important;
+    padding: 3px !important;
+  }
+
+  .mode-header-controls .tk-header-control {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+}
+
+/* All mode headers use one compact mobile toolbar. */
+.language-switcher-short-label {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  .home-mode-header {
+    gap: 12px !important;
+  }
+
+  .home-mode-header-brand {
+    flex: 1 1 auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    gap: 10px !important;
+  }
+
+  .home-mode-header-brand > img {
+    height: 36px !important;
+  }
+
+  .home-mode-header-operations {
+    display: block;
+    margin-top: 3px;
+    font-family: "'Barlow Condensed'", sans-serif;
+    font-size: 9px;
+    letter-spacing: 1.2px;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .home-mode-header-controls {
+    flex: 0 0 auto !important;
+    gap: 4px !important;
+    padding: 0 !important;
+    margin-left: auto !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .home-mode-header-controls > [data-testid="btn-field-theme-switcher"],
+  .home-mode-header-controls > [data-testid="btn-language-switcher"],
+  .home-mode-header-controls > button[data-testid="btn-home-logout"] {
+    height: 34px !important;
+    min-height: 34px !important;
+    border-radius: 8px !important;
+    padding: 0 8px !important;
+  }
+
+  .home-mode-header-controls > button[data-testid="btn-home-logout"] {
+    width: 34px;
+    padding: 0 !important;
+  }
+
+  .home-mode-header-controls > button[data-testid="btn-home-logout"] > span {
+    display: none;
+  }
+
+  .home-mode-header-controls .language-switcher-full-label {
+    display: none;
+  }
+
+  .home-mode-header-controls .language-switcher-short-label {
+    display: inline;
+  }
+}
+
+
+/* Field filter pill-bar entry animation */
+@keyframes filterFadeDown {
+  from { opacity: 0; transform: translateY(-5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.filter-fade-in {
+  animation: filterFadeDown 180ms ease-out forwards;
+}
+
+/* Field dark toast override — active when FieldLayout sets data-field-mode on body */
+/* Note: data-toast-viewport is a custom attr added to ToastViewport in toast.tsx.    */
+/* Radix v1.2.x does NOT add data-radix-toast-viewport, so that selector never matched. */
+/* Destructive toasts (.destructive) retain their red variant styling — only default toasts get the dark green override. */
+body[data-field-mode] [data-toast-viewport] li:not(.destructive) {
+  background-color: #1c2b1f !important;
+  border-color: #2a4030 !important;
+  color: #e2f0e5 !important;
+}
+body[data-field-mode] [data-toast-viewport] li:not(.destructive) [data-title] {
+  color: #e2f0e5 !important;
+}
+body[data-field-mode] [data-toast-viewport] li:not(.destructive) [data-description] {
+  color: #7aab82 !important;
+}
+body[data-field-mode] [data-toast-viewport] li:not(.destructive) button[toast-close] {
+  color: #7aab82 !important;
+}
+body[data-field-mode] [data-toast-viewport] li:not(.destructive) button[toast-close]:hover {
+  color: #e2f0e5 !important;
+}
+/* Field mode: move toast to bottom so it doesn't hide behind FieldHeader */
+body[data-field-mode] [data-toast-viewport] {
+  top: auto !important;
+  bottom: max(env(safe-area-inset-bottom, 0px), 0px) !important;
+}
+/* Field mode: make action/undo buttons readable on dark (non-destructive) toast background */
+body[data-field-mode] [data-toast-viewport] li:not(.destructive) button:not([toast-close]) {
+  color: #5deba0 !important;
+  text-decoration-color: #5deba0 !important;
+}
+body[data-field-mode] [data-toast-viewport] li:not(.destructive) button:not([toast-close]):hover {
+  color: #e2f0e5 !important;
+  text-decoration-color: #e2f0e5 !important;
+}
+
+/* TV Display Mode — hide scrollbar completely (auto-scroll handles navigation) */
+.tv-scroll-area { -ms-overflow-style: none; scrollbar-width: none; }
+.tv-scroll-area::-webkit-scrollbar { display: none; }
+
+/* Generic no-scrollbar utility */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Crew Dispatch keeps the mobile split pane usable without exposing browser
+   chrome. Each column remains independently touch-scrollable. */
+html.crew-dispatch-assignment-active,
+body.crew-dispatch-assignment-active {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+html.crew-dispatch-assignment-active::-webkit-scrollbar,
+body.crew-dispatch-assignment-active::-webkit-scrollbar {
+  display: none;
+}
+
+.crew-dispatch-split {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.crew-dispatch-scroll-panel {
+  max-height: calc(100vh - 380px);
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 639px) {
+  .crew-dispatch-assignment {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .crew-dispatch-split {
+    min-height: 0;
+  }
+
+  .crew-dispatch-worker-panel {
+    width: 136px;
+  }
+
+  .crew-dispatch-scroll-panel {
+    max-height: calc(100dvh - 340px);
+    min-height: 240px;
+    padding-bottom: 1rem;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
+  .crew-dispatch-project-panel {
+    scroll-padding-bottom: 1rem;
+  }
+}
+
+/* Field Inventory — category strip scrollbar:
+   Mobile → hidden completely (swipe still works)
+   Desktop → very thin and subtle so it's not loud */
+@media (max-width: 767px) {
+  .fi-cat-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+  .fi-cat-scroll::-webkit-scrollbar { display: none; }
+}
+@media (min-width: 768px) {
+  .fi-cat-scroll { scrollbar-width: thin; scrollbar-color: rgba(45,219,111,0.18) transparent; }
+  .fi-cat-scroll::-webkit-scrollbar { height: 3px; }
+  .fi-cat-scroll::-webkit-scrollbar-track { background: transparent; }
+  .fi-cat-scroll::-webkit-scrollbar-thumb { background: rgba(45,219,111,0.18); border-radius: 10px; }
+  .fi-cat-scroll::-webkit-scrollbar-thumb:hover { background: rgba(45,219,111,0.38); }
+}
+
+/* Field Mode — thin, dark, unobtrusive scrollbars everywhere in field mode */
+body[data-field-mode] { scrollbar-width: thin; scrollbar-color: rgba(45,219,111,0.14) transparent; }
+body[data-field-mode] ::-webkit-scrollbar { width: 3px; height: 3px; }
+body[data-field-mode] ::-webkit-scrollbar-track { background: transparent; }
+body[data-field-mode] ::-webkit-scrollbar-thumb { background: rgba(45,219,111,0.14); border-radius: 10px; }
+body[data-field-mode] ::-webkit-scrollbar-thumb:hover { background: rgba(45,219,111,0.34); }
+
+/* ── Field Mode — dark dropdown / select popover ──────────────────────────── */
+body[data-field-mode] [role="listbox"] {
+  background: #0d1410 !important;
+  border: 1px solid #2a4030 !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.72) !important;
+  color: #c8deca !important;
+}
+body[data-field-mode] [role="option"] {
+  color: #c8deca !important;
+  font-size: 13px !important;
+  border-radius: 6px !important;
+}
+body[data-field-mode] [role="option"]:focus,
+body[data-field-mode] [role="option"][data-highlighted] {
+  background: rgba(45,219,111,0.12) !important;
+  color: #2ddb6f !important;
+  outline: none !important;
+}
+body[data-field-mode] [role="option"][data-state="checked"],
+body[data-field-mode] [role="option"][aria-selected="true"] {
+  color: #2ddb6f !important;
+  background: rgba(45,219,111,0.08) !important;
+}
+
+/* ── Field Mode — subtle interaction feedback ─────────────────────────────── */
+body[data-field-mode] button:active:not([disabled]) {
+  transform: scale(0.97);
+  transition: transform 0.08s ease;
+}
+
+/* ── Field Mode LIGHT theme overrides ───────────────────────────────────────
+   Applied when data-field-theme="light" is set on <body> by FieldLayout.
+   Overrides the dark-green color values set by the base [data-field-mode] rules.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Toast — readable on light background */
+body[data-field-mode][data-field-theme="light"] [data-toast-viewport] li:not(.destructive) {
+  background-color: #f0f7f2 !important;
+  border-color: #afc6b3 !important;
+  color: #1a2e1d !important;
+}
+body[data-field-mode][data-field-theme="light"] [data-toast-viewport] li:not(.destructive) [data-title] {
+  color: #1a2e1d !important;
+}
+body[data-field-mode][data-field-theme="light"] [data-toast-viewport] li:not(.destructive) [data-description] {
+  color: #3b6b42 !important;
+}
+body[data-field-mode][data-field-theme="light"] [data-toast-viewport] li:not(.destructive) button[toast-close] {
+  color: #3b6b42 !important;
+}
+body[data-field-mode][data-field-theme="light"] [data-toast-viewport] li:not(.destructive) button[toast-close]:hover {
+  color: #1a2e1d !important;
+}
+body[data-field-mode][data-field-theme="light"] [data-toast-viewport] li:not(.destructive) button:not([toast-close]) {
+  color: #1ca84e !important;
+  text-decoration-color: #1ca84e !important;
+}
+body[data-field-mode][data-field-theme="light"] [data-toast-viewport] li:not(.destructive) button:not([toast-close]):hover {
+  color: #1a2e1d !important;
+  text-decoration-color: #1a2e1d !important;
+}
+
+/* Scrollbars — lighter green tint on light background */
+body[data-field-mode][data-field-theme="light"] { scrollbar-color: rgba(28,168,78,0.20) transparent; }
+body[data-field-mode][data-field-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(28,168,78,0.20); }
+body[data-field-mode][data-field-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(28,168,78,0.40); }
+
+/* Dropdown / listbox — light surface */
+body[data-field-mode][data-field-theme="light"] [role="listbox"] {
+  background: #f4f8f5 !important;
+  border: 1px solid #afc6b3 !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.14) !important;
+  color: #1a2e1d !important;
+}
+body[data-field-mode][data-field-theme="light"] [role="option"] {
+  color: #1a2e1d !important;
+}
+body[data-field-mode][data-field-theme="light"] [role="option"]:focus,
+body[data-field-mode][data-field-theme="light"] [role="option"][data-highlighted] {
+  background: rgba(28,168,78,0.12) !important;
+  color: #1ca84e !important;
+}
+body[data-field-mode][data-field-theme="light"] [role="option"][data-state="checked"],
+body[data-field-mode][data-field-theme="light"] [role="option"][aria-selected="true"] {
+  color: #1ca84e !important;
+  background: rgba(28,168,78,0.08) !important;
+}

@@ -1,0 +1,263 @@
+import { useEffect, useRef, useState } from "react";
+import type { CSSProperties, KeyboardEvent, MouseEvent } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
+import {
+  branchMediaSource,
+  fetchBranchMediaBlob,
+  mediaCanRetry,
+  mediaErrorMessage,
+  mediaErrorState,
+  mediaMessages,
+} from "@/lib/branchMedia";
+import { documentBranchPrefix } from "@/lib/branchTransport";
+import { Button } from "@/components/ui/button";
+
+type ImageStatus = "loading" | "empty" | "failed" | "forbidden" | "unconfigured" | "missing" | "unknown" | "ready";
+type ScopedStatus = { scope: string; status: ImageStatus; error?: unknown };
+type ScopedObjectUrl = { scope: string; url: string };
+type BranchMediaImageProps = {
+  src?: string | null;
+  alt: string;
+  className?: string;
+  style?: CSSProperties;
+  compact?: boolean;
+  "data-testid"?: string;
+  onClick?: (event: MouseEvent<HTMLImageElement>) => void;
+};
+
+/** Fetches branch images through the authorized helper; ordinary non-branch images keep browser source behavior. */
+export function BranchMediaImage({
+  src,
+  alt,
+  className,
+  style,
+  compact = false,
+  "data-testid": testId,
+  onClick,
+}: BranchMediaImageProps) {
+  const { lang } = useLanguage();
+  const { user } = useAuth();
+  const messages = mediaMessages[lang] ?? mediaMessages.en;
+  const accountId = user?.id == null ? "" : String(user.id);
+  const source = src || "";
+  const scope = [documentBranchPrefix, accountId, source].join(":");
+  const scopeRef = useRef(scope);
+  scopeRef.current = scope;
+  const sessionEndedRef = useRef(false);
+  const objectUrlRef = useRef<ScopedObjectUrl | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [sessionEnded, setSessionEnded] = useState(false);
+  const [objectUrl, setObjectUrl] = useState<ScopedObjectUrl | null>(null);
+  const [statusState, setStatusState] = useState<ScopedStatus>({ scope, status: source ? "loading" : "empty" });
+  const currentObjectUrl = objectUrl?.scope === scope ? objectUrl.url : null;
+  const currentStatus = statusState.scope === scope
+    ? statusState.status
+    : !accountId && documentBranchPrefix ? "forbidden" : source ? "loading" : "empty";
+  const currentError = statusState.scope === scope ? statusState.error : null;
+  const approvedSource = documentBranchPrefix && source ? branchMediaSource(source) : undefined;
+
+  useEffect(() => {
+    const endSession = () => {
+      sessionEndedRef.current = true;
+      setSessionEnded(true);
+      const activeUrl = objectUrlRef.current;
+      if (activeUrl) URL.revokeObjectURL(activeUrl.url);
+      objectUrlRef.current = null;
+      setObjectUrl(null);
+      setStatusState({ scope: scopeRef.current, status: "forbidden", error: Object.assign(Error("BRANCH_REAUTHENTICATION_REQUIRED"), { code: "BRANCH_REAUTHENTICATION_REQUIRED" }) });
+    };
+    window.addEventListener("inventory:branch-session-ended", endSession);
+    return () => window.removeEventListener("inventory:branch-session-ended", endSession);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    let createdUrl: string | null = null;
+    const setStatus = (status: ImageStatus, error?: unknown) => {
+      if (active) setStatusState({ scope, status, error });
+    };
+    const releaseObjectUrl = () => {
+      if (!createdUrl) return;
+      URL.revokeObjectURL(createdUrl);
+      if (objectUrlRef.current?.url === createdUrl) objectUrlRef.current = null;
+      createdUrl = null;
+    };
+
+    if (!documentBranchPrefix) {
+      setStatus(source ? "ready" : "empty");
+      return () => { active = false; };
+    }
+    if (sessionEndedRef.current || sessionEnded) {
+      setStatus("forbidden", Object.assign(Error("BRANCH_REAUTHENTICATION_REQUIRED"), { code: "BRANCH_REAUTHENTICATION_REQUIRED" }));
+      return () => { active = false; };
+    }
+    if (!accountId) {
+      setStatus("forbidden", Object.assign(Error("BRANCH_ACCOUNT_REQUIRED"), { code: "BRANCH_ACCOUNT_REQUIRED" }));
+      return () => { active = false; };
+    }
+    if (!source) {
+      setStatus("empty");
+      return () => { active = false; };
+    }
+    if (!approvedSource) {
+      setStatus("unconfigured", Object.assign(Error("BRANCH_MEDIA_NOT_CONFIGURED"), { code: "BRANCH_MEDIA_NOT_CONFIGURED" }));
+      return () => { active = false; };
+    }
+
+    setStatus("loading");
+    setObjectUrl(null);
+    objectUrlRef.current = null;
+    void fetchBranchMediaBlob(approvedSource).then(blob => {
+      const url = URL.createObjectURL(blob);
+      createdUrl = url;
+      if (!active || sessionEndedRef.current) {
+        releaseObjectUrl();
+        return;
+      }
+      const result = { scope, url };
+      objectUrlRef.current = result;
+      setObjectUrl(result);
+      setStatus("ready");
+    }).catch(error => {
+      if (!active || sessionEndedRef.current) return;
+      const state = mediaErrorState(error);
+      const status: ImageStatus = state === "forbidden" ? "forbidden"
+        : state === "unconfigured" ? "unconfigured"
+          : state === "missing" ? "missing"
+            : state === "unknown" ? "unknown" : "failed";
+      setStatus(status, error);
+    });
+
+    return () => {
+      active = false;
+      releaseObjectUrl();
+    };
+  }, [scope, source, approvedSource, accountId, sessionEnded, attempt]);
+
+  function retry() {
+    if (!mediaCanRetry(currentError) || sessionEndedRef.current) return;
+    setAttempt(value => value + 1);
+  }
+
+  function handleImageError() {
+    if (!currentObjectUrl || sessionEndedRef.current || scopeRef.current !== scope) return;
+    const current = objectUrlRef.current;
+    if (current?.scope === scope) {
+      URL.revokeObjectURL(current.url);
+      objectUrlRef.current = null;
+    }
+    setObjectUrl(null);
+    const error = Object.assign(Error("BRANCH_MEDIA_UNAVAILABLE"), { code: "BRANCH_MEDIA_UNAVAILABLE" });
+    setStatusState({ scope, status: "failed", error });
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLImageElement>) {
+    if (!onClick || (event.key !== "Enter" && event.key !== " ")) return;
+    event.preventDefault();
+    onClick(event as unknown as MouseEvent<HTMLImageElement>);
+  }
+
+  function statusLabel() {
+    if (currentStatus === "loading") return messages.loading;
+    if (currentStatus === "empty") return messages.emptyPhotos;
+    if (currentStatus === "forbidden") return messages.forbidden;
+    if (currentStatus === "unconfigured") return messages.unavailable;
+    if (currentStatus === "missing") return messages.missing;
+    if (currentStatus === "unknown") return messages.unknown;
+    return mediaErrorMessage(currentError, lang);
+  }
+
+  function compactStatus(status: ImageStatus, label: string) {
+    const indicator: Record<ImageStatus, string> = {
+      loading: "…",
+      empty: "—",
+      failed: "×",
+      forbidden: "!",
+      unconfigured: "CFG",
+      missing: "NO",
+      unknown: "?",
+      ready: "✓",
+    };
+    const isError = status === "failed" || status === "forbidden" || status === "missing" || status === "unknown";
+    return (
+      <span
+        className={`box-border inline-grid min-h-0 min-w-0 max-h-full max-w-full place-items-center overflow-hidden text-xs leading-none ${className ?? ""}`}
+        style={style}
+        data-testid={testId}
+        role={isError ? "alert" : "status"}
+        aria-label={label}
+        title={label}
+        aria-live="polite"
+      >
+        <span aria-hidden="true">{indicator[status]}</span>
+        <span className="sr-only">{label}</span>
+      </span>
+    );
+  }
+
+  if (!documentBranchPrefix) {
+    if (!source) {
+      if (compact) return compactStatus("empty", messages.emptyPhotos);
+      return <div className={className} style={style} data-testid={testId} role="img" aria-label={messages.emptyPhotos}>{messages.emptyPhotos}</div>;
+    }
+    if (compact && statusState.scope === scope && statusState.status === "failed") {
+      return compactStatus("failed", messages.failed);
+    }
+    return (
+      <img
+        src={source}
+        alt={alt}
+        className={className}
+        style={style}
+        data-testid={testId}
+        onClick={onClick}
+        onKeyDown={handleKeyDown}
+        onError={compact ? () => setStatusState({ scope, status: "failed" }) : undefined}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+      />
+    );
+  }
+
+  if (sessionEnded || sessionEndedRef.current) {
+    if (compact) return compactStatus("forbidden", messages.forbidden);
+    return <div className={className} style={style} data-testid={testId} role="status">{messages.forbidden}</div>;
+  }
+
+  if (currentStatus === "ready" && currentObjectUrl) {
+    return (
+      <img
+        src={currentObjectUrl}
+        alt={alt}
+        className={className}
+        style={style}
+        data-testid={testId}
+        onClick={onClick}
+        onKeyDown={handleKeyDown}
+        onError={handleImageError}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+      />
+    );
+  }
+
+  const statusIsError = ["failed", "forbidden", "missing", "unknown"].includes(currentStatus);
+  if (compact) return compactStatus(currentStatus, statusLabel());
+  return (
+    <div
+      className={className}
+      style={style}
+      data-testid={testId}
+      role={statusIsError ? "alert" : "status"}
+      aria-live="polite"
+    >
+      <span>{statusLabel()}</span>
+      {mediaCanRetry(currentError) && !sessionEndedRef.current && (
+        <Button type="button" variant="outline" className="ml-2" onClick={retry}>
+          {messages.retry}
+        </Button>
+      )}
+    </div>
+  );
+}

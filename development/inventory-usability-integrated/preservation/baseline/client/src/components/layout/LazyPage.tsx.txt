@@ -1,0 +1,30 @@
+import { lazy, Suspense, type ComponentType } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useLanguage } from "@/hooks/use-language";
+
+function PageLoading() {
+  const { t } = useLanguage();
+  return (
+    <div role="status" aria-live="polite" aria-busy="true" className="flex min-h-40 items-center justify-center gap-3 text-muted-foreground">
+      <span aria-hidden="true" className="h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent" />
+      <span>{t.loading}</span>
+    </div>
+  );
+}
+
+/** Load only after the existing route/role guard renders this page. Keep the
+ * shell, branch context, cart and query provider outside its loading boundary.
+ * React retains the loaded module for subsequent visits in this document.
+ */
+export function lazyPage(load: () => Promise<{ default: ComponentType }>) {
+  const Page = lazy(load);
+  return function LazyPage() {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<PageLoading />}>
+          <Page />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  };
+}

@@ -1,0 +1,20 @@
+// In-process TS loading avoids tsx/esbuild workers or subprocesses. Only the
+// pure startup dependency graph and this synthetic suite may execute TS.
+const ts = require("typescript");
+const fs = require("node:fs");
+const path = require("node:path");
+const root = path.resolve(__dirname, "../..");
+const allowed = new Set([
+  "server/branches/startupPlan.ts", "server/branches/connectionPolicy.ts", "server/branches/runtime.ts",
+  "tests/startupCredentials.test.ts", "tests/helpers/startupCredentialScenarios.ts",
+  "development/startup-credential-separation/candidate.test.ts",
+  "development/startup-credential-separation/startupPlan.candidate.ts",
+].map(file => path.join(root, file)));
+require.extensions[".ts"] = (module, filename) => {
+  if (!allowed.has(filename)) throw Error("STARTUP_PLAN_IMPORT_NOT_ALLOWED");
+  const output = ts.transpileModule(fs.readFileSync(filename, "utf8"), {
+    compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, esModuleInterop: true },
+    fileName: filename,
+  });
+  module._compile(output.outputText, filename);
+};

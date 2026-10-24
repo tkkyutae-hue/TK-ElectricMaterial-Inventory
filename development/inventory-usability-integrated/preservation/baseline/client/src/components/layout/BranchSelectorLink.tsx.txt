@@ -1,0 +1,10 @@
+import type { AnchorHTMLAttributes } from "react";
+import { Link } from "wouter";
+import { documentBranchPrefix } from "@/lib/branchTransport";
+
+/** Branch exit must leave Wouter's base and create a fresh selector document. */
+export function BranchSelectorLink(props: Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href">) {
+  return documentBranchPrefix
+    ? <a {...props} href="/home" />
+    : <Link {...props} href="/home?branch=savannah" />;
+}

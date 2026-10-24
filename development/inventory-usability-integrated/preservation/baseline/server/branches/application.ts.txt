@@ -1,0 +1,165 @@
+import express, { type Express } from "express";
+import type { Server } from "node:http";
+import { createDatabaseStorage } from "../storage";
+import { registerBusinessRoutes, type BusinessRouteDependencies } from "../routes";
+import { createBranchRuntime, BranchAccessError, type BranchId } from "./runtime";
+import { createBranchMiddleware } from "./middleware";
+import { createBranchMedia, type PrivateMediaObjects, type LegacyPhotoProvider } from "./media";
+import { registerBranchMediaRoutes } from "./mediaRoutes";
+import { prepareIndianaCatalog, CatalogPreparationError } from "./catalogPreparation";
+import { createCatalogIntroduction, type CatalogApproval, type CatalogPhotoProvider } from "./catalogIntroduction";
+import { registerCatalogIntroductionRoutes } from "./catalogIntroductionRoutes";
+import { createCatalogSourceReview } from "./catalogSourceReview";
+import { registerCatalogSourceRoutes } from "./catalogSourceRoutes";
+
+type Connections = Pick<BusinessRouteDependencies, "db" | "pool">;
+export interface CommonBranchAuthority {
+  /** Pinned common account store, never obtained from a business source. */
+  accounts: BusinessRouteDependencies["authStorage"];
+  /** Server-maintained current membership; no admin or default-branch bypass. */
+  hasMembership(userId: string, branch: BranchId): Promise<boolean>;
+  withMembershipLock<T>(userId: string, branch: BranchId, work: () => Promise<T>): Promise<T>;
+  /** Optional, trusted designation plus both memberships, locked in one common transaction. */
+  withCatalogLock?<T>(userId: string, work: () => Promise<T>): Promise<T>;
+}
+
+/**
+ * Explicit, opt-in composition. No environment reads, connections, migrations,
+ * listeners, jobs or default mappings. The normal bootstrap does NOT call this.
+ * A disabled/missing branch remains a terminal error, including unknown routes.
+ */
+export async function mountBranchApplication(app: Express, server: Server, options: {
+  authority: CommonBranchAuthority;
+  catalogSourceReview?: { masterAccountId: string; approvedAssetKeys: readonly string[];
+    imageSelection?: import("./catalogPrivateAssets").CatalogImageSelection };
+  sources: Partial<Record<BranchId, { targetId: string; handle: Connections; media?: PrivateMediaObjects; legacyPhotos?: LegacyPhotoProvider;
+    catalog?: { approval: CatalogApproval; photos?: CatalogPhotoProvider } }>>;
+}) {
+  const { authority } = options;
+  const a = options.sources.savannah?.handle;
+  const b = options.sources.indiana?.handle;
+  if (a && b && (a.pool === b.pool || a.db === b.db)) {
+    throw new BranchAccessError("BRANCH_DATABASE_NOT_DISTINCT", 503);
+  }
+  const loadIdentity = async (id: string) => {
+    const user = await authority.accounts.getUser(id);
+    return user && user.id === id && user.role && user.status
+      ? { id: user.id, role: user.role, status: user.status } : null;
+  };
+  const runtime = createBranchRuntime({
+    sources: options.sources,
+    canAccess: (actor, branch) => authority.hasMembership(actor.id, branch),
+  });
+  const routers = new Map<BranchId, Express>();
+  for (const branch of ["savannah", "indiana"] as const) {
+    const source = options.sources[branch];
+    if (!source) continue;
+    const router = express();
+    const review = branch === "indiana" && options.catalogSourceReview && options.sources.savannah
+      ? createCatalogSourceReview({
+        source: { targetId: options.sources.savannah.targetId,
+          connect: () => options.sources.savannah!.handle.pool.connect() },
+        sourceTargetId: options.sources.savannah.targetId, targetId: source.targetId,
+        masterAccountId: options.catalogSourceReview.masterAccountId, authority,
+        imageSelection: options.catalogSourceReview.imageSelection,
+        relationshipPolicy: source.catalog?.approval.relationshipPolicy,
+      }) : undefined;
+    registerCatalogSourceRoutes(router, review ? {
+      service: review, approvedAssetKeys: options.catalogSourceReview!.approvedAssetKeys,
+    } : undefined);
+    if (source.catalog && (branch !== "indiana" || !options.sources.savannah)) {
+      throw new BranchAccessError("CATALOG_INDIANA_ONLY", 503);
+    }
+    const catalog = source.catalog ? createCatalogIntroduction({
+      pool:source.handle.pool,authority,targetId:source.targetId,
+      sourceTargetId:options.sources.savannah!.targetId,...source.catalog,
+    }) : undefined;
+    if (catalog) registerCatalogIntroductionRoutes(router,catalog);
+    router.post("/api/admin/catalog-preparation/preview", async (req, res) => {
+      res.setHeader("Cache-Control", "private, no-store");
+      try {
+        if (branch !== "indiana" || !options.sources.savannah) throw new BranchAccessError("CATALOG_INDIANA_ONLY", 409);
+        const id = (req as any).currentUser?.id;
+        if (typeof id !== "string") throw new BranchAccessError("BRANCH_ACCOUNT_REQUIRED", 401);
+        const result = await authority.withMembershipLock(id, branch, async () => {
+          const actor = await authority.accounts.getUser(id);
+          if (!actor || actor.status !== "active" || actor.role !== "admin"
+            || !(await authority.hasMembership(id, branch))) throw new BranchAccessError("BRANCH_ACCESS_DENIED", 403);
+          return prepareIndianaCatalog({
+            sourceBranch: "savannah", targetBranch: "indiana", targetState: "new-empty", previewOnly: true,
+            sourceTargetId: options.sources.savannah!.targetId, targetId: source.targetId,
+            categories: req.body?.categories, items: req.body?.items,
+          });
+        });
+        res.json(result);
+      } catch (e) {
+        res.status(e instanceof CatalogPreparationError ? 400 : e instanceof BranchAccessError ? e.status : 503)
+          .json({ code: e instanceof CatalogPreparationError || e instanceof BranchAccessError ? e.code : "CATALOG_PREPARATION_UNAVAILABLE" });
+      }
+    });
+    // Exact private handlers precede the broad legacy media gate. Missing
+    // configuration is an explicit error, never shared-bucket/local fallback.
+    registerBranchMediaRoutes(router, source.media
+      ? createBranchMedia({ branch, pool: source.handle.pool, authority, objects: source.media,
+        targetId: source.targetId, legacyPhotos: source.legacyPhotos, catalog }) : undefined, branch);
+    router.use((_req, res, next) => {
+      // Existing handlers sometimes send SQL error messages themselves. Do not
+      // expose those details through a branch route or imply a safe write retry.
+      const json = res.json.bind(res);
+      res.json = body => {
+        if (res.statusCode >= 500) {
+          return json(body?.code === "RESULT_UNKNOWN"
+            ? { code: "RESULT_UNKNOWN", operationId: body.operationId }
+            : { code: "BRANCH_DATA_UNAVAILABLE" });
+        }
+        return json(body);
+      };
+      next();
+    });
+    const commandIdentity = async (id: string) => {
+      const actor = await authority.accounts.getUser(id);
+      if (!actor || actor.id !== id || actor.status !== "active") return null;
+      if (!(await authority.hasMembership(id, branch))) return null;
+      return actor.role ? { id: actor.id, role: actor.role, status: actor.status } : null;
+    };
+    await registerBusinessRoutes(server, router, {
+      ...source.handle,
+      storage: createDatabaseStorage(source.handle.db, source.handle.pool, id => authority.accounts.getUser(id)),
+      authStorage: authority.accounts,
+      commandIdentity,
+      commandAuthority: (id, work) => authority.withMembershipLock(id, branch, work),
+    });
+    router.use((_req, res) => { res.status(404).json({ code: "BRANCH_ROUTE_NOT_FOUND" }); });
+    router.use((error: unknown, _req: any, res: any, _next: any) => {
+      res.status(503).json({ code: "BRANCH_DATA_UNAVAILABLE" });
+    });
+    routers.set(branch, router);
+  }
+  app.get("/api/branch-access", async (req, res) => {
+    try {
+      const id = (req.session as any)?.userId;
+      const actor = typeof id === "string" ? await loadIdentity(id) : null;
+      if (!actor || actor.status !== "active") return res.status(401).json({ code: "BRANCH_ACCOUNT_REQUIRED" });
+      const branches: BranchId[] = [];
+      for (const branch of routers.keys()) if (await authority.hasMembership(actor.id, branch)) branches.push(branch);
+      res.json({ branches });
+    } catch {
+      res.status(503).json({ code: "BRANCH_AUTHORIZATION_UNAVAILABLE" });
+    }
+  });
+  app.use("/branches/:branch/api",
+    createBranchMiddleware({ runtime, loadIdentity }),
+    (req, res, next) => {
+      try {
+        const { branch } = runtime.identity();
+        const router = routers.get(branch);
+        if (!router) throw new BranchAccessError("BRANCH_UNAVAILABLE", 503);
+        // Restore the existing business API paths inside the mounted router.
+        req.url = "/api" + req.url;
+        router(req, res, next);
+      } catch {
+        res.status(503).json({ code: "BRANCH_UNAVAILABLE" });
+      }
+    });
+  return runtime;
+}

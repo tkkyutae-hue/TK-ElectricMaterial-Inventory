@@ -1,0 +1,126 @@
+import { createHash } from "node:crypto";
+import type { CatalogPhotoProvider } from "./catalogIntroduction";
+import { BranchAccessError } from "./runtime";
+import type { StartupPlan } from "./startupPlan";
+import { createMediaStorage } from "./sharedMediaStorage";
+
+type Kind = "item" | "category" | "group";
+export type CatalogImageReference = {
+  kind: Kind; sourceKey: string; sourceImageKey: string; slot: number; referenceSha256: string;
+};
+type Mapping = Omit<CatalogImageReference, "referenceSha256"> & { assetKey: string };
+export type CatalogImageSelection = {
+  assets: readonly { key: string; sha256: string; type: "image/jpeg" | "image/png" | "image/webp" }[];
+  photos: CatalogPhotoProvider;
+  select(current: readonly CatalogImageReference[]): { images: Mapping[]; omitted: Omit<CatalogImageReference, "referenceSha256">[] };
+};
+const digest = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
+const hash = /^[a-f0-9]{64}$/;
+const run = /^[a-f0-9-]{36}$/;
+const identity = (v: { kind: string; sourceKey: string; slot: number }) => JSON.stringify([v.kind, v.sourceKey, v.slot]);
+function fail(code: string): never { throw new BranchAccessError(code, 503); }
+
+/** Exact private manifest digest is the authority, never an HTTP body. This
+ * supplies read-only selection/copies; it does not authorize SQL import. */
+export function createCatalogPrivateAssets(options: {
+  manifest: Buffer; manifestSha256: string; targetId: string;
+  readPrivate(relative: string, maxBytes: number): Promise<Buffer | null>;
+}): CatalogImageSelection {
+  if (!hash.test(options.manifestSha256) || digest(options.manifest) !== options.manifestSha256) fail("CATALOG_MANIFEST_CHANGED");
+  let m: any;
+  try { m = JSON.parse(options.manifest.toString("utf8")); } catch { fail("CATALOG_MANIFEST_INVALID"); }
+  if (m?.version !== 2 || m.privateBusinessPhotosIncluded !== false || m.originalPhotosChanged !== false ||
+    m.materialDefinitionsRemoved !== 0 || m.readyForApprovedCatalogAssetSelection !== true ||
+    m.omissionApproval?.failedCatalogImageOmissionApproved !== true ||
+    m.omissionApproval?.preserveAllMaterialDefinitions !== true ||
+    m.omissionApproval?.imageSubstitutionAllowed !== false ||
+    m.omissionApproval?.catalogSqlImportAllowed !== false ||
+    !Array.isArray(m.assets) || !Array.isArray(m.bindings) || !Array.isArray(m.approvedMappings) || !Array.isArray(m.omittedBindings) ||
+    m.assets.length > 10000 || m.bindings.length > 10000) fail("CATALOG_MANIFEST_INVALID");
+  const byReference = new Map<string, any>();
+  const byKey = new Map<string, any>();
+  for (const a of m.assets) {
+    if (!hash.test(a?.referenceSha256) || byReference.has(a.referenceSha256)) fail("CATALOG_MANIFEST_INVALID");
+    if (a.status === "ready") {
+      if (!hash.test(a.sha256) || !run.test(a.storageRunId) ||
+        a.assetKey !== `catalog:${a.storageRunId}:${a.sha256}` ||
+        a.relativeObjectReference !== `catalog-illustration-preservation/${a.storageRunId}/assets/${a.sha256}` ||
+        !["image/jpeg", "image/png", "image/webp"].includes(a.type) ||
+        !Number.isSafeInteger(a.bytes) || a.bytes < 1 || a.bytes > 5 * 1024 * 1024) fail("CATALOG_MANIFEST_INVALID");
+      const prior = byKey.get(a.assetKey);
+      if (prior && (prior.sha256 !== a.sha256 || prior.bytes !== a.bytes || prior.type !== a.type)) fail("CATALOG_MANIFEST_INVALID");
+      byKey.set(a.assetKey, a);
+    } else if (a.status !== "omitted_by_owner" || a.assetKey) fail("CATALOG_MANIFEST_INVALID");
+    byReference.set(a.referenceSha256, a);
+  }
+  const bindings = new Map<string, any>(), used = new Set<string>();
+  const images: Mapping[] = [], omitted: Omit<CatalogImageReference, "referenceSha256">[] = [];
+  for (const b of m.bindings) {
+    const a = byReference.get(b?.referenceSha256);
+    if (!a || !["item", "category", "group"].includes(b.kind) ||
+      !new RegExp(`^${b.kind}:[1-9][0-9]*$`).test(b.sourceKey) ||
+      (b.kind === "item" ? !/^item-image:[1-9][0-9]*$/.test(b.sourceImageKey) : b.sourceImageKey !== b.sourceKey) ||
+      !Number.isSafeInteger(b.slot) || b.slot < 0 || b.slot > (b.kind === "item" ? 3 : 0) ||
+      bindings.has(identity(b)) || b.status !== a.status || b.assetKey !== (a.assetKey ?? null)) fail("CATALOG_MANIFEST_INVALID");
+    bindings.set(identity(b), b); used.add(b.referenceSha256);
+    const base = { kind: b.kind, sourceKey: b.sourceKey, sourceImageKey: b.sourceImageKey, slot: b.slot };
+    if (b.status === "ready") images.push({ ...base, assetKey: b.assetKey });
+    else omitted.push(base);
+  }
+  if (used.size !== byReference.size || images.length !== m.approvedMappings.length || omitted.length !== m.omittedBindings.length ||
+    m.assets.length !== m.omissionApproval.expectedUniqueReferences ||
+    m.bindings.length !== m.omissionApproval.expectedSourceSlots ||
+    omitted.length !== m.omissionApproval.approvedFailedSlots ||
+    m.assets.filter((a: any) => a.status === "omitted_by_owner").length !== m.omissionApproval.approvedFailedUniqueReferences) {
+    fail("CATALOG_MANIFEST_INVALID");
+  }
+  return {
+    assets: Object.freeze([...byKey.values()].map(a => Object.freeze({ key: a.assetKey, sha256: a.sha256, type: a.type }))),
+    photos: {
+      targetId: options.targetId, reviewEvidenceId: "approved-catalog-images-2026-10-22",
+      async read(key) {
+        const a = byKey.get(key);
+        if (!a) fail("CATALOG_ASSET_NOT_APPROVED");
+        const bytes = await options.readPrivate(a.relativeObjectReference, a.bytes);
+        if (!bytes) return null;
+        if (bytes.length !== a.bytes || digest(bytes) !== a.sha256) fail("CATALOG_ASSET_CONTENT_CHANGED");
+        return Buffer.from(bytes);
+      },
+    },
+    select(current) {
+      if (current.length !== bindings.size) fail("CATALOG_IMAGE_SOURCE_CHANGED");
+      const seen = new Set<string>();
+      for (const r of current) {
+        const b = bindings.get(identity(r));
+        if (!b || seen.has(identity(r)) || b.sourceImageKey !== r.sourceImageKey || b.referenceSha256 !== r.referenceSha256) {
+          fail("CATALOG_IMAGE_SOURCE_CHANGED");
+        }
+        seen.add(identity(r));
+      }
+      return { images: structuredClone(images), omitted: structuredClone(omitted) };
+    },
+  };
+}
+
+/** Loads only the pinned prepared manifest. No source DB reads, photo copying,
+ * import approval, HTTP route execution or SQL writes occur at startup. */
+export async function loadDevelopmentCatalogAssets(plan: StartupPlan, env: Record<string, string | undefined>) {
+  const reference = env.TK_CATALOG_IMAGE_MANIFEST_REFERENCE;
+  if (plan.mode !== "shared" || !reference) return {};
+  if (env.NODE_ENV !== "development" ||
+    !/^catalog-illustration-preservation\/[a-f0-9-]{36}\/manifest\.json$/.test(reference)) fail("CATALOG_MANIFEST_CONFIGURATION_INVALID");
+  const sha256 = env.TK_CATALOG_IMAGE_MANIFEST_SHA256 ?? "";
+  if (!hash.test(sha256)) fail("CATALOG_MANIFEST_CONFIGURATION_INVALID");
+  const parts = (env.PRIVATE_OBJECT_DIR ?? "").replace(/^\/+|\/+$/g, "").split("/");
+  if (parts.length < 2 || parts.some(p => !p || p === "." || p === ".." || /[\\%\u0000-\u001f]/.test(p))) {
+    fail("CATALOG_MANIFEST_CONFIGURATION_INVALID");
+  }
+  const [bucket, ...prefix] = parts;
+  const { objectStorageClient } = await import("../replit_integrations/object_storage/objectStorage");
+  const storage = createMediaStorage(objectStorageClient);
+  const readPrivate = (relative: string, max: number) => storage.read(bucket, [...prefix, relative].join("/"), max);
+  const manifest = await readPrivate(reference, 4 * 1024 * 1024);
+  if (!manifest) fail("CATALOG_MANIFEST_MISSING");
+  return { catalogImages: createCatalogPrivateAssets({ manifest, manifestSha256: sha256,
+    targetId: plan.approval.indiana.targetId, readPrivate }) };
+}

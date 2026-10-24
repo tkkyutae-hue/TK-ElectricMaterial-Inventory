@@ -1,0 +1,43 @@
+import { createHash } from "node:crypto";
+import type { PrivateMediaObjects } from "./media";
+
+/** Structural injected bucket interface; never constructs clients/reads secrets. */
+export interface PrivateBucket {
+  file(key: string): {
+    save(data: Buffer, options: unknown): Promise<unknown>;
+    getMetadata(): Promise<[{ metadata?: Record<string, unknown> }]>;
+    download(): Promise<[Buffer]>;
+  };
+}
+export function createPrivateMediaObjects(bucket: PrivateBucket, branch: "savannah" | "indiana",
+  approval: { privateAccessVerified: true }): PrivateMediaObjects {
+  if (approval.privateAccessVerified !== true) throw Error("BRANCH_MEDIA_PRIVATE_ACCESS_REQUIRED");
+  function file(key: string) {
+    const prefix = `branches/${branch}/media/v1/`;
+    if (!key.startsWith(prefix) || !/^[a-f0-9-]{36}$/i.test(key.slice(prefix.length))) {
+      throw Error("BRANCH_MEDIA_PATH_INVALID");
+    }
+    return bucket.file(key);
+  }
+  return {
+    async put(key, data, type, hash) {
+      if (createHash("sha256").update(data).digest("hex") !== hash) throw Error("BRANCH_MEDIA_HASH_INVALID");
+      const object = file(key);
+      try {
+        await object.save(data, { resumable: false, preconditionOpts: { ifGenerationMatch: 0 },
+          metadata: { contentType: type, cacheControl: "private, no-store",
+            metadata: { branch, sha256: hash } } });
+      } catch (e: any) {
+        if (Number(e.code) !== 412) throw Error("BRANCH_MEDIA_STORE_UNAVAILABLE");
+        const [metadata] = await object.getMetadata();
+        if (metadata.metadata?.branch !== branch || metadata.metadata?.sha256 !== hash) {
+          throw Error("BRANCH_MEDIA_OBJECT_CONFLICT");
+        }
+      }
+    },
+    async get(key) {
+      try { return (await file(key).download())[0]; }
+      catch (e: any) { if (Number(e.code) === 404) return null; throw Error("BRANCH_MEDIA_STORE_UNAVAILABLE"); }
+    },
+  };
+}

@@ -1,0 +1,301 @@
+import { createHash } from "node:crypto";
+import sharp from "sharp";
+import type { Pool, PoolClient } from "pg";
+import { prepareIndianaCatalog } from "./catalogPreparation";
+import { prepareNewBusinessSchema } from "./newBusinessSchema";
+import { BranchAccessError } from "./runtime";
+import type { CommonBranchAuthority } from "./application";
+
+type Dict = Record<string, any>;
+export type CatalogApproval = Readonly<{
+  reviewId: string; sourceTargetId: string; targetId: string;
+  inputSha256: string; masterAccountId: string; newEmptyTargetReviewed: true;
+  assets: readonly Readonly<{ key: string; sha256: string; type: "image/jpeg" | "image/png" | "image/webp" }>[];
+  photoReviewId?: string;
+  sharedCatalogPhotosReviewed?: true;
+  relationshipPolicy?: "unassigned";
+  /** Explicit owner choice; distinct source entities with NULL manufacturers
+   * may share display labels, as permitted by the existing PostgreSQL key. */
+  groupPolicy?: "preserve-null-manufacturer-groups";
+}>;
+export interface CatalogPhotoProvider {
+  targetId: string; reviewEvidenceId: string;
+  /** Approved catalog-only read capability. Never accepts a client URL/path. */
+  read(key: string): Promise<Buffer | null>;
+}
+function fail(code: string, status = 409): never { throw new BranchAccessError(code, status); }
+function object(v: any): Dict {
+  if (!v || typeof v !== "object" || Array.isArray(v)) fail("CATALOG_MAPPING_INVALID", 400);
+  return v;
+}
+function key(v: any): string {
+  if (typeof v !== "string" || !/^[A-Za-z0-9._:-]{1,128}$/.test(v)) fail("CATALOG_KEY_INVALID", 400);
+  return v;
+}
+function rows(v: any): Dict[] {
+  if (!Array.isArray(v) || v.length > 10000) fail("CATALOG_MAPPING_INVALID", 400);
+  return v.map(object);
+}
+function number(v: any): number {
+  if (!Number.isSafeInteger(v) || v <= 0) fail("CATALOG_MAPPING_INVALID", 400);
+  return v;
+}
+function stable(v: any): any {
+  if (Array.isArray(v)) return v.map(stable);
+  if (v && typeof v === "object") return Object.fromEntries(Object.keys(v).sort().map(k => [k, stable(v[k])]));
+  return v;
+}
+export const catalogDigest = (v: unknown) => createHash("sha256").update(JSON.stringify(stable(v))).digest("hex");
+const imageUrl = (kind: string, id: number, slot: number) =>
+  `/branches/indiana/api/catalog-images/${kind}/${id}/${slot}`;
+const idPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const imageTables = { item: "items", category: "categories", group: "item_groups" } as const;
+const itemColumns: Record<string, string> = {
+  sku: "sku", name: "name", unitOfMeasure: "unit_of_measure", description: "description",
+  brand: "brand", manufacturer: "manufacturer", isActive: "is_active",
+  subcategory: "subcategory", detailType: "detail_type", subType: "sub_type",
+  baseItemName: "base_item_name", sizeLabel: "size_label", sizeSortValue: "size_sort_value",
+  minimumStock: "minimum_stock", reorderPoint: "reorder_point", reorderQuantity: "reorder_quantity",
+  trackingMode: "tracking_mode",
+};
+
+/**
+ * Explicit, new-target-only executor. No environment/source DB/storage imports.
+ * Review evidence is supplied by trusted composition, NOT accepted from HTTP.
+ * Provisioning/catalog DDL is deliberately absent from startup and execution.
+ */
+export function createCatalogIntroduction(options: {
+  pool: Pool; authority: CommonBranchAuthority; targetId: string; sourceTargetId: string;
+  approval: CatalogApproval; photos?: CatalogPhotoProvider; photoTimeoutMs?: number;
+}) {
+  const { pool, authority } = options;
+  const targetId = options.targetId, sourceTargetId = options.sourceTargetId;
+  // Snapshot review inputs so later mutation of a caller's config cannot widen approval.
+  const approval: CatalogApproval = JSON.parse(JSON.stringify(options.approval));
+  if (approval.targetId !== options.targetId || approval.sourceTargetId !== options.sourceTargetId
+    || options.targetId === options.sourceTargetId || approval.newEmptyTargetReviewed !== true
+    || !/^[a-f0-9]{64}$/.test(approval.inputSha256)) fail("CATALOG_REVIEW_REQUIRED", 503);
+  key(approval.reviewId); key(approval.masterAccountId);
+  key(targetId);key(sourceTargetId);
+  const assets = new Map(approval.assets.map(a => {
+    key(a.key);
+    if (!/^[a-f0-9]{64}$/.test(a.sha256) || !["image/jpeg", "image/png", "image/webp"].includes(a.type)) fail("CATALOG_ASSET_REVIEW_REQUIRED", 503);
+    return [a.key, Object.freeze({ ...a })];
+  }));
+  if (assets.size !== approval.assets.length) fail("CATALOG_ASSET_REVIEW_REQUIRED", 503);
+  if (assets.size) {
+    if (approval.sharedCatalogPhotosReviewed !== true || !approval.photoReviewId) fail("CATALOG_ASSET_REVIEW_REQUIRED",503);
+    key(approval.photoReviewId);
+  }
+  const photos = options.photos;
+  const readPhoto = photos?.read.bind(photos);
+  if (photos && (photos.targetId !== options.targetId || photos.reviewEvidenceId !== approval.photoReviewId)) {
+    fail("CATALOG_PHOTO_PROVIDER_NOT_PINNED", 503);
+  }
+  const timeout = options.photoTimeoutMs ?? 5000;
+  if (!Number.isInteger(timeout) || timeout < 1 || timeout > 10000) fail("CATALOG_PHOTO_TIMEOUT_INVALID", 503);
+  async function master<T>(actor: string, work: () => Promise<T>) {
+    if (actor !== approval.masterAccountId || !authority.withCatalogLock) fail("CATALOG_MASTER_REQUIRED", 403);
+    return authority.withCatalogLock(actor, work);
+  }
+  function plan(input: unknown) {
+    const raw = object(input);
+    if (catalogDigest(raw) !== approval.inputSha256) fail("CATALOG_REVIEW_MISMATCH", 409);
+    const p = prepareIndianaCatalog({ ...raw, sourceBranch: "savannah", targetBranch: "indiana",
+      sourceTargetId, targetId, targetState: "new-empty", previewOnly: true });
+    if (!p.categories.length || !p.items.length) fail("CATALOG_EMPTY_INPUT",400);
+    // These preview fields are not columns in the actual Inventory schema. Never silently discard them.
+    if (p.categories.some(c => c.parentSourceKey !== null || c.slug !== null)
+      || p.items.some(i => i.size !== null || i.spec !== null)) fail("CATALOG_FIELD_MAPPING_REQUIRED", 400);
+    if (new Set(p.categories.map(c => c.name)).size !== p.categories.length) fail("CATALOG_DUPLICATE_CATEGORY_NAME", 400);
+    const mapping = object(raw.mappings ?? {});
+    const maps = (list: any) => {
+      const result = new Map<string, number>();
+      for (const r of rows(list ?? [])) {
+        const source = key(r.sourceKey);
+        if (result.has(source)) fail("CATALOG_DUPLICATE_MAPPING", 400);
+        result.set(source, number(r.targetId));
+      }
+      return result;
+    };
+    const locations = maps(mapping.locations), suppliers = maps(mapping.suppliers);
+    if (approval.relationshipPolicy === "unassigned") {
+      if (raw.relationshipPolicy !== "unassigned" || locations.size || suppliers.size ||
+        rows(raw.items).some(r => r.primaryLocationId != null || r.locationId != null || r.supplierId != null) ||
+        rows(mapping.items ?? []).some(r => r.locationSourceKey != null || r.supplierSourceKey != null)) {
+        fail("CATALOG_UNASSIGNED_RELATIONSHIPS_REQUIRED", 400);
+      }
+    } else if (raw.relationshipPolicy !== undefined) fail("CATALOG_RELATIONSHIP_REVIEW_REQUIRED", 503);
+    const itemLinks = new Map<string, Dict>();
+    const items = new Set(p.items.map(i => i.sourceKey)), categories = new Set(p.categories.map(c => c.sourceKey));
+    for (const r of rows(mapping.items ?? [])) {
+      if (!items.has(r.sourceKey) || itemLinks.has(r.sourceKey)) fail("CATALOG_ITEM_MAPPING_INVALID", 400);
+      if (r.locationSourceKey != null && !locations.has(r.locationSourceKey)) fail("CATALOG_LOCATION_MAPPING_MISSING", 400);
+      if (r.supplierSourceKey != null && !suppliers.has(r.supplierSourceKey)) fail("CATALOG_SUPPLIER_MAPPING_MISSING", 400);
+      itemLinks.set(r.sourceKey, r);
+    }
+    // A supplied original relationship needs an explicit map. Omissions may not erase it silently.
+    for (const original of rows(raw.items)) {
+      const source = String(original.sourceKey ?? original.id), link = itemLinks.get(source);
+      if ((original.primaryLocationId != null || original.locationId != null) && !link?.locationSourceKey) fail("CATALOG_LOCATION_MAPPING_MISSING", 400);
+      if (original.supplierId != null && !link?.supplierSourceKey) fail("CATALOG_SUPPLIER_MAPPING_MISSING", 400);
+      if (original.imageUrl != null && !rows(raw.images ?? []).some(r => r.kind === "item" && r.sourceKey === source)) fail("CATALOG_IMAGE_MAPPING_MISSING", 400);
+    }
+    const groups = rows(raw.groups ?? []).map(r => {
+      const sourceKey = key(r.sourceKey), categorySourceKey = key(r.categorySourceKey);
+      if (!categories.has(categorySourceKey) || typeof r.baseItemName !== "string" || !r.baseItemName.trim()
+        || r.baseItemName.length > 250 || (r.manufacturerName != null && (typeof r.manufacturerName !== "string" || r.manufacturerName.length > 250))
+        || !Number.isSafeInteger(r.sortOrder ?? 0) || (r.sortOrder ?? 0) < 0) fail("CATALOG_GROUP_MAPPING_INVALID", 400);
+      return { sourceKey, categorySourceKey, baseItemName: r.baseItemName, manufacturerName: r.manufacturerName ?? null, sortOrder: r.sortOrder ?? 0 };
+    });
+    const uniqueLabels = groups.filter(g => !(approval.groupPolicy === "preserve-null-manufacturer-groups" && g.manufacturerName === null));
+    if (new Set(groups.map(g => g.sourceKey)).size !== groups.length
+      || new Set(uniqueLabels.map(g => JSON.stringify([g.categorySourceKey,g.baseItemName,g.manufacturerName]))).size !== uniqueLabels.length) fail("CATALOG_DUPLICATE_GROUP", 400);
+    const sets: Record<string, Set<string>> = { item: items, category: categories, group: new Set(groups.map(g => g.sourceKey)) };
+    const seen = new Set<string>();
+    const images = rows(raw.images ?? []).map(r => {
+      if (!Object.hasOwn(sets,r.kind) || !sets[r.kind].has(r.sourceKey) || !assets.has(r.assetKey)) fail("CATALOG_IMAGE_MAPPING_INVALID", 400);
+      const slot = r.slot ?? 0;
+      if (!Number.isSafeInteger(slot) || slot < 0 || slot >= (r.kind === "item" ? 4 : 1)) fail("CATALOG_IMAGE_SLOT_INVALID", 400);
+      const identity = JSON.stringify([r.kind,r.sourceKey,slot]);
+      if (seen.has(identity)) fail("CATALOG_DUPLICATE_IMAGE", 400);
+      seen.add(identity);
+      return { kind: r.kind as keyof typeof imageTables, sourceKey: r.sourceKey as string, slot, assetKey: r.assetKey as string };
+    });
+    for (const c of rows(raw.categories)) if (c.imageUrl != null && !images.some(i => i.kind === "category" && i.sourceKey === String(c.sourceKey ?? c.id))) fail("CATALOG_IMAGE_MAPPING_MISSING", 400);
+    for (const g of rows(raw.groups ?? [])) if (g.imageUrl != null && !images.some(i => i.kind === "group" && i.sourceKey === g.sourceKey)) fail("CATALOG_IMAGE_MAPPING_MISSING", 400);
+    if (images.length && !photos) fail("CATALOG_PHOTO_PROVIDER_NOT_CONFIGURED", 503);
+    return { ...p, locations, suppliers, itemLinks, groups, images };
+  }
+  const lock = async (c: PoolClient) => {
+    await c.query("SET LOCAL statement_timeout='8s'; SET LOCAL lock_timeout='3s'");
+    await c.query("SELECT pg_advisory_xact_lock(hashtextextended('tk:indiana:catalog-introduction',0))");
+  };
+  async function transaction<T>(work: (c: PoolClient) => Promise<T>) {
+    const c = await pool.connect();
+    try { await c.query("BEGIN"); await lock(c); const result = await work(c); await c.query("COMMIT"); return result; }
+    catch (e) { await c.query("ROLLBACK").catch(() => {}); throw e; }
+    finally { c.release(); }
+  }
+  function operation(id: string) { if (!idPattern.test(id)) fail("CATALOG_OPERATION_INVALID", 400); }
+  async function receipt(c: PoolClient, actor: string, operationId: string) {
+    const r = (await c.query("SELECT * FROM catalog_import_receipts WHERE operation_id=$1", [operationId])).rows[0];
+    if (r && (r.actor_id !== actor || r.target_id !== targetId || r.review_id !== approval.reviewId
+      || r.input_sha256 !== approval.inputSha256)) fail("CATALOG_OPERATION_CONFLICT", 409);
+    return r?.result ?? null;
+  }
+  return {
+    async preview(actor: string, input: unknown) {
+      return master(actor, async () => {
+        const p = plan(input);
+        return { ...prepareIndianaCatalog({ ...object(input), sourceBranch:"savannah", targetBranch:"indiana", sourceTargetId,
+          targetId, targetState:"new-empty", previewOnly:true }),
+          importReady: true, reviewId: approval.reviewId, inputSha256: approval.inputSha256,
+          mappedImages: p.images.length, mappedGroups: p.groups.length,
+          notice: "REVIEWED_TARGET_RECHECKED_AT_COMMIT_NO_ORIGINAL_BLOBS_COPIED" };
+      });
+    },
+    async execute(actor: string, operationId: string, input: unknown) {
+      operation(operationId);
+      return master(actor, async () => {
+        const p = plan(input);
+        return transaction(async c => {
+          const old = await receipt(c, actor, operationId);
+          if (old) return old;
+          // Coordinate with ALL ordinary writers, not just cooperating importers.
+          // Only an approved NEW target may enter this maintenance transaction.
+          const tables = [...prepareNewBusinessSchema().tables, "branch_media_assets", "catalog_image_links", "catalog_import_receipts"].sort();
+          await c.query(`LOCK TABLE ${tables.map(t => `"${t.replaceAll('"','""')}"`).join(",")} IN SHARE ROW EXCLUSIVE MODE`);
+          for (const t of tables.filter(t => !["locations","suppliers"].includes(t))) {
+            if ((await c.query(`SELECT 1 FROM "${t.replaceAll('"','""')}" LIMIT 1`)).rows.length) fail("CATALOG_TARGET_NOT_EMPTY");
+          }
+          for (const [list, table] of [[p.locations,"locations"],[p.suppliers,"suppliers"]] as const) {
+            for (const id of list.values()) if (!(await c.query(`SELECT id FROM ${table} WHERE id=$1 FOR SHARE`, [id])).rows.length) fail("CATALOG_TARGET_REFERENCE_MISSING", 400);
+          }
+          const categoryIds = new Map<string, number>(), itemIds = new Map<string, number>(), groupIds = new Map<string, number>();
+          for (const r of p.categories) {
+            const id = (await c.query(`INSERT INTO categories(name,code,description,sort_order,is_active) VALUES($1,$2,$3,$4,$5) RETURNING id`,
+              [r.name,r.code,r.description,r.sortOrder,r.isActive])).rows[0].id;
+            categoryIds.set(r.sourceKey,id);
+          }
+          for (const r of p.items) {
+            const link = p.itemLinks.get(r.sourceKey);
+            const values = Object.keys(itemColumns).map(k => (r as any)[k]);
+            values.push(categoryIds.get(r.categorySourceKey), link?.locationSourceKey ? p.locations.get(link.locationSourceKey) : null,
+              link?.supplierSourceKey ? p.suppliers.get(link.supplierSourceKey) : null);
+            const columns = [...Object.values(itemColumns),"category_id","primary_location_id","supplier_id"];
+            const id = (await c.query(`INSERT INTO items(${columns.join(",")},quantity_on_hand) VALUES(${values.map((_,i)=>"$"+(i+1)).join(",")},0) RETURNING id`, values)).rows[0].id;
+            itemIds.set(r.sourceKey,id);
+          }
+          for (const r of p.groups) {
+            const id = (await c.query(`INSERT INTO item_groups(category_id,base_item_name,manufacturer_name,sort_order) VALUES($1,$2,$3,$4) RETURNING id`,
+              [categoryIds.get(r.categorySourceKey),r.baseItemName,r.manufacturerName,r.sortOrder])).rows[0].id;
+            groupIds.set(r.sourceKey,id);
+          }
+          const ids = { item:itemIds,category:categoryIds,group:groupIds };
+          for (const r of p.images) {
+            const id = ids[r.kind].get(r.sourceKey)!;
+            await c.query("INSERT INTO catalog_image_links(target_kind,target_id,slot,asset_key) VALUES($1,$2,$3,$4)", [r.kind,id,r.slot,r.assetKey]);
+            const url = imageUrl(r.kind,id,r.slot);
+            if (r.kind === "item") await c.query("INSERT INTO item_images(item_id,image_url,sort_order) VALUES($1,$2,$3)", [id,url,r.slot]);
+            else await c.query(`UPDATE ${imageTables[r.kind]} SET image_url=$1 WHERE id=$2`, [url,id]);
+          }
+          const result = { state:"applied",operationId,targetId,reviewId:approval.reviewId,
+            items:p.items.length,categories:p.categories.length,groups:p.groups.length,images:p.images.length,
+            quantities:0,reserved:0,objectsCopied:0 };
+          await c.query(`INSERT INTO catalog_import_receipts(operation_id,actor_id,target_id,review_id,input_sha256,result)
+            VALUES($1,$2,$3,$4,$5,$6::jsonb)`, [operationId,actor,options.targetId,approval.reviewId,approval.inputSha256,JSON.stringify(result)]);
+          return result;
+        });
+      });
+    },
+    async result(actor: string, operationId: string) {
+      operation(operationId);
+      return master(actor, () => transaction(async c =>
+        await receipt(c,actor,operationId) ?? { state:"not-recorded",operationId,retry:"same-operation-only" }));
+    },
+    async linkedImage(c: PoolClient, itemId: number, url: string) {
+      if (!photos) fail("CATALOG_PHOTO_PROVIDER_NOT_CONFIGURED",503);
+      const match = /^\/branches\/indiana\/api\/catalog-images\/item\/([1-9]\d*)\/([0-3])$/.exec(url);
+      if (!match || Number(match[1]) !== itemId) return false;
+      const r = (await c.query("SELECT asset_key FROM catalog_image_links WHERE target_kind='item' AND target_id=$1 AND slot=$2", [itemId,Number(match[2])])).rows[0];
+      if (!r || !assets.has(r.asset_key)) fail("CATALOG_IMAGE_MAPPING_INVALID",503);
+      return true;
+    },
+    async image(actor: string, kind: keyof typeof imageTables, id: number, slot: number) {
+      if (!Object.hasOwn(imageTables,kind) || !Number.isSafeInteger(slot) || slot < 0 || slot >= (kind === "item" ? 4 : 1)) fail("CATALOG_IMAGE_MAPPING_INVALID",400);
+      number(id);
+      return authority.withMembershipLock(actor,"indiana",async () => {
+        const account = await authority.accounts.getUser(actor);
+        if (!account || account.id !== actor || account.status !== "active" || !(await authority.hasMembership(actor,"indiana"))
+          || !["admin","manager","staff","viewer","manager_viewer"].includes(account.role ?? "")) fail("BRANCH_ACCESS_DENIED",403);
+        const c = await pool.connect();
+        try {
+          await c.query("BEGIN"); await c.query("SET LOCAL statement_timeout='5s'; SET LOCAL lock_timeout='2s'");
+          if (!(await c.query(`SELECT id FROM ${imageTables[kind]} WHERE id=$1 FOR SHARE`,[id])).rows.length) fail("CATALOG_IMAGE_NOT_FOUND",404);
+          const r = (await c.query("SELECT asset_key FROM catalog_image_links WHERE target_kind=$1 AND target_id=$2 AND slot=$3",[kind,id,slot])).rows[0];
+          const asset = r && assets.get(r.asset_key);
+          if (!asset) fail("CATALOG_IMAGE_NOT_FOUND",404);
+          if (!photos) fail("CATALOG_PHOTO_PROVIDER_NOT_CONFIGURED",503);
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          let data: Buffer | null;
+          try { data = await Promise.race([readPhoto!(asset.key),new Promise<never>((_,reject) => {
+            timer = setTimeout(()=>reject(new BranchAccessError("CATALOG_IMAGE_UNAVAILABLE",503)),timeout);
+          })]); } finally { if (timer) clearTimeout(timer); }
+          if (!data) fail("CATALOG_IMAGE_NOT_FOUND",404);
+          if (!Buffer.isBuffer(data) || data.length > 5*1024*1024) fail("CATALOG_IMAGE_INTEGRITY_FAILED",503);
+          data=Buffer.from(data); // Own bytes before hash/async decoding; provider buffers may be reused.
+          if (createHash("sha256").update(data).digest("hex") !== asset.sha256) fail("CATALOG_IMAGE_INTEGRITY_FAILED",503);
+          try {
+            const meta=await sharp(data,{limitInputPixels:16_000_000}).metadata();
+            if (!meta.width || !meta.height || `image/${meta.format}` !== asset.type) fail("CATALOG_IMAGE_FORMAT_INVALID",503);
+          } catch { fail("CATALOG_IMAGE_FORMAT_INVALID",503); }
+          await c.query("COMMIT");
+          return { data:Buffer.from(data),type:asset.type };
+        } catch(e) { await c.query("ROLLBACK").catch(()=>{});throw e; }
+        finally { c.release(); }
+      });
+    },
+  };
+}
+export type CatalogIntroduction = ReturnType<typeof createCatalogIntroduction>;

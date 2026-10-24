@@ -1,0 +1,19 @@
+import session from "express-session";
+import connectPg from "connect-pg-simple";
+import type { Pool } from "pg";
+
+/** Construct once against the common identity pool, never request branch data.
+ * No implicit sessions-table creation or background pruning on startup.
+ */
+export function createSharedSession(input: { pool: Pool; secret: string; secure: boolean; store?: session.Store }) {
+  if (!input.secret || input.secret.length < 32) throw Error("SHARED_SESSION_SECRET_INVALID");
+  const Store = connectPg(session);
+  const ttl = 7 * 24 * 60 * 60;
+  return session({
+    name: "connect.sid", secret: input.secret,
+    store: input.store ?? new Store({ pool: input.pool, createTableIfMissing: false,
+      tableName: "sessions", pruneSessionInterval: false, ttl }),
+    resave: false, saveUninitialized: false,
+    cookie: { httpOnly: true, secure: input.secure, sameSite: "lax", maxAge: ttl * 1000 },
+  });
+}

@@ -1,0 +1,72 @@
+import type { Express } from "express";
+import type { Server } from "node:http";
+import type { Pool } from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { createAuthStorage } from "../replit_integrations/auth/commonStorage";
+import { registerAuthRoutes } from "../replit_integrations/auth/routes";
+import { registerGoogleAuthRoutes } from "../replit_integrations/auth/googleAuth";
+import { createSharedSession } from "./sharedSession";
+import { pinCommonBranchAuthority } from "./commonAuthority";
+import { mountBranchApplication } from "./application";
+import { verifyStartupPlan, type StartupPlan } from "./startupPlan";
+import type { PrivateMediaObjects } from "./media";
+import type { BranchId } from "./runtime";
+
+type SharedPlan = Exclude<StartupPlan, { mode: "legacy" }>;
+export async function initializeSharedApplication(app: Express, server: Server, plan: SharedPlan, options: {
+  createPool: (connection: string, targetId: string) => Pool;
+  /** Synthetic tests can use MemoryStore without replacing real session middleware. */
+  sessionStore?: import("express-session").Store;
+  media?: Partial<Record<BranchId, PrivateMediaObjects>>;
+  legacyPhotos?: import("./media").LegacyPhotoProvider;
+  catalog?: { approval: import("./catalogIntroduction").CatalogApproval; photos?: import("./catalogIntroduction").CatalogPhotoProvider };
+  catalogImages?: import("./catalogPrivateAssets").CatalogImageSelection;
+}) {
+  verifyStartupPlan(plan); // Before pools, stores, auth or routes.
+  if (options.catalog && options.catalog.approval.masterAccountId !== plan.approval.masterAccountId) {
+    throw Error("CATALOG_MASTER_DESIGNATION_MISMATCH");
+  }
+  const pools: Pool[] = [];
+  const make = (connection: string, targetId: string) => {
+    const pool = options.createPool(connection, targetId);
+    if (pools.includes(pool)) throw Error("SHARED_POOL_REUSED");
+    pools.push(pool);
+    return pool;
+  };
+  try {
+    const commonPool = make(plan.identityConnection, plan.approval.identity.targetId);
+    const savannah = make(plan.savannahConnection, plan.approval.savannah.targetId);
+    const indiana = make(plan.indianaConnection, plan.approval.indiana.targetId);
+    const commonDb = drizzle(commonPool);
+    const accounts = createAuthStorage(commonDb as any);
+    const masterId = plan.approval.masterAccountId;
+    const authority = pinCommonBranchAuthority(accounts, commonDb as any,
+      masterId ? { masterAccountId: masterId } : undefined);
+    // Deployment cannot silently turn the designated owner into a one-branch
+    // admin. These are reads only; provisioning is separately approved.
+    if (masterId && (!(await authority.hasMembership(masterId, "savannah"))
+      || !(await authority.hasMembership(masterId, "indiana")))) {
+      throw Error("MASTER_ACCESS_NOT_PROVISIONED");
+    }
+    app.set("trust proxy", 1);
+    app.use(createSharedSession({ pool: commonPool, secret: plan.sessionSecret, secure: plan.secure, store: options.sessionStore }));
+    registerAuthRoutes(app, accounts);
+    registerGoogleAuthRoutes(app, accounts);
+    await mountBranchApplication(app, server, { authority,
+      catalogSourceReview: { masterAccountId: masterId,
+        approvedAssetKeys: options.catalogImages?.assets.map(a => a.key) ?? options.catalog?.approval.assets.map(asset => asset.key) ?? [],
+        imageSelection: options.catalogImages },
+      sources: {
+      savannah: { targetId: plan.approval.savannah.targetId, handle: { pool: savannah, db: drizzle(savannah) as any },
+        media: options.media?.savannah, legacyPhotos: options.legacyPhotos },
+      indiana: { targetId: plan.approval.indiana.targetId, handle: { pool: indiana, db: drizzle(indiana) as any }, media: options.media?.indiana,
+        catalog:options.catalog },
+    } });
+    // Never fall through to global legacy storage, jobs, uploads or DB resolver.
+    app.use("/api", (_req, res) => res.status(409).json({ code: "BRANCH_SELECTION_REQUIRED" }));
+    return { authority, async close() { await Promise.all(pools.map(p => p.end())); } };
+  } catch {
+    await Promise.allSettled(pools.map(p => p.end()));
+    throw Error("SHARED_STARTUP_FAILED");
+  }
+}

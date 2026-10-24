@@ -1,0 +1,36 @@
+import type { Express } from "express";
+import type { Server } from "node:http";
+import { db, pool } from "./db";
+import { runSeed } from "./seed";
+import { setupAuth } from "./replit_integrations/auth";
+import { registerRoutes } from "./routes";
+import { backfillSizeSortValues, runItemGroupsMigration, runMondayMigration,
+  runCompletionReportMigration, runCrewDispatchMigration, runWorkerLinkedUserMigration } from "./storage";
+
+/** Existing legacy operations, kept out of every shared-mode import path. */
+export async function initializeLegacy(app: Express, httpServer: Server, log: (message: string, source?: string) => void) {
+  let lastErr: any;
+  for (let attempt = 1; attempt <= 10; attempt++) {
+    try {
+      const client = await pool.connect();
+      client.release();
+      log("database connection OK", "db");
+      lastErr = null;
+      break;
+    } catch (err: any) {
+      lastErr = err;
+      console.warn(`[db] connection attempt ${attempt}/10 failed: ${err.message} — retrying in 3 s…`);
+      await new Promise(r => setTimeout(r, 3000));
+    }
+  }
+  if (lastErr) { console.error("[db] FATAL — cannot connect to database:", lastErr.message); process.exit(1); }
+  try { await runSeed(); } catch (err: any) { console.error("[seed] seed failed (non-fatal):", err.message); }
+  try { await runItemGroupsMigration(db); } catch (err: any) { console.error("[migration] item_groups migration failed (non-fatal):", err.message); }
+  try { await runMondayMigration(db); } catch (err: any) { console.error("[migration] monday migration failed (non-fatal):", err.message); }
+  try { await runCompletionReportMigration(pool); } catch (err: any) { console.error("[migration] completion report migration failed (non-fatal):", err.message); }
+  try { await runCrewDispatchMigration(db); } catch (err: any) { console.error("[migration] crew dispatch migration failed (non-fatal):", err.message); }
+  try { await runWorkerLinkedUserMigration(db); } catch (err: any) { console.error("[migration] worker linked-user migration failed (non-fatal):", err.message); }
+  try { await backfillSizeSortValues(db); } catch (err: any) { console.error("[backfill] sizeSortValue backfill failed (non-fatal):", err.message); }
+  await setupAuth(app);
+  await registerRoutes(httpServer, app);
+}

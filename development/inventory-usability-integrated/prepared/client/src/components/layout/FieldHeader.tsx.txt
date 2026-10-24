@@ -1,0 +1,115 @@
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "wouter";
+import { BranchSelectorLink } from "./BranchSelectorLink";
+import "./inventory-context-header.css";
+import { ArrowLeft, HardHat, Home } from "lucide-react";
+import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
+import { useFieldTheme, FieldThemeSwitcher } from "@/hooks/use-field-theme";
+import { TkElectricBrand } from "@/components/layout/TkElectricBrand";
+import { BranchExitGuidance, BranchModeMarker } from "@/components/layout/BranchModeMarker";
+import { useCommonMessages } from "@/hooks/use-common-messages";
+
+function useClock() {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
+
+export function FieldHeader() {
+  const { t, lang } = useLanguage();
+  const m = useCommonMessages();
+  const { theme: fieldTheme, F } = useFieldTheme();
+  const [location] = useLocation();
+  const isFieldHome = location === "/field";
+  const now = useClock();
+  const locale = lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US";
+  const dateStr = now.toLocaleDateString(locale, {
+    weekday: "short", year: "numeric", month: "long", day: "numeric",
+  });
+  const timeStr = now.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit", hour12: true });
+
+  const linkStyle: React.CSSProperties = {
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+    minHeight: 44, background: F.surface2, border: `1px solid ${F.borderStrong}`,
+    borderRadius: 8, padding: "0 10px", color: F.textMuted,
+    fontSize: 12, fontFamily: "'Barlow Condensed', sans-serif",
+    fontWeight: 600, letterSpacing: 0.4, textDecoration: "none",
+    textTransform: "uppercase", whiteSpace: "nowrap",
+  };
+
+  return (
+    <header className="inventory-context-header mode-header px-3 sm:px-5" style={{
+      position: "relative", zIndex: 50, flexShrink: 0, minHeight: 68,
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      flexWrap: "wrap", gap: 8, paddingTop: "env(safe-area-inset-top)", paddingBottom: 8,
+      background: `linear-gradient(90deg, ${F.bg} 0%, ${F.surface2} 50%, ${F.bg} 100%)`,
+      borderBottom: `1px solid ${F.borderStrong}`, borderTop: `3px solid ${F.accent}`,
+      transition: "background 0.2s, border-color 0.2s",
+    }}>
+      <div className="mode-header-brand" style={{
+        display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minWidth: 0,
+      }}>
+        <TkElectricBrand
+          compact
+          textColor={F.text}
+          className="field-header-brand"
+          textClassName="block"
+          detail={
+            <>
+              <span className="tk-header-detail hidden sm:flex items-center gap-1.5 mt-1 whitespace-nowrap" style={{ color: F.accent }}>
+                <span className="fl-pulse-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: F.accent }} />
+                <HardHat style={{ width: 10, height: 10 }} />
+                <span>{t.inventoryMode}</span>
+                <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
+                <span className="tk-header-detail-date" style={{ color: F.textDim }}>{dateStr} · {timeStr}</span>
+              </span>
+              <span className="tk-header-detail field-header-mobile-detail hidden items-center gap-1 mt-1 whitespace-nowrap" style={{ color: F.accent }}>
+                <HardHat style={{ width: 9, height: 9 }} />
+                <span>{t.inventoryMode}</span>
+              </span>
+            </>
+          }
+        />
+        <BranchModeMarker mode="field" color={F.text} mutedColor={F.textDim} />
+      </div>
+
+      <div className="mode-header-controls" style={{
+        display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap",
+        maxWidth: "100%", boxSizing: "border-box",
+        padding: 4, background: F.surface, border: `1px solid ${F.borderStrong}`,
+        borderRadius: 14,
+        boxShadow: fieldTheme === "light" ? "0 4px 14px rgba(15,31,23,0.06)" : "0 8px 18px rgba(0,0,0,0.18)",
+      }}>
+        <FieldThemeSwitcher compact />
+        <LanguageSwitcher theme={fieldTheme} compact />
+        {!isFieldHome && (
+          <Link
+            href="/field"
+            data-testid="btn-field-back"
+            aria-label={t.back}
+            className="fl-hdr-btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-1 focus-visible:ring-offset-[#0d1410]"
+            style={linkStyle}
+          >
+            <ArrowLeft style={{ width: 14, height: 14 }} />
+            <span className="hidden-mobile">{t.back}</span>
+          </Link>
+        )}
+        <div className="branch-exit-group" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
+          <BranchSelectorLink
+            data-testid="btn-field-home"
+            aria-label={m.branchModeSelect}
+            className="fl-hdr-btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-1 focus-visible:ring-offset-[#0d1410]"
+            style={linkStyle}
+          >
+            <Home style={{ width: 14, height: 14, flexShrink: 0 }} />
+            <span className="hidden-mobile">{m.branchModeSelect}</span>
+          </BranchSelectorLink>
+          <BranchExitGuidance color={F.textMuted} />
+        </div>
+      </div>
+    </header>
+  );
+}

@@ -1,0 +1,131 @@
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
+import { useFieldTheme } from "@/hooks/use-field-theme";
+import { documentBranchPrefix, requestDocumentContext } from "@/lib/branchTransport";
+import { getPendingRequest, getPendingRequestForChannel, retryPendingRequest,
+  subscribePendingRequests, type PendingRequest } from "@/lib/requestCommands";
+import { useQueryClient } from "@tanstack/react-query";
+
+// Presentation adapter to the ONE common in-memory command owner. No private
+// pending store, receipt cache, persistent draft or alternative operation IDs.
+type Phase = "writing" | "processing" | "success" | "failed" | "checking";
+type Feedback = { scope: string; phase: Phase; error?: unknown; retry: boolean };
+export function fieldCommandExplanation(error: any, t: ReturnType<typeof useLanguage>["t"]) {
+  if (error?.uncertain) return t.requestResultUnknown;
+  if (error?.code === "BRANCH_SELECTION_REQUIRED") return t.branchSelectionRequired;
+  if (["REQUEST_CHANGED", "STATE_CHANGED", "UNDO_UNAVAILABLE", "FULFILLMENT_CHANGED"].includes(error?.code)) return t.requestConflict;
+  return t.requestActionBlocked; // Never expose raw server codes or messages.
+}
+export function useFieldCommandFeedback(target: string, commandTarget?: string) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const resolvedTarget = commandTarget ?? target.match(/(?:-|:)(\d+)$/)?.[1] ?? (target === "cart" ? "new" : undefined);
+  const identityCurrent = () => !!user && !!requestDocumentContext(String(user.id));
+  const readPending = () => !identityCurrent() ? null
+    : getPendingRequestForChannel(target) ?? (resolvedTarget ? getPendingRequest(resolvedTarget) : null);
+  const [, redraw] = useState(0);
+  const initiated = useRef(false);
+  const pending = user ? readPending() : null;
+  const scope = `${documentBranchPrefix}:${user?.id ?? ""}:${target}`;
+  const scopeRef = useRef(scope);
+  scopeRef.current = scope;
+  const live = useRef(true), ended = useRef(false), busy = useRef(false);
+  const unresolved = useRef(false);
+  const [value, setValue] = useState<Feedback>({ scope, phase: "writing", retry: true });
+  useEffect(() => {
+    live.current = true;
+    const unsubscribe = subscribePendingRequests(() => redraw(value => value + 1));
+    const end = () => { ended.current = true; busy.current = false; setValue({ scope, phase: "writing", retry: false }); };
+    window.addEventListener("inventory:branch-session-ended", end);
+    return () => { live.current = false; unsubscribe(); window.removeEventListener("inventory:branch-session-ended", end); };
+  }, [scope]);
+  const current = () => live.current && !ended.current && scopeRef.current === scope && identityCurrent();
+  const local = value.scope === scope && !ended.current ? value : { scope, phase: "writing" as Phase, retry: false };
+  const shown = pending && !ended.current ? { scope, phase: pending.phase,
+    error: { code: pending.lastCode, uncertain: true }, retry: pending.phase === "checking" } : local;
+  return {
+    ...shown,
+    pending,
+    restored: !!pending && !initiated.current,
+    confirmationOnly: !!pending && !pending.writeRetryAllowed,
+    blocked: busy.current || ended.current || !identityCurrent() || (shown.phase === "checking" && !shown.retry),
+    locked: shown.phase === "processing" || shown.phase === "checking",
+    current,
+    watch() {
+      // An action may outlive the disposable cart panel. Keep its session
+      // listener until settlement so valid completion can clear only the
+      // submitted draft, but a late old-account body cannot restore/clear it.
+      let valid = !ended.current;
+      const end = () => { valid = false; };
+      window.addEventListener("inventory:branch-session-ended", end);
+      return { current: () => valid && !ended.current && scopeRef.current === scope,
+        dispose: () => window.removeEventListener("inventory:branch-session-ended", end) };
+    },
+    reset() { if (current() && !busy.current && !unresolved.current) setValue({ scope, phase: "writing", retry: true }); },
+    begin() {
+      if (!current() || busy.current || (shown.phase === "checking" && !shown.retry)) return false;
+      if (pending?.phase === "processing") return false;
+      initiated.current = true;
+      busy.current = true;
+      setValue({ scope, phase: "processing", retry: false });
+      return true;
+    },
+    succeed() {
+      if (!current()) return false;
+      busy.current = false; unresolved.current = false;
+      setValue({ scope, phase: "success", retry: true });
+      return true;
+    },
+    fail(error: any) {
+      if (!current()) return;
+      busy.current = false;
+      // The common owner retains uncertainty even after a later refusal.
+      const previouslyUnresolved = unresolved.current;
+      unresolved.current ||= !!error?.uncertain;
+      setValue({ scope, phase: unresolved.current ? "checking" : "failed",
+        error, retry: !!error?.uncertain || (!previouslyUnresolved &&
+          !["FORBIDDEN", "AUTH_REQUIRED", "BRANCH_SELECTION_REQUIRED"].includes(error?.code)) });
+    },
+    async recover(onConfirmed?: (result: { request: any; operationId: string }, original: PendingRequest) => void) {
+      const original = readPending();
+      if (!current() || busy.current || !original || original.phase === "processing") return;
+      busy.current = true;
+      setValue({ scope, phase: "processing", retry: false });
+      try {
+        const saved = await retryPendingRequest(original.target, original.operationId);
+        if (!current()) return;
+        unresolved.current = false;
+        setValue({ scope, phase: "success", retry: true });
+        onConfirmed?.(saved, original);
+        void queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
+      } catch (error) {
+        if (!current()) return;
+        unresolved.current = true;
+        setValue({ scope, phase: "checking", error, retry: true });
+      } finally { busy.current = false; }
+    },
+  };
+}
+export function FieldCommandFeedback({ feedback, onRetry }: {
+  feedback: ReturnType<typeof useFieldCommandFeedback>; onRetry?: () => void;
+}) {
+  const { t } = useLanguage();
+  const { F } = useFieldTheme();
+  if (!feedback.current()) return null;
+  const titles = { writing: t.fieldDraftWriting, processing: t.submitting,
+    success: t.fieldServerConfirmed, failed: t.fieldNotApplied, checking: t.fieldCheckingResult };
+  return <div data-testid="field-command-feedback" role={feedback.phase === "failed" ? "alert" : "status"}
+    aria-live="polite" aria-busy={feedback.phase === "processing"}
+    style={{ padding: "10px 12px", border: `1px solid ${feedback.phase === "failed" ? F.dangerBorder : F.borderStrong}`,
+      borderRadius: 8, background: F.surface2, color: F.text, fontSize: 13, overflowWrap: "anywhere" }}>
+    <strong>{titles[feedback.phase]}</strong>
+    {feedback.phase === "checking" && <p>{t.requestResultUnknown}</p>}
+    {feedback.phase === "failed" && <p>{fieldCommandExplanation(feedback.error, t)}</p>}
+    {feedback.phase === "checking" && (!feedback.retry || feedback.confirmationOnly) && <p>{t.fieldContactBeforeRetry}</p>}
+    {feedback.phase === "checking" && feedback.retry && onRetry &&
+      <button type="button" onClick={onRetry} data-testid="field-retry-same-action"
+        style={{ minHeight: 44, padding: "8px 12px", borderRadius: 8, border: `1px solid ${F.accentBorder}`,
+          background: F.accentBg, color: F.accent, fontWeight: 700, marginTop: 8 }}>{t.fieldRetrySameAction}</button>}
+  </div>;
+}

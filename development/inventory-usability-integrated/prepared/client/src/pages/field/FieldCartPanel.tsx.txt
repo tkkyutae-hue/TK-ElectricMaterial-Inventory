@@ -1,0 +1,106 @@
+import { createPortal } from "react-dom";
+import { ShoppingCart, X } from "lucide-react";
+import { useLanguage } from "@/hooks/use-language";
+import { useFieldTheme } from "@/hooks/use-field-theme";
+import { useIsMobile } from "@/hooks/use-mobile";
+import FieldCartReview from "./FieldCartReview";
+import { useEffect, useState } from "react";
+
+/** Shared by Inventory and isolated UI tests; closing never discards the draft. */
+export default function FieldCartPanel({ onClose }: { onClose: () => void }) {
+  const { F } = useFieldTheme();
+  const { t } = useLanguage();
+  const isMobile = useIsMobile();
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+  const [viewportBottomInset, setViewportBottomInset] = useState(0);
+  const closeLabel = t.fieldCartPanelCloseLabel;
+  const draftGuidance = t.fieldCartDraftKeptGuidance;
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const updateViewport = () => {
+      const height = viewport?.height ?? window.innerHeight;
+      const offsetTop = viewport?.offsetTop ?? 0;
+      setViewportHeight(height);
+      setViewportBottomInset(Math.max(0, window.innerHeight - (offsetTop + height)));
+    };
+    updateViewport();
+    viewport?.addEventListener("resize", updateViewport);
+    viewport?.addEventListener("scroll", updateViewport);
+    window.addEventListener("resize", updateViewport);
+    return () => {
+      viewport?.removeEventListener("resize", updateViewport);
+      viewport?.removeEventListener("scroll", updateViewport);
+      window.removeEventListener("resize", updateViewport);
+    };
+  }, []);
+
+  return createPortal(
+    <>
+      <div
+        onClick={onClose}
+        data-testid="cart-panel-backdrop"
+        style={{
+          position: "fixed", inset: 0, zIndex: 8800,
+          background: "rgba(0,0,0,0.65)", backdropFilter: "blur(3px)",
+        }}
+      />
+      <div
+        data-testid="cart-panel"
+        style={{
+          position: "fixed", zIndex: 8900, background: F.bg,
+          display: "flex", flexDirection: "column", overflow: "hidden",
+          ...(isMobile ? {
+            bottom: `${viewportBottomInset}px`, left: 0, right: 0,
+            height: viewportHeight ? Math.min(viewportHeight * 0.92, 760) : "92vh",
+            maxHeight: viewportHeight ? Math.min(viewportHeight * 0.92, 760) : "92vh",
+            borderRadius: "16px 16px 0 0",
+            borderTop: `1px solid ${F.borderStrong}`,
+            boxShadow: "0 -8px 40px rgba(0,0,0,0.7)",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          } : {
+            top: 0, right: 0, bottom: 0, width: 440,
+            borderLeft: `1px solid ${F.borderStrong}`,
+            boxShadow: "-8px 0 40px rgba(0,0,0,0.7)",
+          }),
+        }}
+      >
+        <div style={{
+          padding: "12px 16px", borderBottom: `1px solid ${F.borderStrong}`,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          background: F.surface2, flexShrink: 0,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+            <ShoppingCart style={{ width: 15, height: 15, color: F.accent }} />
+            <div style={{ minWidth: 0 }}>
+              <span style={{
+                fontSize: 16, fontWeight: 700, color: F.text,
+                fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.06em",
+              }}>{t.reviewCart}</span>
+              <p style={{ margin: 0, fontSize: 11, color: F.textMuted, lineHeight: 1.3, overflowWrap: "anywhere" }}>
+                {draftGuidance}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            data-testid="btn-close-cart-panel"
+            aria-label={closeLabel}
+            title={closeLabel}
+            style={{
+              background: "transparent", border: "none", cursor: "pointer",
+              padding: 8, borderRadius: 6, color: F.textMuted, minWidth: 40, minHeight: 40,
+              display: "flex", alignItems: "center",
+            }}
+          >
+            <X style={{ width: 18, height: 18 }} />
+          </button>
+        </div>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+          <FieldCartReview onClose={onClose} />
+        </div>
+      </div>
+    </>,
+    document.body,
+  );
+}

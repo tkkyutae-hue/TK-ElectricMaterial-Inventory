@@ -1,0 +1,43 @@
+// Dedicated test-process guard. Never loaded by the application.
+const net = require("node:net");
+const dns = require("node:dns");
+const host = "ep-steep-haze-b4h1x63g.c-6.us-east-2.aws.neon.tech";
+const deny = () => { throw Error("INDIANA_TEST_NETWORK_BLOCKED"); };
+const connect = net.Socket.prototype.connect;
+net.Socket.prototype.connect = function (...args) {
+  // node:net can pass its normalized arguments as a single array.
+  const a = Array.isArray(args[0]) ? args[0] : args;
+  const o = typeof a[0] === "object" ? a[0] : typeof a[0] === "string" && a[0].startsWith("/")
+    ? { path: a[0] } : { port: a[0], host: a[1] };
+  if (!(o.host === host && Number(o.port) === 5432) &&
+      !(typeof o.path === "string" &&
+        /^\/tmp\/movement-only-pg-[a-zA-Z0-9]+\/socket\/\.s\.PGSQL\.6543$/.test(o.path))) return deny();
+  return connect.apply(this, args);
+};
+net.Server.prototype.listen = deny;
+const lookup = dns.lookup;
+dns.lookup = function (name, ...args) {
+  if (name !== host) return deny();
+  return lookup.call(this, name, ...args);
+};
+dns.promises.lookup = async function (name, options) {
+  if (name !== host) return deny();
+  return new Promise((resolve, reject) => lookup(name, options ?? {}, (e, address, family) =>
+    e ? reject(e) : resolve({ address, family })));
+};
+for (const key of Object.keys(dns)) {
+  if (key.startsWith("resolve") || key === "reverse") dns[key] = deny;
+}
+for (const key of Object.keys(dns.promises)) {
+  if (key.startsWith("resolve") || key === "reverse") dns.promises[key] = deny;
+}
+for (const name of ["node:http", "node:https"]) {
+  const m = require(name); m.request = deny; m.get = deny;
+}
+require("node:dgram").Socket.prototype.send = deny;
+globalThis.fetch = deny;
+// Make accidental application/bootstrap DB imports fail before connecting.
+for (const key of Object.keys(process.env)) {
+  if (key === "DATABASE_URL" || /^PG[A-Z_]+$/.test(key)) delete process.env[key];
+}
+process.env.INDIANA_SQL_NETWORK_GUARD = "active";

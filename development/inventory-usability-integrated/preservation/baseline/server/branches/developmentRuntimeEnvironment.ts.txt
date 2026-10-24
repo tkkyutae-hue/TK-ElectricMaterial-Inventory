@@ -1,0 +1,66 @@
+import { endpointFingerprint } from "./startupPlan";
+
+type Env = Record<string, string | undefined>;
+type Endpoint = { host: string; port: number; database: string; ssl: "require" | "disable" };
+const principals = {
+  identity: { role: "tk_common_auth_runtime", password: "TK_DEV_COMMON_DB_PASSWORD", url: "COMMON_AUTH_DATABASE_URL" },
+  savannah: { role: "tk_savannah_business_runtime", password: "TK_DEV_SAVANNAH_DB_PASSWORD", url: "SAVANNAH_DATABASE_URL" },
+  indiana: { role: "tk_indiana_business_runtime", password: "TK_DEV_INDIANA_DB_PASSWORD", url: "INDIANA_DATABASE_URL" },
+} as const;
+
+function fail(): never { throw Error("DEVELOPMENT_RUNTIME_CONNECTION_INVALID"); }
+
+/** Builds a restricted-role URL in memory only. Never logged or persisted. */
+export function restrictedConnection(endpoint: Endpoint, role: string, password: string) {
+  if (!/^[a-zA-Z0-9.-]{1,253}$/.test(endpoint.host) || !Number.isInteger(endpoint.port) ||
+    !/^[a-zA-Z0-9_]{1,63}$/.test(endpoint.database) || !["require", "disable"].includes(endpoint.ssl) || !password.trim()) fail();
+  const u = new URL("postgresql://localhost/");
+  u.hostname = endpoint.host; u.port = String(endpoint.port); u.pathname = "/" + endpoint.database;
+  u.username = role; u.password = password;
+  if (endpoint.ssl === "require") u.searchParams.set("sslmode", "require");
+  return u.toString();
+}
+
+export type MasterDesignationReader = (reference: string) => Promise<string>;
+
+/**
+ * Development-only shared startup source: restricted-role passwords stay in
+ * Secrets; non-secret reviewed endpoints come from the startup approval; the
+ * master ID comes from the private, immutable designation object.
+ * Legacy mode reads nothing beyond the mode switch.
+ */
+export async function runtimeEnvironmentReader(env: Env, readDesignation?: MasterDesignationReader) {
+  const passthrough = (key: string) => env[key];
+  if (env.TK_SERVER_MODE !== "shared" || env.TK_RUNTIME_CONNECTION_SOURCE !== "development-restricted-passwords") return passthrough;
+  if (env.NODE_ENV === "production") fail();
+  let approval: any;
+  try { approval = JSON.parse(env.TK_SHARED_APPROVAL_JSON ?? ""); } catch { fail(); }
+  if (!approval || typeof approval !== "object" || "masterAccountId" in approval) fail();
+  const overlay: Record<string, string> = {};
+  for (const target of ["identity", "savannah", "indiana"] as const) {
+    const p = principals[target];
+    if (target !== "indiana" && env[p.url]) fail(); // Ambiguous source: never mix.
+    const url = restrictedConnection(approval.endpoints?.[target] ?? fail(), p.role, env[p.password] ?? "");
+    if (endpointFingerprint(url) !== approval[target]?.endpointSha256) fail();
+    overlay[p.url] = url;
+  }
+  const reference = approval.masterDesignationRef;
+  if (typeof reference !== "string" || !/^activation-designations\/[a-f0-9-]{36}\.json$/.test(reference)) fail();
+  let designation: any;
+  try { designation = JSON.parse(await (readDesignation ?? readPrivateDesignation)(reference)); } catch { fail(); }
+  if (designation?.version !== 1 || designation.designationApproved !== true || designation.runtimeEmailBypassAllowed !== false ||
+    designation.sourceEndpointSha256 !== approval.identity.endpointSha256 ||
+    typeof designation.accountId !== "string" || !/^[a-zA-Z0-9._:-]{1,128}$/.test(designation.accountId)) fail();
+  const { endpoints: _endpoints, masterDesignationRef: _ref, ...plain } = approval;
+  overlay.TK_SHARED_APPROVAL_JSON = JSON.stringify({ ...plain, masterAccountId: designation.accountId });
+  return (key: string) => key in overlay ? overlay[key] : env[key];
+}
+
+async function readPrivateDesignation(reference: string) {
+  const location = process.env.PRIVATE_OBJECT_DIR?.replace(/^\/+|\/+$/g, "");
+  if (!location || location.includes("..")) fail();
+  const [bucketName, ...prefix] = location.split("/");
+  const { objectStorageClient } = await import("../replit_integrations/object_storage/objectStorage");
+  const [content] = await objectStorageClient.bucket(bucketName).file([...prefix, reference].join("/")).download();
+  return content.toString("utf8");
+}

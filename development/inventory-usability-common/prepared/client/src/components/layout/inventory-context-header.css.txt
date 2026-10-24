@@ -1,0 +1,32 @@
+/* Scoped override: the old global mobile header fixed height predates branch labels. */
+.inventory-context-header.mode-header {
+  height: auto;
+  min-height: 68px;
+}
+.inventory-context-header .branch-mode-marker {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 639px) {
+  .inventory-context-header.mode-header {
+    height: auto !important;
+    min-height: 80px !important;
+    flex-wrap: wrap;
+    align-content: start;
+    gap: 8px;
+  }
+  .inventory-context-header .mode-header-brand {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+  .inventory-context-header .mode-header-controls {
+    flex: 1 1 100%;
+    flex-wrap: wrap !important;
+    min-width: 0;
+    max-width: 100%;
+    margin-left: 0 !important;
+  }
+  .inventory-context-header .branch-exit-group {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}

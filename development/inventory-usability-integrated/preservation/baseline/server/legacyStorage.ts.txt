@@ -1,0 +1,5 @@
+// Legacy-only composition root. Never import from branch business modules.
+import { db, pool } from "./db";
+import { createDatabaseStorage } from "./storage";
+import { authStorage } from "./replit_integrations/auth/storage";
+export const storage = createDatabaseStorage(db, pool, id => authStorage.getUser(id));

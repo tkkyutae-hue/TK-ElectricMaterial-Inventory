@@ -1,0 +1,59 @@
+import type { RequestHandler } from "express";
+import { BranchAccessError, type BranchActor, type BranchRuntime, parseBranchId } from "./runtime";
+
+/**
+ * For an explicitly branch-prefixed business router, AFTER common session auth.
+ * Mounted only by the opt-in branch application. Never trusts req.user, a query/header
+ * selector or a mutable session.selectedBranch. No session or DB writes.
+ */
+export function createBranchMiddleware<T>(options: {
+  runtime: BranchRuntime<T>;
+  loadIdentity: (id: string) => Promise<BranchActor | null | undefined>;
+}): RequestHandler {
+  return async (req, res, next) => {
+    // Do not let stale/forged identities survive into branch business handlers.
+    delete (req as unknown as { user?: unknown }).user;
+    delete (req as unknown as { currentUser?: unknown }).currentUser;
+    let actor: BranchActor | null | undefined;
+    let branch;
+    try {
+      branch = parseBranchId(req.params.branch);
+      const userId = (req.session as unknown as { userId?: unknown } | undefined)?.userId;
+      if (typeof userId !== "string" || !userId) {
+        throw new BranchAccessError("BRANCH_ACCOUNT_REQUIRED", 401);
+      }
+      // Client binding is a mismatch detector, never an authentication source.
+      // Prevent an old account's open tab/draft from writing after a cookie switch.
+      const expectedAccount = req.headers?.["x-inventory-account"];
+      if (expectedAccount !== undefined && expectedAccount !== userId) {
+        throw new BranchAccessError("BRANCH_ACCOUNT_CHANGED", 409);
+      }
+      try {
+        actor = await options.loadIdentity(userId);
+      } catch {
+        throw new BranchAccessError("BRANCH_IDENTITY_UNAVAILABLE", 503);
+      }
+      if (!actor || actor.id !== userId) throw new BranchAccessError("BRANCH_ACCOUNT_REQUIRED", 401);
+    } catch (error) {
+      if (error instanceof BranchAccessError) {
+        res.status(error.status).json({ code: error.code });
+        return;
+      }
+      next(error);
+      return;
+    }
+    try {
+      await options.runtime.run(actor, branch, () => {
+        const verified = options.runtime.identity().actor;
+        Object.assign(req, { user: verified, currentUser: verified });
+        next();
+      });
+    } catch (error) {
+      if (error instanceof BranchAccessError && !res.headersSent) {
+        res.status(error.status).json({ code: error.code });
+      } else {
+        next(error);
+      }
+    }
+  };
+}

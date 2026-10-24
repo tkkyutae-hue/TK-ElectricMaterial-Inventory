@@ -1,0 +1,5 @@
+import { db } from "../../db";
+import { createAuthStorage } from "./commonStorage";
+export type { IAuthStorage } from "./commonStorage";
+/** Legacy-only adapter. Shared startup never imports this module. */
+export const authStorage = createAuthStorage(db);

@@ -1,0 +1,268 @@
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { completeBranchLogin } from "@/lib/branchTransport";
+import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
+import { useFieldTheme, FieldThemeSwitcher } from "@/hooks/use-field-theme";
+import { useCommonMessages } from "@/hooks/use-common-messages";
+import { FieldBrandLockup } from "@/components/layout/FieldBrandLockup";
+
+type OAuthError = "pending" | "rejected" | "google" | "google_not_configured";
+
+export default function Login() {
+  const [, navigate] = useLocation();
+  const { t } = useLanguage();
+  const m = useCommonMessages();
+  const { F, theme: fieldTheme } = useFieldTheme();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<"invalid" | "connection" | null>(null);
+  const [oauthError, setOauthError] = useState<OAuthError | null>(null);
+  const [loading, setLoading] = useState(false);
+  const submitLock = useRef(false);
+
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("error");
+    if (code === "pending" || code === "rejected" || code === "google" || code === "google_not_configured") {
+      setOauthError(code);
+    }
+  }, []);
+
+  const oauthMessage = oauthError === "pending" ? t.googlePending
+    : oauthError === "rejected" ? t.googleRejected
+    : oauthError === "google" ? t.googleError
+    : oauthError === "google_not_configured" ? m.googleNotConfigured
+    : "";
+  const visibleError = oauthMessage || (error === "invalid" ? t.invalidCredentials : error === "connection" ? t.loginError : "");
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (submitLock.current || !email || !password) return;
+    submitLock.current = true;
+    setOauthError(null);
+    setError(null);
+    setLoading(true);
+    try {
+      const response = await apiRequest("POST", "/api/auth/login", { email, password });
+      const user = await response.json();
+      if (completeBranchLogin()) return;
+      queryClient.setQueryData(["/api/auth/user"], user);
+      navigate("/home");
+    } catch (err: any) {
+      const message: string = err?.message ?? "";
+      if (message.includes("401") || message.toLowerCase().includes("invalid")) {
+        setError("invalid");
+      } else {
+        setError("connection");
+      }
+    } finally {
+      submitLock.current = false;
+      setLoading(false);
+    }
+  }
+
+  const canSubmit = !loading && !!email && !!password;
+  const isLight = fieldTheme === "light";
+
+  return (
+    <div style={{
+      minHeight: "100dvh",
+      background: F.bg,
+      color: F.text,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "84px 16px 20px",
+      fontFamily: "'Barlow', sans-serif",
+      transition: "background 0.2s, color 0.2s",
+    }}>
+      <style>{`
+        .login-input {
+          width: 100%; min-height: 46px; box-sizing: border-box; padding: 11px 13px;
+          color: ${F.text}; background: ${F.surface}; border: 1px solid ${F.borderStrong};
+          border-radius: 9px; font: inherit; font-size: 16px;
+        }
+        .login-input::placeholder { color: ${F.textMuted}; opacity: 1; }
+        .login-input:focus-visible, .login-control:focus-visible, .login-submit:focus-visible, .login-link:focus-visible {
+          outline: 3px solid ${F.accent}; outline-offset: 2px;
+        }
+        .login-access-controls [data-testid="btn-language-switcher"],
+        .login-access-controls [data-testid="btn-field-theme-switcher"] {
+          height: 44px !important; min-width: 44px; justify-content: center;
+        }
+        .login-submit {
+          min-height: 48px; width: 100%; border: 0; border-radius: 9px;
+          background: ${F.accent}; color: ${F.accentText}; cursor: pointer;
+          font: 700 15px 'Barlow Condensed', sans-serif; letter-spacing: 1.1px;
+          text-transform: uppercase;
+        }
+        .login-submit:disabled {
+          background: ${F.surface2}; color: ${F.textMuted}; border: 1px solid ${F.borderStrong};
+          cursor: not-allowed;
+        }
+        @media (max-width: 380px) {
+          .login-header { flex-wrap: wrap; min-height: 76px !important; }
+          .login-access-controls { margin-left: auto; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+        }
+      `}</style>
+
+      <header className="login-header" style={{
+        position: "absolute", top: 0, left: 0, right: 0,
+        minHeight: 64, display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: 10, padding: "8px clamp(12px, 3vw, 24px)",
+        background: F.surface2, borderBottom: `1px solid ${F.borderStrong}`,
+      }}>
+        <FieldBrandLockup F={F} compact />
+        <div className="login-access-controls" style={{
+          display: "flex", alignItems: "center", gap: 6, padding: 4,
+          background: F.surface, border: `1px solid ${F.borderStrong}`, borderRadius: 12,
+        }}>
+          <FieldThemeSwitcher compact />
+          <LanguageSwitcher theme={isLight ? "light" : "dark"} compact />
+        </div>
+      </header>
+
+      <main style={{ width: "100%", maxWidth: 420, position: "relative" }}>
+        <section aria-labelledby="login-title" style={{
+          background: F.surface, border: `1px solid ${F.borderStrong}`, borderRadius: 16,
+          padding: "clamp(20px, 5vw, 30px)", boxShadow: isLight
+            ? "0 8px 28px rgba(15,31,23,0.10)" : "0 18px 42px rgba(0,0,0,0.30)",
+        }}>
+          <div style={{ marginBottom: 23 }}>
+            <p style={{
+              margin: "0 0 5px", color: F.accent, font: "600 11px 'Barlow Condensed', sans-serif",
+              letterSpacing: "0.12em", textTransform: "uppercase",
+            }}>{t.materialInventorySystem}</p>
+            <h1 id="login-title" style={{
+              margin: 0, color: F.text, font: "700 25px 'Barlow Condensed', sans-serif",
+              letterSpacing: "0.015em",
+            }}>{t.signIn}</h1>
+          </div>
+
+          <form onSubmit={handleSubmit} aria-busy={loading}>
+            <div style={{ marginBottom: 17 }}>
+              <label htmlFor="login-email" style={{
+                display: "block", marginBottom: 7, color: F.text, fontSize: 14, fontWeight: 600,
+              }}>{t.email}</label>
+              <input
+                id="login-email"
+                type="email"
+                className="login-input"
+                value={email}
+                onChange={event => setEmail(event.target.value)}
+                placeholder="you@tkelectricllc.us"
+                autoComplete="email"
+                aria-invalid={error === "invalid" || undefined}
+                aria-describedby={visibleError ? "login-error" : undefined}
+                required
+                data-testid="input-email"
+              />
+            </div>
+
+            <div style={{ marginBottom: 18 }}>
+              <label htmlFor="login-password" style={{
+                display: "block", marginBottom: 7, color: F.text, fontSize: 14, fontWeight: 600,
+              }}>{t.password}</label>
+              <div style={{ position: "relative" }}>
+                <input
+                  id="login-password"
+                  type={showPassword ? "text" : "password"}
+                  className="login-input"
+                  value={password}
+                  onChange={event => setPassword(event.target.value)}
+                  autoComplete="current-password"
+                  aria-invalid={error === "invalid" || undefined}
+                  aria-describedby={visibleError ? "login-error" : undefined}
+                  required
+                  style={{ paddingRight: 58 }}
+                  data-testid="input-password"
+                />
+                <button
+                  type="button"
+                  className="login-control"
+                  onClick={() => setShowPassword(value => !value)}
+                  aria-label={showPassword ? m.hidePassword : m.showPassword}
+                  aria-pressed={showPassword}
+                  aria-controls="login-password"
+                  data-testid="btn-toggle-password"
+                  style={{
+                    position: "absolute", top: "50%", right: 4, transform: "translateY(-50%)",
+                    width: 44, height: 44, display: "grid", placeItems: "center",
+                    background: "transparent", border: 0, borderRadius: 8, color: F.textMuted,
+                    cursor: "pointer",
+                  }}
+                >
+                  {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                </button>
+              </div>
+            </div>
+
+            {visibleError && (
+              <div id="login-error" role="alert" aria-live="assertive" data-testid="login-error" style={{
+                display: "flex", alignItems: "flex-start", gap: 9, marginBottom: 16,
+                padding: "11px 12px", borderRadius: 9,
+                color: isLight ? "#842029" : "#ffd1d1",
+                background: isLight ? "#fff0f0" : "rgba(153,27,27,0.26)",
+                border: `1px solid ${isLight ? "#d98c91" : "rgba(248,113,113,0.50)"}`,
+                fontSize: 14, lineHeight: 1.45, overflowWrap: "anywhere",
+              }}>
+                <AlertCircle size={17} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
+                <span>{visibleError}</span>
+              </div>
+            )}
+
+            <button type="submit" disabled={!canSubmit} className="login-submit" aria-busy={loading} data-testid="btn-login">
+              {loading ? t.signingIn : t.signIn}
+            </button>
+          </form>
+
+          <div aria-hidden="true" style={{ display: "flex", alignItems: "center", gap: 12, margin: "19px 0 15px" }}>
+            <span style={{ flex: 1, height: 1, background: F.borderStrong }} />
+            <span style={{ color: F.textMuted, font: "600 11px 'Barlow Condensed', sans-serif", textTransform: "uppercase" }}>{t.orDivider}</span>
+            <span style={{ flex: 1, height: 1, background: F.borderStrong }} />
+          </div>
+
+          <a href="/api/auth/google" className="login-control" style={{
+            minHeight: 46, display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+            padding: "10px 14px", background: isLight ? F.surface : F.surface2,
+            border: `1px solid ${F.borderStrong}`, borderRadius: 9, color: F.text,
+            fontSize: 14, fontWeight: 600, textDecoration: "none",
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            {t.signInWithGoogle}
+          </a>
+
+          <p style={{ textAlign: "center", margin: "18px 0 0", color: F.textMuted, fontSize: 14, lineHeight: 1.5 }}>
+            {t.noAccount}{" "}
+            <button
+              type="button"
+              className="login-link"
+              onClick={() => navigate("/signup")}
+              data-testid="link-request-access"
+              style={{
+                minHeight: 44, padding: "4px 3px", background: "transparent", border: 0,
+                color: F.accent, font: "600 14px 'Barlow', sans-serif",
+                textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer",
+              }}
+            >{t.requestAccess}</button>
+          </p>
+        </section>
+
+        <p style={{
+          textAlign: "center", margin: "14px 0 0", color: F.textMuted, fontSize: 12, lineHeight: 1.45,
+        }}>Created by Kyutae Kim (Michael) · TK Electric LLC</p>
+      </main>
+    </div>
+  );
+}

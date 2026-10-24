@@ -1,0 +1,60 @@
+{
+  "scope": "Frozen pre-upload gate record; existing Replit authentication; final commit and equality are reported separately after preservation",
+  "repository": "tkkyutae-hue/TK-ElectricMaterial-Inventory",
+  "branch": "Indiana",
+  "branchUrl": "https://github.com/tkkyutae-hue/TK-ElectricMaterial-Inventory/tree/Indiana",
+  "observedRemoteHead": "40da01ee24d9154166462bc96e295de191f9ae75",
+  "newPreservationCommit": null,
+  "remoteNewFileEqualityChecked": false,
+  "authentication": {
+    "connectorAttachment": "Existing authorized connector attached; credential execution returned no usable connections; not interpreted as missing GitHub account or expired authorization",
+    "usableTransport": "Existing GitHub CLI in this Replit; GET repository succeeded",
+    "repositoryPermissions": {"admin": true, "maintain": true, "pull": true, "push": true, "triage": true},
+    "chatgptAuthenticationUsed": false,
+    "newCredentialsOrScopeExpansion": false
+  },
+  "currentRepositoryHooks": {"status": 200, "count": 0},
+  "currentActionsWorkflows": {"status": 200, "count": 0},
+  "branchWorkflowFiles": {"treeComplete": true, "count": 0},
+  "currentAppInstallations": {
+    "attemptedEndpoint": "GET /user/installations",
+    "status": 403,
+    "reason": "Endpoint requires a user access token authorized to a GitHub App; existing CLI authentication is not that token type",
+    "absenceNotProven": true,
+    "reauthorizationWouldNotBeAssumedToFixTokenType": true,
+    "currentUserSettingsConfirmation": {
+      "source": "User's direct response to current repository-installed-apps question",
+      "installedApps": ["Replit Signin"],
+      "otherAppsReported": false,
+      "separateFromReplitWriteAuthentication": true
+    }
+  },
+  "historicalUserObservation": {
+    "date": "2026-10-23",
+    "source": "User's ChatGPT GitHub settings observation; not Replit authentication evidence",
+    "repositoryHooks": 0,
+    "installedApps": ["Replit Signin"],
+    "currentOrCompleteAutomationGuarantee": false
+  },
+  "postMerge": {
+    "remoteScript": "scripts/post-merge.sh",
+    "remoteScriptGitBlobSha": "8a199063f0db5b207753e4a2373da322140c9a36",
+    "ifExecuted": ["npm install", "Four ALTER TABLE ADD COLUMN IF NOT EXISTS statements using DATABASE_URL"],
+    "configuredTrigger": "Replit postMerge; task merge setup and workflow reconciliation",
+    "scriptExecuted": false,
+    "uploadAloneShownToExecuteScript": false
+  },
+  "platformDocumentation": {
+    "consulted": true,
+    "sources": [
+      "https://docs.replit.com/features/publishing/overview",
+      "https://docs.replit.com/features/workspace-tools/git-interface",
+      "https://docs.replit.com/features/publishing/after-you-publish"
+    ],
+    "finding": "Git push is separate from Replit Publish/Republish; does not exclude third-party app automation"
+  },
+  "decision": "ALLOW_INDIANA_REVIEW_PRESERVATION_ONLY",
+  "remainingEvidence": null,
+  "gateBasis": "Existing Replit CLI repository push permission, zero repository hooks and Actions workflows, current user settings confirmation of Replit Signin only, and separation of postMerge/Publish from branch upload",
+  "forbiddenActionsPerformed": false
+}

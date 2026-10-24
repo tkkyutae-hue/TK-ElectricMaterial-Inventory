@@ -1,0 +1,26 @@
+// Local synthetic integration only. No existing DB, network, HTTP or listeners.
+const deny = () => { throw Error("BRANCH_APPLICATION_NETWORK_BLOCKED"); };
+const net = require("node:net");
+const connect = net.Socket.prototype.connect;
+net.Socket.prototype.connect = function (...args) {
+  let o = args[0];
+  if (Array.isArray(o)) o = o[0];
+  const path = typeof o === "string" ? o : o?.path;
+  if (!/^\/tmp\/(?:movement-only-pg-|tk-request-only-|field-filter-pg-)[a-zA-Z0-9]+\/socket\/\.s\.PGSQL\.6543$/.test(path ?? "")) return deny();
+  return connect.apply(this, args);
+};
+net.Server.prototype.listen = deny;
+require("node:dns").lookup = deny;
+require("node:dns").promises.lookup = deny;
+for (const name of ["node:http", "node:https"]) {
+  require(name).request = deny;
+  require(name).get = deny;
+}
+require("node:dgram").Socket.prototype.send = deny;
+globalThis.fetch = deny;
+// Keep only runtime/toolchain values in this disposable test child. Do not
+// forward application credentials or the real user's HOME to imported code.
+const allowed = new Set(["PATH", "LANG", "LC_ALL", "TZ", "TMPDIR", "LD_LIBRARY_PATH", "FONTCONFIG_FILE", "FONTCONFIG_PATH", "PLAYWRIGHT_BROWSERS_PATH"]);
+for (const key of Object.keys(process.env)) if (!allowed.has(key)) delete process.env[key];
+process.env.HOME = require("node:fs").mkdtempSync("/tmp/branch-test-home-");
+process.env.BRANCH_APPLICATION_GUARD = "active";

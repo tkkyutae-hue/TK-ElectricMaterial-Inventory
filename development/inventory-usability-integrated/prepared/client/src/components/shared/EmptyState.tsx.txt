@@ -1,0 +1,32 @@
+import { PackageOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useCommonMessages } from "@/hooks/use-common-messages";
+
+interface EmptyStateProps {
+  icon?: React.ReactNode;
+  title?: string;
+  description?: string;
+  action?: React.ReactNode;
+  className?: string;
+}
+
+/** Existing API is preserved; callers may continue to customize every part. */
+export function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+  className,
+}: EmptyStateProps) {
+  const m = useCommonMessages();
+  return (
+    <div className={cn("flex flex-col items-center justify-center py-16 text-center", className)} role="status">
+      <div className="mb-4 text-muted-foreground" aria-hidden="true">
+        {icon ?? <PackageOpen className="h-12 w-12" />}
+      </div>
+      <p className="text-sm font-semibold text-foreground">{title ?? m.noDataTitle}</p>
+      {description && <p className="mt-1 max-w-xs text-sm text-muted-foreground">{description}</p>}
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}

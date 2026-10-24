@@ -1,0 +1,33 @@
+import type { Express } from "express";
+import type { Server } from "node:http";
+import type { Pool } from "pg";
+import { verifyStartupPlan, type StartupPlan } from "./branches/startupPlan";
+import type { PrivateMediaObjects } from "./branches/media";
+import type { BranchId } from "./branches/runtime";
+type Log = (message: string, source?: string) => void;
+
+/** Actual entry composition boundary. Imports neither legacy DB nor jobs. */
+export async function initializeApplication(app: Express, server: Server, plan: StartupPlan, options: {
+  log: Log;
+  loadLegacy?: () => Promise<{ initializeLegacy: (app: Express, server: Server, log: Log) => Promise<void> }>;
+  createPool?: (connection: string, targetId: string) => Pool;
+  sessionStore?: import("express-session").Store;
+  media?: Partial<Record<BranchId, PrivateMediaObjects>>;
+  legacyPhotos?: import("./branches/media").LegacyPhotoProvider;
+  catalog?: { approval: import("./branches/catalogIntroduction").CatalogApproval; photos?: import("./branches/catalogIntroduction").CatalogPhotoProvider };
+  catalogImages?: import("./branches/catalogPrivateAssets").CatalogImageSelection;
+}) {
+  if (plan.mode === "legacy") {
+    const legacy = await (options.loadLegacy ?? (() => import("./legacyBootstrap")))();
+    await legacy.initializeLegacy(app, server, options.log);
+    return;
+  }
+  verifyStartupPlan(plan);
+  const { initializeSharedApplication } = await import("./branches/sharedStartup");
+  const createPool = options.createPool ?? ((connectionString: string) => new PoolConstructor({
+    connectionString, max: 8, connectionTimeoutMillis: 5000, query_timeout: 15000,
+  }));
+  const PoolConstructor = (await import("pg")).default.Pool;
+  return initializeSharedApplication(app, server, plan, { createPool, sessionStore: options.sessionStore,
+    media: options.media, legacyPhotos: options.legacyPhotos, catalog:options.catalog, catalogImages: options.catalogImages });
+}

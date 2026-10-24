@@ -1,0 +1,35 @@
+{
+  "baseline": "preceding common/media candidates in isolated workcopy",
+  "files": [
+    {
+      "path": "client/src/lib/i18n.ts",
+      "preparedSha256": "f170e3f4d6a434706dd70bc0d0de8f4afeee2ae34e86ab82bd4b21eba2fc1d34",
+      "currentRootSha256": "5d2248c44b15443ba68172158f12246d666c8e4328ecd19dbbcd694ce6afaf01"
+    },
+    {
+      "path": "client/src/pages/field/FieldCartPanel.tsx",
+      "preparedSha256": "8d570f3bbb31ee34530bb5f86bfd4fc6faa6a62b9a2adb88d0ab72230432700c",
+      "currentRootSha256": "d0bf11da5a7b9d8e81f3c1cdd3382a85a5f37231673118b7e4ed4f4e99c98ee4"
+    },
+    {
+      "path": "client/src/pages/field/FieldCartReview.tsx",
+      "preparedSha256": "9792b1b15242db64413423fafe4e9e7708aa8e718de91f9b22d6c41dbd0e2b54",
+      "currentRootSha256": "0591d9af92f6f8cd228975c271c57916e720666bd8f85f7ac174bee67f32993c"
+    },
+    {
+      "path": "client/src/pages/field/FieldCommandFeedback.tsx",
+      "preparedSha256": "5642349e8f75a361f8e6dba1ae5f22b80d845be3a6ee1d795c5220cbe19fc852",
+      "currentRootSha256": null
+    },
+    {
+      "path": "client/src/pages/field/FieldInventory.tsx",
+      "preparedSha256": "973d8f08b8ad261fb44b21aae02c093ea761233ca5e1f93e56223269d608dc8a",
+      "currentRootSha256": "48ebc2186c36e4c2cb78c6dd2b8db9e70ed771b6ed742da0d6b4b4f631c3a143"
+    },
+    {
+      "path": "client/src/pages/field/FieldRequestsList.tsx",
+      "preparedSha256": "2f7c6f2d913c80e56fcd3004ea7ecf9d2ced87fa0c7e05596ada61ec4cee0ab1",
+      "currentRootSha256": "b077e700916fb3be65a181a1a7e5db9ca7724bf5bb0337d0b8f4d45a7de504fb"
+    }
+  ]
+}

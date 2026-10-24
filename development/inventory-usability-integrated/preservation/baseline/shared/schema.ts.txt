@@ -1,0 +1,864 @@
+import { sql } from "drizzle-orm";
+import { pgTable, text, serial, integer, boolean, timestamp, numeric, date, jsonb, varchar, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+import { users } from "./models/auth";
+
+// ─── Reference Tables ────────────────────────────────────────────────────────
+
+export const categories = pgTable("categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  code: text("code"),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  sortOrder: integer("sort_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const locations = pgTable("locations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  code: text("code"),
+  locationType: text("location_type"),
+  description: text("description"),
+  supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const suppliers = pgTable("suppliers", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  contactName: text("contact_name"),
+  phone: text("phone"),
+  email: text("email"),
+  address: text("address"),
+  website: text("website"),
+  accountNumber: text("account_number"),
+  leadTimeDays: integer("lead_time_days"),
+  preferredVendor: boolean("preferred_vendor").default(false),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ─── Projects ────────────────────────────────────────────────────────────────
+
+export const projects = pgTable("projects", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull(), // PO/CODE — NOT globally unique; unique per customer/group only
+  name: text("name").notNull(),
+  customerName: text("customer_name"),
+  addressLine1: text("address_line_1"),
+  addressLine2: text("address_line_2"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  status: text("status").notNull().default("active"), // active, completed, on_hold, cancelled
+  poNumber: text("po_number"),
+  ownerName: text("owner_name"),
+  jobLocation: text("job_location"),
+  startDate: date("start_date"),
+  endDate: date("end_date"),
+  notes: text("notes"),
+  // Monday.com sync fields
+  mondayItemId: text("monday_item_id").unique(),
+  mondayBoardId: text("monday_board_id"),
+  mondayGroupId: text("monday_group_id"),
+  mondayGroupTitle: text("monday_group_title"),
+  mondayUrl: text("monday_url"),
+  source: text("source").default("manual"), // 'manual' | 'monday'
+  mondaySyncStatus: text("monday_sync_status").default("ok"), // 'ok' | 'warning' | 'needs_manual_resolution' | 'archived'
+  mondaySyncError: text("monday_sync_error"),
+  archived: boolean("archived").default(false),
+  archivedAt: timestamp("archived_at"),
+  mergedIntoProjectId: integer("merged_into_project_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ─── App Settings (key-value store for integration config) ───────────────────
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ─── Items ───────────────────────────────────────────────────────────────────
+
+export const items = pgTable("items", {
+  id: serial("id").primaryKey(),
+  sku: text("sku").notNull().unique(),
+  name: text("name").notNull(),
+  categoryId: integer("category_id").references(() => categories.id),
+  subcategory: text("subcategory"),
+  detailType: text("detail_type"),
+  subType: text("sub_type"),
+  description: text("description"),
+  brand: text("brand"),
+  manufacturer: text("manufacturer"),
+  unitOfMeasure: text("unit_of_measure").notNull(),
+  // quantity_on_hand is maintained as a total across all location balances
+  quantityOnHand: integer("quantity_on_hand").notNull().default(0),
+  minimumStock: integer("minimum_stock").notNull().default(0),
+  reorderPoint: integer("reorder_point").notNull().default(0),
+  reorderQuantity: integer("reorder_quantity").notNull().default(0),
+  unitCost: numeric("unit_cost", { precision: 12, scale: 2 }),
+  supplierId: integer("supplier_id").references(() => suppliers.id),
+  primaryLocationId: integer("primary_location_id").references(() => locations.id),
+  baseItemName: text("base_item_name"),
+  sizeLabel: text("size_label"),
+  sizeSortValue: integer("size_sort_value").default(0),
+  binLocation: text("bin_location"),
+  statusOverride: text("status_override"),
+  trackingMode: text("tracking_mode"),  // "standard" | "reel" | "asset" | null (null = legacy inferred)
+  isActive: boolean("is_active").default(true),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const itemImages = pgTable("item_images", {
+  id: serial("id").primaryKey(),
+  itemId: integer("item_id").notNull().references(() => items.id),
+  imageUrl: text("image_url").notNull(),
+  altText: text("alt_text"),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ─── Item Groups (grouped family / subcategory metadata) ─────────────────────
+// Stores per-family metadata: custom image URL for the group header
+export const itemGroups = pgTable("item_groups", {
+  id: serial("id").primaryKey(),
+  categoryId: integer("category_id").notNull().references(() => categories.id),
+  baseItemName: text("base_item_name").notNull(),
+  manufacturerName: text("manufacturer_name"),
+  imageUrl: text("image_url"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ─── Inventory Location Balances ──────────────────────────────────────────────
+// Source of truth for per-location stock levels
+export const inventoryLocationBalances = pgTable("inventory_location_balances", {
+  id: serial("id").primaryKey(),
+  itemId: integer("item_id").notNull().references(() => items.id),
+  locationId: integer("location_id").notNull().references(() => locations.id),
+  quantityOnHand: integer("quantity_on_hand").notNull().default(0),
+  minimumStock: integer("minimum_stock").default(0),
+  reorderPoint: integer("reorder_point").default(0),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ─── Inventory Movements ──────────────────────────────────────────────────────
+export const inventoryMovements = pgTable("inventory_movements", {
+  id: serial("id").primaryKey(),
+  itemId: integer("item_id").notNull().references(() => items.id),
+  movementType: text("movement_type").notNull(), // receive, issue, return, adjust, transfer
+  quantity: integer("quantity").notNull(),
+  previousQuantity: integer("previous_quantity").notNull(),
+  newQuantity: integer("new_quantity").notNull(),
+  sourceLocationId: integer("source_location_id").references(() => locations.id),
+  destinationLocationId: integer("destination_location_id").references(() => locations.id),
+  projectId: integer("project_id").references(() => projects.id),
+  unitCostSnapshot: numeric("unit_cost_snapshot", { precision: 12, scale: 2 }),
+  referenceType: text("reference_type"),
+  referenceId: text("reference_id"),
+  supplierId: integer("supplier_id").references(() => suppliers.id),
+  note: text("note"),
+  reason: text("reason"),
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  transactionDate: timestamp("transaction_date"),
+  editedBy: text("edited_by"),
+  editedAt: timestamp("edited_at"),
+  editHistory: jsonb("edit_history"),
+});
+
+// ─── Project Material Transactions ────────────────────────────────────────────
+export const projectMaterialTransactions = pgTable("project_material_transactions", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  itemId: integer("item_id").notNull().references(() => items.id),
+  movementId: integer("movement_id").references(() => inventoryMovements.id),
+  transactionType: text("transaction_type").notNull(), // issue, return
+  quantity: integer("quantity").notNull(),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ─── Supplier Items ───────────────────────────────────────────────────────────
+export const supplierItems = pgTable("supplier_items", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplier_id").notNull().references(() => suppliers.id),
+  itemId: integer("item_id").notNull().references(() => items.id),
+  supplierSku: text("supplier_sku"),
+  leadTimeDays: integer("lead_time_days"),
+  preferredSupplier: boolean("preferred_supplier").default(false),
+  lastUnitCost: numeric("last_unit_cost", { precision: 12, scale: 2 }),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ─── Purchase Recommendations ─────────────────────────────────────────────────
+export const purchaseRecommendations = pgTable("purchase_recommendations", {
+  id: serial("id").primaryKey(),
+  itemId: integer("item_id").notNull().references(() => items.id),
+  supplierId: integer("supplier_id").references(() => suppliers.id),
+  recommendedQuantity: integer("recommended_quantity").notNull(),
+  priorityLevel: text("priority_level").notNull().default("medium"), // critical, high, medium, low
+  reason: text("reason"),
+  status: text("status").notNull().default("pending"), // pending, ordered, dismissed
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ─── Wire Reels ───────────────────────────────────────────────────────────────
+// Reel-level tracking for wire/cable items (unitOfMeasure = "FT")
+export const wireReels = pgTable("wire_reels", {
+  id: serial("id").primaryKey(),
+  itemId: integer("item_id").notNull().references(() => items.id),
+  reelId: text("reel_id").notNull(),
+  lengthFt: integer("length_ft").notNull().default(0),
+  brand: text("brand"),
+  supplierId: integer("supplier_id").references(() => suppliers.id),
+  locationId: integer("location_id").references(() => locations.id),
+  status: text("status").default("full"), // "full" | "partial" | "opened"
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ─── Movement Drafts ──────────────────────────────────────────────────────────
+// Stores unsaved movement form state for later confirmation
+export const movementDrafts = pgTable("movement_drafts", {
+  id: serial("id").primaryKey(),
+  movementType: text("movement_type").notNull(),
+  sourceLocationId: integer("source_location_id").references(() => locations.id),
+  destinationLocationId: integer("destination_location_id").references(() => locations.id),
+  projectId: integer("project_id").references(() => projects.id),
+  itemsJson: text("items_json").notNull().default("[]"),
+  note: text("note"),
+  savedBy: text("saved_by").references(() => users.id),
+  savedByName: text("saved_by_name"),
+  status: text("status").notNull().default("draft"),
+  savedAt: timestamp("saved_at").defaultNow(),
+});
+
+// ─── Wire Reel Movement Lines ─────────────────────────────────────────────────
+// Child records for each reel involved in an inventory movement.
+// Written inside confirmDraft() for issue/receive/return on reel-tracked items.
+// Older movements have zero lines — no backfill.
+export const wireReelMovementLines = pgTable("wire_reel_movement_lines", {
+  id: serial("id").primaryKey(),
+  movementId: integer("movement_id").notNull().references(() => inventoryMovements.id),
+  itemId: integer("item_id").notNull().references(() => items.id),
+  wireReelId: integer("wire_reel_id").references(() => wireReels.id),
+  reelIdText: text("reel_id_text").notNull(),
+  actionType: text("action_type").notNull(), // "issue" | "receive" | "return"
+  quantityFt: integer("quantity_ft").notNull(),
+  manufacturerSnapshot: text("manufacturer_snapshot"),
+  supplierId: integer("supplier_id").references(() => suppliers.id),
+  projectId: integer("project_id").references(() => projects.id),
+  fromLocationId: integer("from_location_id").references(() => locations.id),
+  toLocationId: integer("to_location_id").references(() => locations.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [
+  index("wrml_movement_id_idx").on(t.movementId),
+  index("wrml_item_id_idx").on(t.itemId),
+  index("wrml_wire_reel_id_idx").on(t.wireReelId),
+]);
+
+// ─── Category Subcategory Order ───────────────────────────────────────────────
+// Stores explicit sort order for subcategory (family header) sections per category
+export const categorySubcategoryOrder = pgTable("category_subcategory_order", {
+  id: serial("id").primaryKey(),
+  categoryId: integer("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
+  subcategory: text("subcategory").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ─── Zod Insert Schemas ───────────────────────────────────────────────────────
+
+export const insertCategorySchema = createInsertSchema(categories).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLocationSchema = createInsertSchema(locations).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertSupplierSchema = createInsertSchema(suppliers).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertProjectSchema = createInsertSchema(projects).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertItemSchema = createInsertSchema(items).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  unitCost: z.union([z.string(), z.number()]).transform(val => String(val)).optional(),
+});
+export const insertItemImageSchema = createInsertSchema(itemImages).omit({ id: true, createdAt: true });
+export const insertItemGroupSchema = createInsertSchema(itemGroups).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertInventoryMovementSchema = createInsertSchema(inventoryMovements).omit({
+  id: true, createdAt: true, previousQuantity: true, newQuantity: true, createdBy: true
+});
+export const insertTransactionSchema = insertInventoryMovementSchema;
+export const insertPurchaseRecommendationSchema = createInsertSchema(purchaseRecommendations).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertSupplierItemSchema = createInsertSchema(supplierItems).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWireReelSchema = createInsertSchema(wireReels).omit({ id: true, createdAt: true, updatedAt: true });
+
+// ─── TypeScript Types ─────────────────────────────────────────────────────────
+
+export type Category = typeof categories.$inferSelect;
+export type Location = typeof locations.$inferSelect;
+export type Supplier = typeof suppliers.$inferSelect;
+export type Project = typeof projects.$inferSelect;
+export type Item = typeof items.$inferSelect;
+export type ItemImage = typeof itemImages.$inferSelect;
+export type InventoryMovement = typeof inventoryMovements.$inferSelect;
+export type InventoryLocationBalance = typeof inventoryLocationBalances.$inferSelect;
+export type ProjectMaterialTransaction = typeof projectMaterialTransactions.$inferSelect;
+export type SupplierItem = typeof supplierItems.$inferSelect;
+export type PurchaseRecommendation = typeof purchaseRecommendations.$inferSelect;
+export type ItemGroup = typeof itemGroups.$inferSelect;
+export type WireReel = typeof wireReels.$inferSelect;
+export type WireReelWithRelations = WireReel & {
+  supplier?: Supplier | null;
+  location?: Location | null;
+};
+export type CreateWireReelRequest = z.infer<typeof insertWireReelSchema>;
+export type UpdateWireReelRequest = Partial<CreateWireReelRequest>;
+
+export type CreateCategoryRequest = z.infer<typeof insertCategorySchema>;
+export type UpdateCategoryRequest = Partial<CreateCategoryRequest>;
+export type CreateLocationRequest = z.infer<typeof insertLocationSchema>;
+export type CreateSupplierRequest = z.infer<typeof insertSupplierSchema>;
+export type UpdateSupplierRequest = Partial<CreateSupplierRequest>;
+export type CreateProjectRequest = z.infer<typeof insertProjectSchema>;
+export type UpdateProjectRequest = Partial<CreateProjectRequest>;
+export type CreateItemRequest = z.infer<typeof insertItemSchema>;
+export type UpdateItemRequest = Partial<CreateItemRequest>;
+export type CreateInventoryMovementRequest = z.infer<typeof insertInventoryMovementSchema>;
+export type CreatePurchaseRecommendationRequest = z.infer<typeof insertPurchaseRecommendationSchema>;
+
+export type ItemWithRelations = Item & {
+  category?: Category | null;
+  location?: Location | null;
+  supplier?: Supplier | null;
+  images?: ItemImage[];
+  movements?: InventoryMovement[];
+  status?: string;
+  imageUrl?: string | null;
+  issueCount30d?: number;
+  issueCount90d?: number;
+  lastIssueAt?: string | null;
+};
+
+export type ReelMovementLine = {
+  reelIdText: string;
+  quantityFt: number;
+  actionType: string;
+  manufacturerSnapshot: string | null;
+};
+
+export type InventoryMovementWithRelations = InventoryMovement & {
+  item?: Item | null;
+  sourceLocation?: Location | null;
+  destinationLocation?: Location | null;
+  project?: Project | null;
+  supplierName?: string | null;
+  reelLines?: ReelMovementLine[];
+  createdByName?: string | null;
+};
+
+export type ProjectWithStats = Project & {
+  totalIssued?: number;
+  totalReturned?: number;
+  recentActivity?: InventoryMovementWithRelations[];
+};
+
+export type SupplierWithStats = Supplier & {
+  itemCount?: number;
+  lowStockCount?: number;
+  items?: Item[];
+  recentReceipts?: any[];
+  linkedLocations?: Location[];
+};
+
+export type PurchaseRecommendationWithRelations = PurchaseRecommendation & {
+  item?: Item | null;
+  supplier?: Supplier | null;
+  issueCount30d?: number;
+  issueCount90d?: number;
+  lastIssueAt?: string | null;
+};
+
+export type CategorySummary = Category & {
+  skuCount: number;
+  totalQuantity: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+};
+
+export type CategoryGroupedItem = Item & {
+  location?: Location | null;
+  supplier?: Supplier | null;
+  status: string;
+};
+
+export type CategoryItemGroup = {
+  baseItemName: string;
+  items: CategoryGroupedItem[];
+};
+
+export type CategoryGroupedDetail = {
+  category: Category;
+  skuCount: number;
+  totalQuantity: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  groups: CategoryItemGroup[];
+};
+
+export type MovementDraft = typeof movementDrafts.$inferSelect;
+export type MovementDraftWithRelations = MovementDraft & {
+  sourceLocation?: Location | null;
+  destinationLocation?: Location | null;
+  project?: Project | null;
+};
+
+export type DraftItem = {
+  itemId: number;
+  itemName: string;
+  sku: string;
+  qty: number;
+  unit: string;
+  reelIds?: number[];
+  reelSelections?: Record<string, number>;
+};
+
+// ─── Project Scope Items ──────────────────────────────────────────────────────
+// Baseline quantities for each project — used as the reference for progress tracking
+
+export const projectScopeItems = pgTable("project_scope_items", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  itemName: text("item_name").notNull(),
+  unit: text("unit").notNull(),
+  estimatedQty: numeric("estimated_qty", { precision: 12, scale: 2 }).notNull().default("0"),
+  category: text("category"),
+  section: text("section"),
+  remarks: text("remarks"),
+  linkedInventoryItemId: integer("linked_inventory_item_id").references(() => items.id, { onDelete: "set null" }),
+  isActive: boolean("is_active").notNull().default(true),
+  scopeType: text("scope_type").default("primary"),
+  reportTarget: text("report_target"),
+  acceptedVariants: jsonb("accepted_variants").$type<number[]>().default([]),
+  progressCountingMode: text("progress_counting_mode").default("exact"),
+  sortOrder: integer("sort_order"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertProjectScopeItemSchema = createInsertSchema(projectScopeItems).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+
+export type ProjectScopeItem = typeof projectScopeItems.$inferSelect;
+export type CreateProjectScopeItemRequest = z.infer<typeof insertProjectScopeItemSchema>;
+export type UpdateProjectScopeItemRequest = Partial<CreateProjectScopeItemRequest>;
+
+// ─── Daily Reports ────────────────────────────────────────────────────────────
+
+export const dailyReports = pgTable("daily_reports", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull(),
+  reportDate: text("report_date").notNull(),
+  reportNumber: text("report_number"),
+  preparedBy: text("prepared_by"),
+  status: text("status").notNull().default("draft"),
+  formData: jsonb("form_data"),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDailyReportSchema = createInsertSchema(dailyReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type DailyReport = typeof dailyReports.$inferSelect;
+export type CreateDailyReportRequest = z.infer<typeof insertDailyReportSchema>;
+export type UpdateDailyReportRequest = Partial<CreateDailyReportRequest>;
+
+// ─── Workers ──────────────────────────────────────────────────────────────────
+
+export const workers = pgTable("workers", {
+  id: serial("id").primaryKey(),
+  fullName: text("full_name").notNull(),
+  trade: text("trade"),
+  photoUrl: text("photo_url"),
+  isActive: boolean("is_active").notNull().default(true),
+  // Profile fields
+  gender: text("gender"),
+  nationality: text("nationality"),
+  workerState: text("worker_state"),
+  dateOfTk: date("date_of_tk"),
+  project: text("project"),
+  // Employee / Jibble integration
+  employeeId: text("employee_id"),
+  jibblePersonId: text("jibble_person_id").unique(),
+  // Link to app user account (for foreman self-view filtering).
+  // Unique: one user account can be linked to at most one worker.
+  linkedUserId: text("linked_user_id").unique().references(() => users.id, { onDelete: "set null" }),
+  // Evaluation fields
+  skill: integer("skill"),
+  control: integer("control"),
+  attitude: integer("attitude"),
+  specialAbility: text("special_ability"),
+  skillBoard: text("skill_board"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertWorkerSchema = createInsertSchema(workers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type Worker = typeof workers.$inferSelect;
+export type CreateWorkerRequest = z.infer<typeof insertWorkerSchema>;
+export type UpdateWorkerRequest = Partial<CreateWorkerRequest>;
+
+// ─── Worker Attendance ────────────────────────────────────────────────────────
+
+export const workerAttendance = pgTable("worker_attendance", {
+  id: serial("id").primaryKey(),
+  workerId: integer("worker_id").notNull().references(() => workers.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  status: text("status").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertWorkerAttendanceSchema = createInsertSchema(workerAttendance).omit({
+  id: true, createdAt: true,
+});
+
+export type WorkerAttendance = typeof workerAttendance.$inferSelect;
+export type CreateWorkerAttendanceRequest = z.infer<typeof insertWorkerAttendanceSchema>;
+
+// ─── Worker Evaluations (History) ────────────────────────────────────────────
+
+export const workerEvaluations = pgTable("worker_evaluations", {
+  id: serial("id").primaryKey(),
+  workerId: integer("worker_id").notNull().references(() => workers.id, { onDelete: "cascade" }),
+  evaluationDate: date("evaluation_date").notNull(),
+  evaluatorName: text("evaluator_name"),
+  project: text("project"),
+  skill: integer("skill"),
+  control: integer("control"),
+  attitude: integer("attitude"),
+  attendance: integer("attendance"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertWorkerEvaluationSchema = createInsertSchema(workerEvaluations).omit({
+  id: true, createdAt: true,
+});
+
+export type WorkerEvaluation = typeof workerEvaluations.$inferSelect;
+export type CreateWorkerEvaluationRequest = z.infer<typeof insertWorkerEvaluationSchema>;
+
+// ─── Equipment ────────────────────────────────────────────────────────────────
+// Master data managed by admin; live fields are snapshot from daily reports.
+
+export const equipment = pgTable("equipment", {
+  id: serial("id").primaryKey(),
+  equipNo: text("equip_no").notNull(),
+  name: text("name").notNull(),
+  equipType: text("equip_type"),
+  serialNumber: text("serial_number"),
+  sizeSpec: text("size_spec"),
+  brand: text("brand"),
+  location: text("location"),
+  ownershipType: text("ownership_type").default("Rental"),
+  // Live snapshot fields — updated when daily reports reference this equipment
+  status: text("status").default("standby"), // operational | standby | partial_issue | broken_down
+  teamName: text("team_name"),
+  assignedProjectId: integer("assigned_project_id").references(() => projects.id, { onDelete: "set null" }),
+  lastReportedAt: timestamp("last_reported_at"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEquipmentSchema = createInsertSchema(equipment).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+
+export type Equipment = typeof equipment.$inferSelect;
+export type EquipmentWithProject = Equipment & { project?: Project | null };
+
+// ─── Tool Assets ─────────────────────────────────────────────────────────────
+// Individual asset-unit tracking for trackingMode="asset" items (TOOLS & ASSETS).
+// Each row = one physical tool with its own Tag, status, and location.
+
+export const TOOL_ASSET_STATUSES = ["available", "in_use", "repair_needed", "under_repair", "out_of_service", "lost", "retired"] as const;
+export const TOOL_ASSET_CONDITIONS = ["good", "fair", "damaged", "needs_repair"] as const;
+export type ToolAssetStatus = typeof TOOL_ASSET_STATUSES[number];
+export type ToolAssetCondition = typeof TOOL_ASSET_CONDITIONS[number];
+
+export const toolAssets = pgTable("tool_assets", {
+  id: serial("id").primaryKey(),
+  itemId: integer("item_id").notNull().references(() => items.id, { onDelete: "cascade" }),
+  assetTag: text("asset_tag").notNull().unique(),
+  manufacturerName: text("manufacturer_name"),
+  model: text("model"),
+  serialNumber: text("serial_number"),
+  locationId: integer("location_id").references(() => locations.id, { onDelete: "set null" }),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "set null" }),
+  assignedTo: text("assigned_to"),
+  status: text("status").notNull().default("available"),
+  condition: text("condition").default("good"),
+  repairNote: text("repair_note"),
+  photoUrl: text("photo_url"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertToolAssetSchema = createInsertSchema(toolAssets).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+
+export type ToolAsset = typeof toolAssets.$inferSelect;
+export type CreateToolAssetRequest = z.infer<typeof insertToolAssetSchema>;
+export type UpdateToolAssetRequest = Partial<Omit<CreateToolAssetRequest, "itemId">>;
+export type ToolAssetWithRelations = ToolAsset & {
+  location?: { id: number; name: string } | null;
+  project?: { id: number; name: string } | null;
+};
+
+// ─── Material Requests ────────────────────────────────────────────────────────
+// Submitted by field workers to request materials from the warehouse.
+// These are NOT inventory movements — no quantities change until pickup.
+
+export const materialRequests = pgTable("material_requests", {
+  id: serial("id").primaryKey(),
+  // Prepared schema only: applying to ANY existing database needs separate approval.
+  revision: integer("revision").notNull().default(0),
+  requestNumber: text("request_number").notNull(),
+  status: text("status").notNull().default("requested"),
+  requestType: text("request_type").notNull().default("issue"),
+  itemsJson: text("items_json").notNull().default("[]"),
+  submittedBy: text("submitted_by").references(() => users.id),
+  submittedByName: text("submitted_by_name"),
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  notes: text("notes"),
+  projectId: integer("project_id").references(() => projects.id),
+  requesterName: text("requester_name"),
+  requesterRole: text("requester_role"),
+  fulfilledMovementId: integer("fulfilled_movement_id"),
+});
+
+export const insertMaterialRequestSchema = createInsertSchema(materialRequests).omit({
+  id: true, submittedAt: true,
+});
+
+export type MaterialRequest = typeof materialRequests.$inferSelect;
+export type InsertMaterialRequest = typeof materialRequests.$inferInsert;
+
+// Durable command receipts. No startup DDL, no backfill, no FK cascade on delete.
+export const materialRequestOperations = pgTable("material_request_operations", {
+  operationId: text("operation_id").primaryKey(),
+  actorId: text("actor_id").notNull(),
+  requestId: integer("request_id").notNull(),
+  action: text("action").notNull(),
+  fingerprint: text("fingerprint").notNull(),
+  beforeState: jsonb("before_state"),
+  result: jsonb("result").notNull(),
+  effects: jsonb("effects").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export type CreateEquipmentRequest = z.infer<typeof insertEquipmentSchema>;
+export type UpdateEquipmentRequest = Partial<CreateEquipmentRequest>;
+
+// ─── RMS Export History ──────────────────────────────────────────────────────
+// Snapshot of every successful RMS Excel export. Header row + line items.
+
+export const rmsExportHistory = pgTable("rms_export_history", {
+  id: serial("id").primaryKey(),
+  exportType: text("export_type").notNull().default("rms"),
+  exportedAt: timestamp("exported_at").defaultNow(),
+  exportedBy: varchar("exported_by").references(() => users.id),
+  exportedByName: text("exported_by_name"),
+  requestFrom: text("request_from"),
+  poNumber: text("po_number"),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "set null" }),
+  projectName: text("project_name"),
+  completionDate: text("completion_date"),
+  deliveryTo: text("delivery_to"),
+  itemCount: integer("item_count").notNull().default(0),
+  status: text("status").notNull().default("exported"),
+  poSeq: integer("po_seq"),
+});
+
+export const rmsExportHistoryItems = pgTable("rms_export_history_items", {
+  id: serial("id").primaryKey(),
+  historyId: integer("history_id").notNull().references(() => rmsExportHistory.id, { onDelete: "cascade" }),
+  itemId: integer("item_id").references(() => items.id, { onDelete: "set null" }),
+  skuSnapshot: text("sku_snapshot"),
+  nameSnapshot: text("name_snapshot"),
+  sizeSnapshot: text("size_snapshot"),
+  unitSnapshot: text("unit_snapshot"),
+  qty: integer("qty").notNull().default(0),
+  remarksSnapshot: text("remarks_snapshot"),
+  onHandSnapshot: integer("on_hand_snapshot"),
+  reorderPointSnapshot: integer("reorder_point_snapshot"),
+  reorderQuantitySnapshot: integer("reorder_quantity_snapshot"),
+  minimumStockSnapshot: integer("minimum_stock_snapshot"),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const insertRmsExportHistorySchema = createInsertSchema(rmsExportHistory).omit({
+  id: true, exportedAt: true,
+});
+export const insertRmsExportHistoryItemSchema = createInsertSchema(rmsExportHistoryItems).omit({
+  id: true,
+});
+export const insertWireReelMovementLineSchema = createInsertSchema(wireReelMovementLines).omit({
+  id: true, createdAt: true,
+});
+
+export type RmsExportHistory = typeof rmsExportHistory.$inferSelect;
+export type RmsExportHistoryItem = typeof rmsExportHistoryItems.$inferSelect;
+export type CreateRmsExportHistory = z.infer<typeof insertRmsExportHistorySchema>;
+export type CreateRmsExportHistoryItem = z.infer<typeof insertRmsExportHistoryItemSchema>;
+export type RmsExportHistoryLineWithImage = RmsExportHistoryItem & { itemImageUrl: string | null };
+export type RmsExportHistoryWithLines = RmsExportHistory & { lines: RmsExportHistoryLineWithImage[] };
+
+export type WireReelMovementLine = typeof wireReelMovementLines.$inferSelect;
+export type CreateWireReelMovementLineRequest = z.infer<typeof insertWireReelMovementLineSchema>;
+
+export type AppSetting = typeof appSettings.$inferSelect;
+
+// ─── Completion Reports ───────────────────────────────────────────────────────
+// One draft per project; stores all data needed to generate the PPTX
+
+export const completionReports = pgTable("completion_reports", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  contractItem: text("contract_item").default("Electric Works"),
+  workDescription: text("work_description"),
+  completionDate: text("completion_date"),
+  quotationImageUrl: text("quotation_image_url"),
+  drawingImageUrl: text("drawing_image_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Drawing sections — each generates its own slide in the PPTX (one image per section)
+export const completionReportDrawingSections = pgTable("completion_report_drawing_sections", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").notNull().references(() => completionReports.id, { onDelete: "cascade" }),
+  title: text("title").notNull().default("도면"),
+  imageUrl: text("image_url"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Photo sections — each section generates its own slide group in the PPTX
+export const completionReportPhotoSections = pgTable("completion_report_photo_sections", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").notNull().references(() => completionReports.id, { onDelete: "cascade" }),
+  title: text("title").notNull().default("Work Picture"),
+  photosPerSlide: integer("photos_per_slide").notNull().default(2),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const completionReportPhotos = pgTable("completion_report_photos", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").notNull().references(() => completionReports.id, { onDelete: "cascade" }),
+  sectionId: integer("section_id").references(() => completionReportPhotoSections.id, { onDelete: "set null" }),
+  photoUrl: text("photo_url").notNull(),
+  photoDate: text("photo_date"),
+  description: text("description"),
+  cropFocus: text("crop_focus").default("centre"),
+  cropX: numeric("crop_x"),
+  cropY: numeric("crop_y"),
+  cropWidth: numeric("crop_width"),
+  cropHeight: numeric("crop_height"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCompletionReportSchema = createInsertSchema(completionReports).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export const insertCompletionReportPhotoSchema = createInsertSchema(completionReportPhotos).omit({
+  id: true, createdAt: true,
+});
+export const insertCompletionReportPhotoSectionSchema = createInsertSchema(completionReportPhotoSections).omit({
+  id: true, createdAt: true,
+});
+export const insertCompletionReportDrawingSectionSchema = createInsertSchema(completionReportDrawingSections).omit({
+  id: true, createdAt: true,
+});
+
+export type CompletionReport = typeof completionReports.$inferSelect;
+export type CompletionReportPhoto = typeof completionReportPhotos.$inferSelect;
+export type CompletionReportPhotoSection = typeof completionReportPhotoSections.$inferSelect;
+export type CompletionReportDrawingSection = typeof completionReportDrawingSections.$inferSelect;
+export type CompletionReportSectionWithPhotos = CompletionReportPhotoSection & { photos: CompletionReportPhoto[] };
+export type CompletionReportWithPhotos = CompletionReport & { photos: CompletionReportPhoto[] };
+export type CompletionReportWithSections = CompletionReport & {
+  sections: CompletionReportSectionWithPhotos[];
+  photos: CompletionReportPhoto[];
+  drawingSections: CompletionReportDrawingSection[];
+};
+
+// ─── Daily Worker Assignments (Crew Dispatch) ─────────────────────────────────
+// Records which project each worker is assigned to on a given date.
+
+export const dailyWorkerAssignments = pgTable("daily_worker_assignments", {
+  id: serial("id").primaryKey(),
+  workerId: integer("worker_id").notNull().references(() => workers.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "set null" }),
+  date: date("date").notNull(),
+  assignedBy: text("assigned_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("dwa_worker_date_uniq").on(t.workerId, t.date),
+]);
+
+export const insertDailyWorkerAssignmentSchema = createInsertSchema(dailyWorkerAssignments).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+
+export type DailyWorkerAssignment = typeof dailyWorkerAssignments.$inferSelect;
+export type CreateDailyWorkerAssignmentRequest = z.infer<typeof insertDailyWorkerAssignmentSchema>;
+
+// ─── Korean Worker Attendance (Crew Dispatch) ─────────────────────────────────
+// Korean workers are salaried and don't use Jibble.  Absence of a row means
+// present=true (the default for salary workers).  Only exceptions (결근/반차)
+// are explicitly stored.
+
+export const koreanWorkerAttendance = pgTable("korean_worker_attendance", {
+  id: serial("id").primaryKey(),
+  workerId: integer("worker_id").notNull().references(() => workers.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  present: boolean("present").notNull().default(true),
+  updatedBy: text("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("kwa_worker_date_uniq").on(t.workerId, t.date),
+]);
+
+export type KoreanWorkerAttendance = typeof koreanWorkerAttendance.$inferSelect;

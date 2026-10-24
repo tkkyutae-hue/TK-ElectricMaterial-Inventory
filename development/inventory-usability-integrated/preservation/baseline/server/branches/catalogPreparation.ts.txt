@@ -1,0 +1,96 @@
+/**
+ * Pure, new-Indiana-only catalog preparation. No database, environment, network,
+ * filesystem or execution adapter. Output is a review document, not an import.
+ */
+export class CatalogPreparationError extends Error {
+  constructor(public code: string) { super(code); }
+}
+function fail(code: string): never { throw new CatalogPreparationError(code); }
+const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+const text = (v: unknown, max = 250, displayTab = false): string => {
+  const controls = displayTab ? /[\u0000-\u0008\u000a-\u001f]/ : /[\u0000-\u001f]/;
+  if (typeof v !== "string" || !v.trim() || v.length > max || controls.test(v)) fail("CATALOG_TEXT_INVALID");
+  return v as string; // Preserve display text, never normalize SKU/units silently.
+};
+const optional = (v: unknown, max = 250, displayTab = false): string | null => v == null ? null : text(v, max, displayTab);
+const key = (v: unknown): string => text(v, 100);
+const sourceKey = (v: unknown): string => key(typeof v === "number" && Number.isSafeInteger(v) && v > 0 ? String(v) : v);
+function nonnegative(v: unknown): number {
+  if (v == null) return 0;
+  if (typeof v !== "number" || !Number.isSafeInteger(v) || v < 0) fail("CATALOG_NUMBER_INVALID");
+  return v;
+}
+function entries(v: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(v) || v.length > 10000 || v.some(r => !record(r))) fail("CATALOG_ROWS_INVALID");
+  return v as Record<string, unknown>[];
+}
+export type CatalogPreview = {
+  kind: "new-indiana-catalog-preview"; executable: false; targetId: string;
+  categories: { sourceKey: string; parentSourceKey: string | null; name: string; slug: string | null;
+    code: string | null; description: string | null; sortOrder: number; isActive: boolean }[];
+  items: { sourceKey: string; sku: string; name: string; categorySourceKey: string;
+    unit: string; size: string | null; spec: string | null; description: string | null;
+    brand: string | null; manufacturer: string | null; isActive: boolean;
+    unitOfMeasure: string; subcategory: string | null; detailType: string | null; subType: string | null;
+    baseItemName: string | null; sizeLabel: string | null; sizeSortValue: number;
+    minimumStock: number; reorderPoint: number; reorderQuantity: number; trackingMode: string | null;
+    quantityOnHand: 0; quantityReserved: 0; locationId: null; supplierId: null }[];
+  notices: string[];
+};
+export function prepareIndianaCatalog(input: unknown): CatalogPreview {
+  if (!record(input) || input.targetBranch !== "indiana" || input.sourceBranch !== "savannah"
+    || input.targetState !== "new-empty" || input.previewOnly !== true) fail("CATALOG_TARGET_NOT_APPROVED");
+  const targetId = key(input.targetId), sourceTargetId = key(input.sourceTargetId);
+  if (targetId === sourceTargetId) fail("CATALOG_TARGET_NOT_DISTINCT");
+  // Caller assertions cannot attest physical DB identity. No executor consumes
+  // this document; future import requires independently verified target evidence.
+  const categories = entries(input.categories).map(r => ({
+    sourceKey: sourceKey(r.sourceKey ?? r.id), parentSourceKey: r.parentSourceKey == null ? null : sourceKey(r.parentSourceKey),
+    name: text(r.name), slug: optional(r.slug), code: optional(r.code), description: optional(r.description, 4000),
+    sortOrder: nonnegative(r.sortOrder), isActive: r.isActive == null ? true : r.isActive as boolean,
+  }));
+  if (categories.some(c => typeof c.isActive !== "boolean")) fail("CATALOG_ACTIVE_FLAG_REQUIRED");
+  const categoryKeys = new Set(categories.map(c => c.sourceKey));
+  if (categoryKeys.size !== categories.length) fail("CATALOG_DUPLICATE_CATEGORY");
+  const byKey = new Map(categories.map(c => [c.sourceKey, c]));
+  const resolved = new Set<string>();
+  for (const c of categories) {
+    const visited = new Set<string>();
+    let next: typeof c | undefined = c;
+    while (next) {
+      if (resolved.has(next.sourceKey)) break;
+      if (visited.has(next.sourceKey)) fail("CATALOG_CATEGORY_CYCLE");
+      visited.add(next.sourceKey);
+      if (next.parentSourceKey && !categoryKeys.has(next.parentSourceKey)) fail("CATALOG_CATEGORY_REFERENCE_MISSING");
+      next = next.parentSourceKey ? byKey.get(next.parentSourceKey) : undefined;
+    }
+    for (const id of visited) resolved.add(id);
+  }
+  const items = entries(input.items).map(r => {
+    const categorySourceKey = sourceKey(r.categorySourceKey ?? r.categoryId);
+    if (!categoryKeys.has(categorySourceKey)) fail("CATALOG_CATEGORY_REFERENCE_MISSING");
+    if (typeof r.isActive !== "boolean") fail("CATALOG_ACTIVE_FLAG_REQUIRED");
+    // Explicit allowlist. Prices, source PKs, images/private paths, supplier and
+    // warehouse PKs, reels and historical quantities cannot leak into the plan.
+    if (r.trackingMode != null && !["standard", "reel", "asset"].includes(r.trackingMode as string)) fail("CATALOG_TRACKING_MODE_INVALID");
+    return { sourceKey: sourceKey(r.sourceKey ?? r.id), sku: text(r.sku, 100), name: text(r.name),
+      categorySourceKey, unit: text(r.unitOfMeasure ?? r.unit, 40), unitOfMeasure: text(r.unitOfMeasure ?? r.unit, 40),
+      size: optional(r.size), spec: optional(r.spec),
+      description: optional(r.description, 4000), brand: optional(r.brand), manufacturer: optional(r.manufacturer),
+      subcategory: optional(r.subcategory), detailType: optional(r.detailType), subType: optional(r.subType),
+      // Existing display-only base names may contain a tab; preserve it exactly.
+      // Identifiers/SKUs/units and all other control characters stay strict.
+      baseItemName: optional(r.baseItemName, 250, true), sizeLabel: optional(r.sizeLabel), sizeSortValue: nonnegative(r.sizeSortValue),
+      minimumStock: nonnegative(r.minimumStock), reorderPoint: nonnegative(r.reorderPoint), reorderQuantity: nonnegative(r.reorderQuantity),
+      trackingMode: optional(r.trackingMode),
+      isActive: r.isActive, quantityOnHand: 0 as const, quantityReserved: 0 as const,
+      locationId: null, supplierId: null };
+  });
+  if (new Set(items.map(i => i.sourceKey)).size !== items.length) fail("CATALOG_DUPLICATE_ITEM");
+  if (new Set(items.map(i => i.sku.trim().toLowerCase())).size !== items.length) fail("CATALOG_DUPLICATE_SKU");
+  return { kind: "new-indiana-catalog-preview", executable: false, targetId, categories, items,
+    notices: ["TARGET_IDENTITY_AND_EMPTY_STATE_UNVERIFIED",
+      "SOURCE_KEYS_REQUIRE_NEW_DATABASE_ID_MAPPING", "PRICES_AND_HISTORY_EXCLUDED",
+      "PHOTOS_REQUIRE_APPROVED_REFERENCE_MAPPING", "WAREHOUSE_AND_SUPPLIER_LINKS_REQUIRE_TARGET_MAPPING",
+      "NO_IMPORT_EXECUTOR_OR_WRITES"] };
+}
